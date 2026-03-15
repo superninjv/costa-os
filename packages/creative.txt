@@ -1,0 +1,9 @@
+# Costa OS — Creative tools (optional)
+gimp
+inkscape
+krita
+reaper
+easyeffects
+qpwgraph
+alsa-utils
+obs-studio

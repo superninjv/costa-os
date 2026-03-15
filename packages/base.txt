@@ -1,0 +1,102 @@
+# Costa OS — Base packages (always installed)
+# Core system
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+
+# Boot
+grub
+efibootmgr
+os-prober
+
+# Network
+networkmanager
+network-manager-applet
+iwd
+openssh
+
+# Filesystem
+ntfs-3g
+dosfstools
+btrfs-progs
+e2fsprogs
+
+# Display
+hyprland
+xdg-desktop-portal-hyprland
+xdg-utils
+xdg-user-dirs
+polkit-kde-agent
+
+# Terminal & Shell
+ghostty
+zsh
+zsh-autosuggestions
+zsh-syntax-highlighting
+starship
+
+# Bar & Notifications
+waybar
+dunst
+rofi-wayland
+libnotify
+
+# Wallpaper & Screenshots
+mpvpaper
+swww
+grim
+slurp
+hyprpicker
+wl-clipboard
+cliphist
+wtype
+socat
+
+# File Manager
+thunar
+gvfs
+
+# Browser
+firefox
+
+# Audio
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+realtime-privileges
+noise-suppression-for-voice
+
+# Fonts
+ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-emoji
+
+# Theme
+papirus-icon-theme
+bibata-cursor-theme
+adw-gtk-theme
+qt5ct
+qt6ct
+
+# CLI essentials
+ripgrep
+fd
+fzf
+bat
+eza
+zoxide
+jq
+htop
+fastfetch
+less
+sox
+uv
+
+# System
+greetd
+greetd-tuigreet
+brightnessctl

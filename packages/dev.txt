@@ -1,0 +1,24 @@
+# Costa OS — Developer tools (optional)
+git
+git-delta
+github-cli
+lazygit
+pre-commit
+direnv
+mise
+zellij
+tokei
+xh
+dust
+procs
+bottom
+sd
+choose
+dog
+bandwhich
+docker
+docker-compose
+lazydocker
+kubectl
+k9s
+visual-studio-code-bin  # AUR

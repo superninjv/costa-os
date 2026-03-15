@@ -1,0 +1,4 @@
+# Costa OS — Gaming (optional)
+steam
+gamemode
+mangohud
