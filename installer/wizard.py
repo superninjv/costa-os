@@ -105,8 +105,10 @@ def run_wizard() -> CostaConfig:
 
     max_tier = config.hardware.max_ai_tier
     print(f"\n  {C.FOAM}Max AI capability: {C.BOLD}{max_tier.name}{C.RESET}")
-    if config.hardware.recommended_ollama_model:
-        print(f"  {C.FOAM}Recommended local model: {C.BOLD}{config.hardware.recommended_ollama_model}{C.RESET}")
+    models = config.hardware.recommended_models
+    if models.smart_model:
+        pair_str = f"{models.smart_model} (smart) + {models.fast_model} (fast)" if models.fast_model else models.smart_model
+        print(f"  {C.FOAM}Recommended local models: {C.BOLD}{pair_str}{C.RESET}")
 
     # User setup
     section("User Setup")
@@ -133,8 +135,11 @@ def run_wizard() -> CostaConfig:
     config.ai_tier = AiTier(chosen_tier)
 
     if config.ai_tier.value >= AiTier.VOICE_AND_LLM.value:
-        config.ollama_model = config.hardware.recommended_ollama_model or "qwen2.5:3b"
-        print(f"\n  {C.DIM}Local model: {config.ollama_model}{C.RESET}")
+        models = config.hardware.recommended_models
+        config.ollama_smart_model = models.smart_model or "qwen2.5:3b"
+        config.ollama_fast_model = models.fast_model or config.ollama_smart_model
+        print(f"\n  {C.DIM}Smart model: {config.ollama_smart_model}{C.RESET}")
+        print(f"  {C.DIM}Fast model:  {config.ollama_fast_model}{C.RESET}")
 
     config.whisper_model = config.hardware.whisper_model
     print(f"  {C.DIM}Whisper model: {config.whisper_model} ({config.hardware.whisper_backend.value}){C.RESET}")
@@ -168,7 +173,10 @@ def run_wizard() -> CostaConfig:
     print(f"  User:       {C.BOLD}{config.username}@{config.hostname}{C.RESET}")
     print(f"  AI Tier:    {C.BOLD}{config.ai_tier.name}{C.RESET}")
     print(f"  GPU:        {config.hardware.gpu_name}")
-    print(f"  Local LLM:  {config.ollama_model if config.ai_tier.value >= 2 else 'None'}")
+    if config.ai_tier.value >= 2:
+        print(f"  Local LLM:  {config.ollama_smart_model} + {config.ollama_fast_model}")
+    else:
+        print(f"  Local LLM:  None")
     print(f"  Whisper:    {config.whisper_model} ({config.hardware.whisper_backend.value})")
     print(f"  Claude API: {'Configured' if config.anthropic_api_key else 'Not set'}")
     print(f"  Packages:   base" +
@@ -203,7 +211,8 @@ def save_config(config: CostaConfig):
         "hostname": config.hostname,
         "timezone": config.timezone,
         "ai_tier": config.ai_tier.name,
-        "ollama_model": config.ollama_model,
+        "ollama_smart_model": config.ollama_smart_model,
+        "ollama_fast_model": config.ollama_fast_model,
         "whisper_model": config.whisper_model,
         "whisper_backend": config.hardware.whisper_backend.value,
         "anthropic_api_key": config.anthropic_api_key,

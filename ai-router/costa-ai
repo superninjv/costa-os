@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+"""Costa AI Router — the intelligence layer between human intent and system execution.
+
+Takes a natural language query from any input modality (voice, typing, rofi, etc.),
+gathers relevant system context, queries the best available model, and auto-escalates
+to cloud when the local model can't answer.
+
+Usage:
+    costa-ai "what packages do I have installed for python"
+    costa-ai --json "what's using my GPU right now"
+    echo "restart waybar" | costa-ai
+"""
+
+import sys
+import os
+
+# Allow importing from the ai-router directory
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from router import route_query
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Costa AI Router")
+    parser.add_argument("query", nargs="*", help="Natural language query")
+    parser.add_argument("--json", action="store_true", help="Output JSON with metadata")
+    parser.add_argument("--model", help="Force a specific model (local, haiku, sonnet, opus)")
+    parser.add_argument("--no-escalate", action="store_true", help="Don't escalate to cloud on failure")
+    parser.add_argument("--no-context", action="store_true", help="Skip system context gathering")
+    args = parser.parse_args()
+
+    # Read query from args or stdin
+    if args.query:
+        query = " ".join(args.query)
+    elif not sys.stdin.isatty():
+        query = sys.stdin.read().strip()
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+    if not query:
+        sys.exit(1)
+
+    result = route_query(
+        query,
+        force_model=args.model,
+        allow_escalation=not args.no_escalate,
+        gather_context_flag=not args.no_context,
+    )
+
+    if args.json:
+        import json
+        print(json.dumps(result, indent=2))
+    else:
+        print(result["response"])
+
+
+if __name__ == "__main__":
+    main()

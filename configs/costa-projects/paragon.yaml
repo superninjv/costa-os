@@ -1,0 +1,21 @@
+name: PARAGON
+directory: ~/projects/paragon
+workspace: 3
+layout:
+  - app: ghostty
+    command: "ghostty -e bash -c 'cd ~/projects/paragon && zellij'"
+    position: left
+  - app: code
+    command: "code ~/projects/paragon"
+    position: right
+env:
+  - PARAGON_ENV=development
+on_switch:
+  - "docker compose -f ~/projects/paragon/docker-compose.yml up -d"
+keywords:
+  - paragon
+  - clash
+  - royale
+  - discord
+  - bot
+  - analytics

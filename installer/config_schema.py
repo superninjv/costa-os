@@ -15,8 +15,51 @@ class GpuVendor(Enum):
 class AiTier(Enum):
     CLOUD_ONLY = 0      # No local models, Claude API only
     VOICE_ONLY = 1      # Whisper STT locally, LLM via API
-    VOICE_AND_LLM = 2   # Whisper + local Ollama (7b or smaller)
+    VOICE_AND_LLM = 2   # Whisper + local Ollama (3b speed + smartest model for VRAM)
     FULL_WORKSTATION = 3 # Full ML stack, large models, training
+
+
+class OllamaModelPair:
+    """Smart + fast model pair selected by available VRAM.
+
+    The VRAM manager dynamically balances loaded models based on GPU pressure,
+    stepping down through fallback models when VRAM is needed by other apps.
+    E.g. on 16GB: full=14b+3b, medium=7b+3b, reduced=3b, gaming=nothing.
+    """
+
+    # NOTE: qwen3 models peg GPU at 100% idle on AMD RDNA4 + ROCm.
+    # Use qwen2.5 for resident models until this is fixed upstream.
+    # qwen3 can still be used for on-demand queries (load, run, unload).
+    TIERS = [
+        # (min_vram_mb, smart_model, fallback_models, fast_model)
+        (24000, "qwen2.5:32b", ["qwen2.5:14b", "qwen2.5:7b", "qwen2.5:3b"], "qwen2.5:3b"),
+        (12000, "qwen2.5:14b", ["qwen2.5:7b", "qwen2.5:3b"], "qwen2.5:3b"),
+        (8000, "qwen2.5:7b", ["qwen2.5:3b"], "qwen2.5:3b"),
+        (4000, "qwen2.5:3b", ["qwen2.5:1.5b"], "qwen2.5:1.5b"),
+        (2000, "qwen2.5:1.5b", [], None),
+    ]
+
+    def __init__(self, vram_mb: int):
+        self.smart_model: Optional[str] = None
+        self.fallback_models: list[str] = []
+        self.fast_model: Optional[str] = None
+        for min_vram, smart, fallbacks, fast in self.TIERS:
+            if vram_mb >= min_vram:
+                self.smart_model = smart
+                self.fallback_models = fallbacks
+                self.fast_model = fast
+                break
+
+    @property
+    def all_models(self) -> list[str]:
+        """All models to pull during install (smart + fallbacks + fast)."""
+        models = []
+        if self.smart_model:
+            models.append(self.smart_model)
+        models.extend(self.fallback_models)
+        if self.fast_model and self.fast_model not in models:
+            models.append(self.fast_model)
+        return models
 
 
 class WhisperBackend(Enum):
@@ -48,15 +91,14 @@ class HardwareProfile:
             return AiTier.CLOUD_ONLY
 
     @property
+    def recommended_models(self) -> "OllamaModelPair":
+        """Recommend smart + fast model pair for this hardware."""
+        return OllamaModelPair(self.gpu_vram_mb)
+
+    @property
     def recommended_ollama_model(self) -> Optional[str]:
-        """Recommend the best local model for this hardware."""
-        if self.gpu_vram_mb >= 12000:
-            return "qwen2.5:7b"
-        elif self.gpu_vram_mb >= 6000:
-            return "qwen2.5:3b"
-        elif self.gpu_vram_mb >= 3000:
-            return "qwen2.5:1.5b"
-        return None
+        """Recommend the best local model for this hardware (legacy compat)."""
+        return self.recommended_models.smart_model
 
     @property
     def whisper_backend(self) -> WhisperBackend:
@@ -106,7 +148,8 @@ class CostaConfig:
     # AI configuration
     ai_tier: AiTier = AiTier.VOICE_AND_LLM
     anthropic_api_key: str = ""
-    ollama_model: str = "qwen2.5:3b"
+    ollama_smart_model: str = "qwen2.5:14b"  # primary local brain
+    ollama_fast_model: str = "qwen2.5:3b"   # summaries + speed-critical
     whisper_model: str = "base.en"
 
     # Package selections

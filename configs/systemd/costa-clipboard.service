@@ -1,0 +1,21 @@
+[Unit]
+Description=Costa OS Clipboard Intelligence Daemon
+Documentation=https://github.com/superninjv/costa-os
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.config/costa/ai-router/clipboard_daemon.py
+Restart=on-failure
+RestartSec=5
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+
+# Resource limits
+MemoryMax=128M
+CPUQuota=10%
+
+[Install]
+WantedBy=graphical-session.target

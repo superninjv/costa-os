@@ -1,0 +1,107 @@
+/* ════════════════════════════════
+   Costa — Mediterranean Rofi
+   ════════════════════════════════ */
+
+configuration {
+    modi:                "drun,run,window";
+    show-icons:          true;
+    display-drun:        "";
+    display-run:         "";
+    display-window:      "";
+    drun-display-format: "{name}";
+    font:                "JetBrainsMono Nerd Font 12";
+    sort:                true;
+    sorting-method:      "fzf";
+    max-history-size:    5;
+}
+
+* {
+    bg:          #1b1d2bee;
+    bg-alt:      #252836cc;
+    fg:          #d4cfc4;
+    fg-dim:      #9a9eb5;
+    accent:      #5b94a8;
+    accent-alt:  #7eb5b0;
+    urgent:      #b87272;
+    surface:     #2f3345;
+    border:      #3a3e52;
+
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    width:            520px;
+    padding:          0;
+    border:           2px solid;
+    border-color:     #5b94a866;
+    border-radius:    16px;
+    background-image: linear-gradient(180deg, #1b1d2bee, #1a1e2dee);
+}
+
+mainbox {
+    children: [ inputbar, listview ];
+    spacing:  0;
+    padding:  0;
+}
+
+inputbar {
+    children:         [ prompt, entry ];
+    padding:          14px 18px;
+    background-image: linear-gradient(135deg, #252836cc, #2a3048cc, #252836cc);
+    border-radius:    16px 16px 0 0;
+    border:           0 0 2px 0 solid;
+    border-color:     #5b94a844;
+}
+
+prompt {
+    padding:    0 10px 0 0;
+    text-color: @accent;
+    font:       "JetBrainsMono Nerd Font 14";
+}
+
+entry {
+    placeholder:       "search...";
+    placeholder-color: @fg-dim;
+    text-color:        @fg;
+}
+
+listview {
+    lines:       8;
+    columns:     1;
+    padding:     8px 0;
+    scrollbar:   false;
+    fixed-height: true;
+}
+
+element {
+    padding:       10px 18px;
+    spacing:       12px;
+    border-radius: 0;
+}
+
+element normal.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+element alternate.normal {
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+element selected.normal {
+    background-image: linear-gradient(135deg, #2f334588, #35405588);
+    text-color:       @accent-alt;
+    border-radius:    8px;
+    border:           0 0 0 3px solid;
+    border-color:     #5b94a8aa;
+}
+
+element-icon {
+    size: 24px;
+}
+
+element-text {
+    vertical-align: 0.5;
+}

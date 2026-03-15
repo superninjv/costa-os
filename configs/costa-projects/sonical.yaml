@@ -1,0 +1,20 @@
+name: Sonical
+directory: ~/projects/sonical
+workspace: 1
+layout:
+  - app: ghostty
+    command: "ghostty -e bash -c 'cd ~/projects/sonical && zellij'"
+    position: left
+  - app: code
+    command: "code ~/projects/sonical"
+    position: right
+env:
+  - SONICAL_ENV=development
+on_switch:
+  - "docker compose -f ~/projects/sonical/docker-compose.yml up -d"
+keywords:
+  - sonical
+  - music
+  - tabs
+  - transcription
+  - tablature

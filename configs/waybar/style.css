@@ -1,0 +1,529 @@
+/* ════════════════════════════════════════════
+   Costa — Mediterranean Coastal Waybar
+   ════════════════════════════════════════════ */
+
+@define-color base       #1b1d2b;
+@define-color mantle     #161821;
+@define-color crust      #121318;
+@define-color surface0   #252836;
+@define-color surface1   #2f3345;
+@define-color surface2   #3a3e52;
+@define-color overlay0   #545870;
+@define-color overlay1   #6b7089;
+@define-color text       #d4cfc4;
+@define-color subtext    #b3b6c9;
+@define-color dim        #9a9eb5;
+
+@define-color terracotta #c07a56;
+@define-color olive      #8b9968;
+@define-color sea        #5b94a8;
+@define-color sand       #c9a96e;
+@define-color lavender   #9884b8;
+@define-color sunset     #d08860;
+@define-color foam       #7eb5b0;
+@define-color sage       #8ba07a;
+@define-color rose       #b87272;
+@define-color limestone  #e6ddd0;
+
+/* ── Base ── */
+* {
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 13px;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+window#waybar {
+  background: alpha(@base, 0.82);
+  color: @text;
+  border-bottom: 1px solid alpha(@surface1, 0.5);
+}
+
+tooltip {
+  background: @mantle;
+  border: 1px solid @surface1;
+  border-radius: 10px;
+  color: @text;
+  padding: 6px 12px;
+}
+
+/* ── Workspaces ── */
+#workspaces {
+  padding: 0 4px;
+}
+
+#workspaces button {
+  color: @dim;
+  background: alpha(@surface0, 0.4);
+  padding: 0 10px;
+  border-radius: 8px;
+  min-width: 28px;
+  transition: all 0.25s ease;
+}
+
+#workspaces button:hover {
+  background: linear-gradient(135deg, alpha(@surface1, 0.6), alpha(@sea, 0.15));
+  color: @text;
+}
+
+#workspaces button.active {
+  color: @text;
+  background: linear-gradient(135deg, alpha(@sea, 0.45), alpha(@foam, 0.35));
+  border-bottom: 2px solid @foam;
+}
+
+#workspaces button.urgent {
+  color: @rose;
+  background: alpha(@rose, 0.12);
+}
+
+/* ── Window title ── */
+#window {
+  color: @dim;
+  font-style: italic;
+  padding: 0 12px;
+}
+
+/* ── Media (Spotify) ── */
+#custom-media {
+  color: @sage;
+  font-style: italic;
+  padding: 0 14px;
+}
+
+#custom-media.spotify {
+  color: @olive;
+}
+
+/* ── Clock ── */
+#clock {
+  color: @sand;
+  font-weight: bold;
+  padding: 0 14px;
+  background: linear-gradient(135deg, alpha(@sand, 0.08), alpha(@sunset, 0.06));
+  border-radius: 8px;
+  margin: 3px 2px;
+}
+
+/* ── System modules ── */
+#cpu {
+  color: @sea;
+  padding: 0 8px;
+}
+
+#memory {
+  color: @foam;
+  padding: 0 8px;
+}
+
+#network {
+  color: @olive;
+  padding: 0 8px;
+}
+
+#network.disconnected {
+  color: @rose;
+}
+
+#pulseaudio {
+  color: @lavender;
+  padding: 0 8px;
+}
+
+#pulseaudio.muted {
+  color: @overlay0;
+}
+
+/* ── Tray ── */
+#tray {
+  padding: 0 10px;
+  margin-right: 4px;
+  border-right: 1px solid alpha(@surface1, 0.5);
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+  background-color: alpha(@rose, 0.15);
+  border-radius: 6px;
+}
+
+/* ── Power ── */
+#custom-power {
+  color: @terracotta;
+  font-size: 15px;
+  padding: 0 10px 0 6px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+#custom-power:hover {
+  background: linear-gradient(135deg, alpha(@terracotta, 0.2), alpha(@rose, 0.15));
+}
+
+/* ── Disk ── */
+#disk {
+  color: @sand;
+  padding: 0 8px;
+}
+
+/* ── GPU usage ── */
+#custom-gpu {
+  color: @sunset;
+  padding: 0 8px;
+}
+
+/* ── Temperature (GPU) ── */
+#temperature {
+  color: @sunset;
+  padding: 0 8px;
+}
+
+#temperature.critical {
+  color: @rose;
+  animation: blink 0.5s linear infinite alternate;
+}
+
+/* ── Left bar (portrait monitor) overrides ── */
+window#waybar.left-bar {
+  background: @base;
+  border-bottom: 2px solid alpha(@sea, 0.4);
+  border-radius: 0;
+}
+
+/* ── Taskbar (portrait monitor bottom) ── */
+window#waybar.left-taskbar {
+  background: @base;
+  border-top: 2px solid alpha(@sea, 0.4);
+  border-radius: 0;
+}
+
+#taskbar {
+  padding: 0 4px;
+}
+
+#taskbar button {
+  color: @dim;
+  background: transparent;
+  padding: 2px 10px;
+  margin: 2px 2px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+#taskbar button:hover {
+  background: alpha(@surface0, 0.6);
+  color: @text;
+}
+
+#taskbar button.active {
+  color: @text;
+  background: linear-gradient(135deg, alpha(@sea, 0.35), alpha(@foam, 0.25));
+  border-bottom: 2px solid @foam;
+}
+
+/* ── Voice Claude status ── */
+#custom-voice-claude {
+  padding: 0 10px;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+#custom-voice-claude.running {
+  color: @foam;
+  background: linear-gradient(90deg, alpha(@sea, 0.2), alpha(@lavender, 0.15), alpha(@sea, 0.2));
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+#custom-voice-claude.scroll {
+  color: @foam;
+}
+
+#custom-voice-claude.done {
+  color: @olive;
+}
+
+#custom-voice-claude.interactive {
+  color: @sand;
+  animation: blink 0.6s linear infinite alternate;
+}
+
+#custom-voice-claude.timedout {
+  color: @rose;
+}
+
+#custom-voice-claude.idle {
+  color: @overlay0;
+  padding: 0 6px;
+}
+
+/* ── Push-to-talk indicator ── */
+#custom-ptt {
+  font-size: 15px;
+  padding: 0 10px;
+  transition: all 0.3s ease;
+}
+
+#custom-ptt.ready {
+  color: @olive;
+}
+
+#custom-ptt.listening {
+  color: @rose;
+  background: linear-gradient(90deg, alpha(@rose, 0.2), alpha(@terracotta, 0.15), alpha(@rose, 0.2));
+  background-size: 200% 100%;
+  border-radius: 8px;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+#custom-ptt.processing {
+  color: @sea;
+}
+
+/* ── Now Playing (enhanced) ── */
+#custom-now-playing {
+  color: @sage;
+  font-style: italic;
+  padding: 0 14px;
+}
+
+#custom-now-playing.spotify {
+  color: @olive;
+}
+
+#custom-now-playing.firefox {
+  color: @sea;
+}
+
+/* ── Git status ── */
+#custom-git {
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+#custom-git.clean {
+  color: @olive;
+}
+
+#custom-git.dirty {
+  color: @sand;
+}
+
+#custom-git.inactive {
+  color: transparent;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+/* ── Claude launcher ── */
+#custom-claude {
+  color: @sea;
+  font-size: 15px;
+  padding: 0 8px;
+  transition: all 0.2s ease;
+}
+
+#custom-claude:hover {
+  color: @foam;
+  background: linear-gradient(135deg, alpha(@sea, 0.18), alpha(@lavender, 0.12));
+  border-radius: 8px;
+}
+
+/* ── Claude Usage ── */
+#custom-claude-usage {
+  color: @dim;
+  font-size: 12px;
+  padding: 0 6px;
+  transition: all 0.2s ease;
+}
+
+#custom-claude-usage:hover {
+  background: alpha(@sea, 0.12);
+  border-radius: 8px;
+}
+
+#custom-claude-usage.low {
+  color: @sage;
+}
+
+#custom-claude-usage.medium {
+  color: @sand;
+}
+
+#custom-claude-usage.high {
+  color: @terracotta;
+}
+
+#custom-claude-usage.idle {
+  color: @overlay0;
+}
+
+/* ── Troubleshooter ── */
+#custom-troubleshoot {
+  color: @sand;
+  font-size: 14px;
+  padding: 0 8px;
+  transition: all 0.2s ease;
+}
+
+#custom-troubleshoot:hover {
+  color: @terracotta;
+  background: alpha(@sand, 0.12);
+  border-radius: 8px;
+}
+
+/* ── Project switcher ── */
+#custom-project {
+  color: @lavender;
+  font-size: 14px;
+  padding: 0 8px;
+  transition: all 0.2s ease;
+}
+
+#custom-project:hover {
+  color: @limestone;
+  background: alpha(@lavender, 0.12);
+  border-radius: 8px;
+}
+
+/* ── SSH button ── */
+#custom-ssh {
+  color: @olive;
+  font-size: 14px;
+  padding: 0 8px;
+  transition: all 0.2s ease;
+}
+
+#custom-ssh:hover {
+  color: @sage;
+  background: alpha(@olive, 0.12);
+  border-radius: 8px;
+}
+
+/* ── Docker status ── */
+#custom-docker {
+  color: @sea;
+  padding: 0 8px;
+}
+
+#custom-docker.running {
+  color: @foam;
+}
+
+#custom-docker.stopped {
+  color: @overlay0;
+}
+
+#custom-docker.idle {
+  color: @dim;
+}
+
+/* ── Network speed ── */
+#custom-netspeed {
+  color: @olive;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* ── System updates ── */
+#custom-updates {
+  padding: 0 8px;
+}
+
+#custom-updates.pending {
+  color: @sand;
+}
+
+#custom-updates.uptodate {
+  color: @overlay0;
+  font-size: 11px;
+}
+
+/* ── Weather ── */
+#custom-weather {
+  color: @foam;
+  padding: 0 8px;
+}
+
+/* ── Pomodoro timer ── */
+#custom-pomodoro {
+  padding: 0 10px;
+  font-weight: bold;
+}
+
+#custom-pomodoro.idle {
+  color: @overlay0;
+}
+
+#custom-pomodoro.running {
+  color: @terracotta;
+}
+
+#custom-pomodoro.paused {
+  color: @sand;
+}
+
+#custom-pomodoro.break {
+  color: @foam;
+}
+
+#custom-pomodoro.done {
+  color: @olive;
+}
+
+/* ── GPU VRAM (portrait bar) ── */
+#custom-gpu-vram {
+  color: @sunset;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* ── Disk I/O (portrait bar) ── */
+#custom-disk-io {
+  color: @sand;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+/* ── CPU temperature ── */
+#temperature.cpu {
+  color: @sea;
+  padding: 0 8px;
+}
+
+#temperature.cpu.critical {
+  color: @rose;
+  animation: blink 0.5s linear infinite alternate;
+}
+
+/* ── Animations ── */
+@keyframes blink {
+  to { color: @base; background-color: @rose; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 4px alpha(@sea, 0.0); }
+  50%      { box-shadow: 0 0 8px alpha(@sea, 0.3); }
+}

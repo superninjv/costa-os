@@ -164,7 +164,8 @@ if __name__ == "__main__":
     print(f"RAM: {hw.ram_mb} MB")
     print(f"GPU: {hw.gpu_vendor.value} — {hw.gpu_name} ({hw.gpu_vram_mb} MB VRAM)")
     print(f"Max AI tier: {hw.max_ai_tier.name}")
-    print(f"Recommended model: {hw.recommended_ollama_model}")
+    models = hw.recommended_models
+    print(f"Recommended models: {models.smart_model} (smart) + {models.fast_model} (fast)")
     print(f"Whisper backend: {hw.whisper_backend.value}")
     print(f"Whisper model: {hw.whisper_model}")
     print(f"Monitors: {len(monitors)}")
