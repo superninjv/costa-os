@@ -50,6 +50,7 @@ def main():
     parser.add_argument("--model", help="Force a specific model (local, haiku, sonnet, opus)")
     parser.add_argument("--no-escalate", action="store_true", help="Don't escalate to cloud on failure")
     parser.add_argument("--no-context", action="store_true", help="Skip system context gathering")
+    parser.add_argument("--no-execute", action="store_true", help="Route only, don't execute commands (dry run)")
     parser.add_argument("--modality", default="text", help="Input modality (text, voice, rofi)")
 
     # Phase 1: History, search, usage, budget, stop
@@ -210,8 +211,24 @@ def main():
                 weights.append(3.0)
                 real_count += 1
 
+            # Step 4: LLM routing cache — distill LLM classification into MLP
+            llm_count = 0
+            try:
+                db_conn = get_training_data.__module__ and __import__("db").get_db()
+                llm_rows = db_conn.execute(
+                    "SELECT query, route FROM llm_routing_cache"
+                ).fetchall()
+                for row in llm_rows:
+                    if row["route"] in ROUTE_CLASSES and row["query"]:
+                        data.append((row["query"], row["route"]))
+                        weights.append(5.0)  # LLM decisions are high quality
+                        llm_count += 1
+            except Exception:
+                pass
+
             if not args.train_if_stale:
-                print(f"Training on {len(data)} examples ({len(synthetic)} synthetic + {real_count} real)...")
+                llm_msg = f" + {llm_count} LLM-distilled" if llm_count else ""
+                print(f"Training on {len(data)} examples ({len(synthetic)} synthetic + {real_count} real{llm_msg})...")
 
             router = get_router()
 
@@ -286,6 +303,32 @@ def main():
             # Preset system prompts are handled at the model level
         except Exception:
             pass
+
+    # Dry run — route only, don't execute anything
+    if args.no_execute:
+        from router import select_route, _handle_meta, _split_multi_intent
+        from window_manager import is_window_command
+
+        parts = _split_multi_intent(query)
+        if len(parts) > 1:
+            result = {"response": f"[SPLIT into {len(parts)}: {' | '.join(parts)}]",
+                      "route": "multi", "model": "dry-run"}
+        elif _handle_meta(query):
+            meta = _handle_meta(query)
+            result = {"response": meta["response"], "route": "meta", "model": "dry-run"}
+        elif is_window_command(query):
+            result = {"response": "[window_manager — not executed]",
+                      "route": "window_manager", "model": "dry-run"}
+        else:
+            route = select_route(query)
+            result = {"response": f"[would route to: {route}]",
+                      "route": route, "model": "dry-run"}
+
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(result["response"])
+        return
 
     from router import route_query
 

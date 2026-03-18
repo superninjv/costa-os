@@ -83,6 +83,48 @@ def _get_active_workspace() -> dict | None:
         return None
 
 
+ACTION_HISTORY_FILE = Path("/tmp/costa-wm-action-history.json")
+MAX_HISTORY = 10
+
+# Reversible commands: command → undo command
+_UNDO_MAP = {
+    "fullscreen 0": "fullscreen 0",  # toggle
+    "fullscreen 1": "fullscreen 1",  # toggle
+    "togglefloating": "togglefloating",
+    "settiled": "togglefloating",
+}
+
+
+def _save_last_action(cmd: str):
+    """Push a WM command onto the undo history stack."""
+    try:
+        history = json.loads(ACTION_HISTORY_FILE.read_text()) if ACTION_HISTORY_FILE.exists() else []
+    except Exception:
+        history = []
+    history.append(cmd)
+    history = history[-MAX_HISTORY:]
+    try:
+        ACTION_HISTORY_FILE.write_text(json.dumps(history))
+    except Exception:
+        pass
+
+
+def _pop_last_action() -> str | None:
+    """Pop the most recent action from the undo stack."""
+    try:
+        history = json.loads(ACTION_HISTORY_FILE.read_text()) if ACTION_HISTORY_FILE.exists() else []
+    except Exception:
+        return None
+    if not history:
+        return None
+    cmd = history.pop()
+    try:
+        ACTION_HISTORY_FILE.write_text(json.dumps(history))
+    except Exception:
+        pass
+    return cmd
+
+
 def _dispatch(cmd: str) -> str:
     """Run a hyprctl dispatch command."""
     return _run_hyprctl(f"dispatch {cmd}")
@@ -94,6 +136,64 @@ def _dispatch_batch(commands: list[str]) -> list[str]:
     for cmd in commands:
         results.append(_dispatch(cmd))
     return results
+
+
+def _undo_single_action(cmd: str, clients: list[dict]) -> tuple[list[str], str]:
+    """Undo a single command. Returns (commands_run, message)."""
+    # Minimize undo — bring windows back
+    if cmd.startswith("minimize_all:"):
+        ws_id = cmd.split(":")[1]
+        minimized = [c for c in clients if c.get("workspace", {}).get("name") == "special:minimized"]
+        cmds = [f"movetoworkspacesilent {ws_id},address:{c['address']}"
+                for c in minimized if c.get("address")]
+        if cmds:
+            _dispatch_batch(cmds)
+        return cmds, f"restored {len(cmds)} windows"
+
+    # Resize undo — reverse the delta
+    if cmd.startswith("resizeactive"):
+        parts = cmd.split()
+        if len(parts) == 3:
+            try:
+                undo = f"resizeactive {-int(parts[1])} {-int(parts[2])}"
+                _dispatch(undo)
+                return [undo], "undone resize"
+            except ValueError:
+                pass
+
+    # Toggle commands
+    undo_cmd = _UNDO_MAP.get(cmd)
+    if undo_cmd:
+        _dispatch(undo_cmd)
+        return [undo_cmd], "undone"
+
+    return [], f"can't undo '{cmd.split()[0]}'"
+
+
+def _handle_undo(query: str, clients: list[dict], monitors: list[dict]) -> dict | None:
+    """Undo the last N window management actions."""
+    if not re.search(r"\b(undo|revert|put\s+(?:it\s+)?back|restore|go\s+back)\b", query, re.I):
+        return None
+
+    # Check for "undo the last N things"
+    m = re.search(r"(?:last\s+)?(\d+)", query)
+    count = int(m.group(1)) if m else 1
+
+    all_cmds = []
+    messages = []
+    for _ in range(count):
+        last_cmd = _pop_last_action()
+        if not last_cmd:
+            break
+        cmds, msg = _undo_single_action(last_cmd, clients)
+        all_cmds.extend(cmds)
+        messages.append(msg)
+
+    if not messages:
+        return {"action": "undo", "commands_run": [], "result": "Nothing to undo."}
+
+    result_msg = f"Undone {len(messages)} action(s): {', '.join(messages)}."
+    return {"action": "undo", "commands_run": all_cmds, "result": result_msg}
 
 
 def _find_window(identifier: str, clients: list[dict]) -> dict | None:
@@ -156,18 +256,73 @@ def _get_focused_monitor(monitors: list[dict]) -> dict | None:
 # --- Pattern-based command handlers ---
 
 def _handle_fullscreen(query: str, clients: list[dict], monitors: list[dict]) -> dict | None:
-    """Handle fullscreen requests."""
-    m = re.search(r"(?:make|toggle|set)\s+(?:this\s+)?(?:window\s+)?(?:to\s+)?(?:full\s*screen|maximized?)", query, re.I)
-    if not m and not re.search(r"full\s*screen", query, re.I):
+    """Handle fullscreen requests. Hyprland fullscreen toggles, so the command is the same."""
+    if not re.search(r"full\s*screen|maximiz", query, re.I):
         return None
 
-    # Check if asking to exit fullscreen
-    if re.search(r"(exit|leave|stop|unfull|un-full|disable)\s*(full\s*screen)?", query, re.I):
-        result = _dispatch("fullscreen 0")
-        return {"action": "exit_fullscreen", "commands_run": ["fullscreen 0"], "result": result}
-
+    # Hyprland's fullscreen 0 is a toggle — it goes fullscreen if not, exits if already
     result = _dispatch("fullscreen 0")
-    return {"action": "fullscreen", "commands_run": ["fullscreen 0"], "result": result}
+    _save_last_action("fullscreen 0")
+
+    # Detect intent for the response message
+    is_exit = bool(re.search(
+        r"(exit|leave|stop|out\s+of|take\s+out|unfull|un-full|disable|remove\s+from|end|quit)\s*(full\s*screen)?|"
+        r"(full\s*screen).*(off|exit|stop|remove|out)",
+        query, re.I
+    ))
+    action = "exit_fullscreen" if is_exit else "fullscreen"
+    msg = "Exited fullscreen." if is_exit else "Toggled fullscreen."
+    return {"action": action, "commands_run": ["fullscreen 0"], "result": msg}
+
+
+def _handle_minimize_desktop(query: str, clients: list[dict], monitors: list[dict]) -> dict | None:
+    """Handle minimize all / show desktop / hide windows."""
+    if not re.search(
+        r"(minimize\s+(everything|all|windows)|show\s+(me\s+)?(the\s+)?desktop|"
+        r"(get\s+rid\s+of|hide|clear)\s+(all\s+)?(the\s+)?windows)",
+        query, re.I
+    ):
+        return None
+
+    # Hyprland: move all visible windows to a special workspace to "show desktop"
+    active = _get_active_workspace()
+    ws_id = active["id"] if active else 1
+    visible = [c for c in clients if c.get("workspace", {}).get("id") == ws_id and not c.get("hidden")]
+
+    commands = []
+    for c in visible:
+        addr = c.get("address", "")
+        if addr:
+            commands.append(f"movetoworkspacesilent special:minimized,address:{addr}")
+
+    if commands:
+        _dispatch_batch(commands)
+        _save_last_action(f"minimize_all:{ws_id}")
+        return {"action": "minimize_all", "commands_run": commands, "result": f"Minimized {len(commands)} windows."}
+
+    return {"action": "minimize_all", "commands_run": [], "result": "No windows to minimize."}
+
+
+def _handle_bigger_smaller(query: str, clients: list[dict], monitors: list[dict]) -> dict | None:
+    """Handle 'make it bigger/smaller' in a tiling layout.
+
+    In a tiling WM, 'bigger' means fullscreen or maximize. 'Smaller' means exit fullscreen.
+    """
+    bigger = re.search(r"\b(bigger|larger|grow|expand|more space|can.t read)\b", query, re.I)
+    smaller = re.search(r"\b(smaller|shrink|reduce)\b", query, re.I)
+    if not bigger and not smaller:
+        return None
+
+    if bigger:
+        # Maximize within tile — use fullscreen 1 (maximize, keeps bar visible)
+        result = _dispatch("fullscreen 1")
+        _save_last_action("fullscreen 1")
+        return {"action": "maximize", "commands_run": ["fullscreen 1"], "result": "Maximized window."}
+    else:
+        # Exit maximize
+        result = _dispatch("fullscreen 0")
+        _save_last_action("fullscreen 0")
+        return {"action": "unmaximize", "commands_run": ["fullscreen 0"], "result": "Restored window size."}
 
 
 def _handle_floating(query: str, clients: list[dict], monitors: list[dict]) -> dict | None:
@@ -234,8 +389,9 @@ def _handle_focus_workspace(query: str, clients: list[dict], monitors: list[dict
         return None
 
     ws = m.group(1)
-    result = _dispatch(f"workspace {ws}")
-    return {"action": "focus_workspace", "commands_run": [f"workspace {ws}"], "result": result}
+    _dispatch(f"workspace {ws}")
+    _save_last_action(f"workspace {ws}")
+    return {"action": "focus_workspace", "commands_run": [f"workspace {ws}"], "result": f"Switched to workspace {ws}."}
 
 
 def _handle_split_layout(query: str, clients: list[dict], monitors: list[dict]) -> dict | None:
@@ -759,59 +915,92 @@ def _label_monitor(monitor: dict, all_monitors: list[dict]) -> str:
     return f"[{'/'.join(labels)}]" if labels else ""
 
 
-def _ollama_fallback(query: str, clients: list[dict], monitors: list[dict]) -> dict:
-    """For complex requests, ask the local model to generate hyprctl commands."""
-    # Build context about current window state
-    window_summary = []
+# Dispatchers the LLM fallback is allowed to generate.
+# EXCLUDED (break tiling): togglefloating, setfloating, resizeactive, moveactive,
+# centerwindow, togglesplit, pseudo, movewindowpixel, resizewindowpixel
+VALID_DISPATCHERS = [
+    "movetoworkspace", "movetoworkspacesilent", "focuswindow", "closewindow",
+    "settiled", "fullscreen",
+    "swapnext", "swapwindow",
+    "workspace", "killactive", "movefocus", "movewindow",
+    "pin", "exec",
+]
+
+
+def _build_wm_context(clients: list[dict], monitors: list[dict]) -> str:
+    """Build a concise window state context for the local model."""
+    window_lines = []
     for c in clients:
         ws_id = c.get("workspace", {}).get("id", "?")
         cls = c.get("class", "unknown")
-        title = c.get("title", "")[:50]
+        title = c.get("title", "")[:40]
         addr = c.get("address", "")
-        floating = c.get("floating", False)
-        pos = c.get("at", [0, 0])
+        floating = "float" if c.get("floating") else "tiled"
+        fs = " FULLSCREEN" if c.get("fullscreen") else ""
         size = c.get("size", [0, 0])
-        window_summary.append(
-            f"  - class={cls} title=\"{title}\" addr={addr} ws={ws_id} "
-            f"floating={floating} pos={pos[0]},{pos[1]} size={size[0]}x{size[1]}"
+        window_lines.append(
+            f"  {cls} \"{title}\" addr={addr} ws={ws_id} {floating}{fs} {size[0]}x{size[1]}"
         )
 
-    monitor_summary = []
+    monitor_lines = []
     for m in monitors:
         label = _label_monitor(m, monitors)
-        monitor_summary.append(
-            f"  - {m.get('name','?')} {label}: {m.get('width','?')}x{m.get('height','?')} "
-            f"at {m.get('x',0)},{m.get('y',0)} ws={m.get('activeWorkspace',{}).get('id','?')}"
+        ws = m.get("activeWorkspace", {}).get("id", "?")
+        monitor_lines.append(
+            f"  {m.get('name','?')} ({label}): {m.get('width','?')}x{m.get('height','?')} ws={ws}"
         )
 
     active = _get_active_window()
-    active_info = ""
+    active_str = ""
     if active:
-        active_info = f"Active window: class={active.get('class','')} addr={active.get('address','')}"
+        active_str = f"Focused: {active.get('class','')} addr={active.get('address','')} fullscreen={active.get('fullscreen', False)}"
 
-    prompt = f"""You are a Hyprland window manager command generator. Given the user's request and the current window state, output ONLY the hyprctl dispatch commands needed, one per line. No explanations, no markdown, just commands.
+    return f"""Windows:
+{chr(10).join(window_lines) if window_lines else '  (none)'}
 
-Available dispatches: movetoworkspace, movetoworkspacesilent, focuswindow, closewindow, settiled, fullscreen, swapnext, workspace, killactive
+Monitors:
+{chr(10).join(monitor_lines)}
+
+{active_str}"""
+
+
+def _ollama_fallback(query: str, clients: list[dict], monitors: list[dict]) -> dict:
+    """Ask the local model to generate hyprctl dispatch commands."""
+    context = _build_wm_context(clients, monitors)
+
+    prompt = f"""Generate hyprctl dispatch commands for this request. One command per line, no explanations.
+
+Available dispatchers:
+  fullscreen 0              — toggle real fullscreen
+  fullscreen 1              — toggle maximize
+  settiled                  — force window back to tiled layout
+  movetoworkspace N         — move focused window to workspace N
+  movetoworkspacesilent N,address:0xADDR  — move specific window
+  focuswindow address:0xADDR — focus a window
+  workspace N               — switch to workspace N
+  movewindow l/r/u/d        — swap window position in tiled layout
+  movefocus l/r/u/d         — move focus to adjacent window
+  swapnext                  — swap with next window in layout
+  closewindow address:0xADDR — close a specific window
+  killactive                — close focused window
+  pin                       — pin window to all workspaces
+  exec COMMAND              — run a shell command
 
 RULES:
-- To move a window to a monitor, use movetoworkspace with that monitor's active workspace ID.
-- NEVER use setfloating, togglefloating, movewindowpixel, or resizewindowpixel — always keep windows tiled.
-- Use settiled if a window is floating and needs to be tiled.
+- This is a TILING window manager. Windows MUST stay tiled in the grid.
+- NEVER use togglefloating, setfloating, resizeactive, moveactive, centerwindow, or togglesplit.
+- To rearrange, use movewindow l/r/u/d to swap positions, or swapnext to swap adjacent.
+- To make a window bigger, use fullscreen 1 (maximize) — NOT resize.
+- To move a window to a MONITOR, use movetoworkspacesilent with that monitor's active workspace ID.
+- To target a specific window, use address:0xADDR from the window list.
+- Keep commands minimal. 1-3 commands max. Don't chain many movewindow commands.
 
-Current state:
-Windows:
-{chr(10).join(window_summary)}
+{context}
 
-Monitors (labels show position — use the workspace ID to target a monitor):
-{chr(10).join(monitor_summary)}
+Request: {query}
 
-{active_info}
+Commands:"""
 
-IMPORTANT: Output ONLY lines like "dispatch movetoworkspace 5,address:0x..." — no other text. No explanations.
-
-User request: {query}"""
-
-    # Get model from VRAM manager
     try:
         model = Path("/tmp/ollama-smart-model").read_text().strip()
     except Exception:
@@ -821,9 +1010,10 @@ User request: {query}"""
     payload = _json.dumps({
         "model": model,
         "prompt": prompt,
-        "system": "You output hyprctl dispatch commands only. One command per line. No other text.",
+        "system": "Output hyprctl dispatch commands only. One per line. No markdown, no explanations, no backticks.",
         "stream": False,
         "keep_alive": "5m",
+        "options": {"temperature": 0.1, "num_predict": 128},
     })
 
     try:
@@ -845,33 +1035,41 @@ User request: {query}"""
         line = line.strip()
         if not line:
             continue
-        # Strip "hyprctl " prefix if present
-        if line.startswith("hyprctl "):
+        # Strip markdown code fences
+        if line.startswith("```") or line.startswith("---"):
+            continue
+        # Strip "hyprctl " or "hyprctl dispatch " prefix
+        if line.startswith("hyprctl dispatch "):
+            line = line[len("hyprctl dispatch "):]
+        elif line.startswith("hyprctl "):
             line = line[len("hyprctl "):]
-        # Strip "dispatch " prefix — we add it ourselves
         if line.startswith("dispatch "):
             line = line[len("dispatch "):]
-        # Safety: skip anything that looks like it would close costa-ai
-        if "killactive" in line or "closewindow" in line:
-            # Only allow if the user explicitly asked to close something
-            if not re.search(r"close|kill|quit|exit", query, re.I):
-                continue
-        # Validate it looks like a real dispatch command
-        valid_dispatchers = [
-            "movetoworkspace", "movetoworkspacesilent", "focuswindow", "closewindow",
-            "settiled", "fullscreen", "swapnext", "swapwindow",
-            "workspace", "killactive",
-        ]
-        first_word = line.split()[0] if line.split() else ""
-        if first_word not in valid_dispatchers:
+        # Strip leading bullet/number
+        line = re.sub(r"^[\d\.\-\*]+\s*", "", line).strip()
+        if not line:
             continue
+
+        # Safety: block close/kill unless explicitly requested
+        if ("killactive" in line or "closewindow" in line) and \
+           not re.search(r"close|kill|quit|exit", query, re.I):
+            continue
+
+        # Validate dispatcher
+        first_word = line.split()[0] if line.split() else ""
+        if first_word not in VALID_DISPATCHERS:
+            continue
+
         _dispatch(line)
         commands_run.append(line)
+
+    if commands_run:
+        _save_last_action(commands_run[-1])
 
     return {
         "action": "ollama_fallback",
         "commands_run": commands_run,
-        "result": f"Executed {len(commands_run)} command(s) via local model" if commands_run else "No valid commands generated",
+        "result": f"Done ({len(commands_run)} commands)." if commands_run else "Local model couldn't generate valid commands.",
     }
 
 
@@ -882,31 +1080,28 @@ def _claude_escalation(query: str, clients: list[dict], monitors: list[dict]) ->
     except ImportError:
         return None
 
-    window_summary = []
-    for c in clients:
-        ws_id = c.get("workspace", {}).get("id", "?")
-        cls = c.get("class", "unknown")
-        addr = c.get("address", "")
-        window_summary.append(f"  {cls} addr={addr} ws={ws_id}")
+    context = _build_wm_context(clients, monitors)
 
-    monitor_summary = []
-    for m in monitors:
-        label = _label_monitor(m, monitors)
-        ws = m.get("activeWorkspace", {}).get("id", "?")
-        monitor_summary.append(f"  {m.get('name','?')} {label} ws={ws}")
+    prompt = f"""Generate hyprctl dispatch commands for this Hyprland tiling window manager request.
+One command per line, no explanations, no markdown.
 
-    prompt = (
-        f"Execute this Hyprland window management request: {query}\n\n"
-        f"Windows:\n" + "\n".join(window_summary) + "\n\n"
-        f"Monitors:\n" + "\n".join(monitor_summary) + "\n\n"
-        f"Respond with ONLY the hyprctl dispatch commands, one per line. "
-        f"To move a window to a monitor, use: movetoworkspace <ws_id>,address:<addr>\n"
-        f"No explanations."
-    )
+RULES:
+- This is a TILING WM. Windows stay in a tiled grid. NEVER use togglefloating, setfloating, resizeactive, moveactive, or centerwindow.
+- Use movewindow/movefocus/swapnext to rearrange within the tiled layout.
+- Use movetoworkspacesilent N,address:ADDR to move windows between monitors/workspaces.
+- Use settiled to force a floating window back to tiled.
+
+Available: fullscreen, settiled, movetoworkspace, movetoworkspacesilent, focuswindow, workspace, movewindow, movefocus, swapnext, closewindow, killactive, pin, togglesplit, exec
+
+{context}
+
+Request: {query}
+
+Commands:"""
 
     response = query_claude(
         prompt, model="haiku",
-        system="You are a Hyprland window manager. Output only hyprctl dispatch commands, one per line. No other text.",
+        system="Output hyprctl dispatch commands only. One per line. No markdown, no explanations.",
         timeout=15,
     )
 
@@ -914,36 +1109,31 @@ def _claude_escalation(query: str, clients: list[dict], monitors: list[dict]) ->
         return None
 
     commands_run = []
-    valid_dispatchers = [
-        "movetoworkspace", "movetoworkspacesilent", "focuswindow", "closewindow",
-        "togglefloating", "setfloating", "settiled", "fullscreen",
-        "movewindowpixel", "resizewindowpixel", "swapnext", "swapwindow",
-        "workspace", "killactive",
-    ]
-
     for line in response.split("\n"):
         line = line.strip()
-        if not line:
+        if not line or line.startswith("```") or line.startswith("---"):
             continue
-        if line.startswith("hyprctl "):
+        if line.startswith("hyprctl dispatch "):
+            line = line[len("hyprctl dispatch "):]
+        elif line.startswith("hyprctl "):
             line = line[len("hyprctl "):]
         if line.startswith("dispatch "):
             line = line[len("dispatch "):]
-        # Strip backticks/markdown
-        line = line.strip("`").strip()
+        line = re.sub(r"^[\d\.\-\*]+\s*", "", line).strip().strip("`").strip()
         if not line:
             continue
         first_word = line.split()[0] if line.split() else ""
-        if first_word not in valid_dispatchers:
+        if first_word not in VALID_DISPATCHERS:
             continue
         _dispatch(line)
         commands_run.append(line)
 
     if commands_run:
+        _save_last_action(commands_run[-1])
         return {
             "action": "claude_escalation",
             "commands_run": commands_run,
-            "result": f"Executed {len(commands_run)} command(s) via Claude",
+            "result": f"Done ({len(commands_run)} commands via Claude).",
         }
     return None
 
@@ -964,7 +1154,14 @@ WINDOW_MGMT_PATTERN = re.compile(
     r"(?:focus|switch\s+to|go\s+to)\b.*(?:window|editor|browser|terminal|firefox|chrome|code|ghostty|steam|discord|spotify)|"
     r"(?:move|send)\b.*(?:to\s+(?:the\s+)?(?:top|upper|above|bottom|lower|main|primary|left|right|portrait)\s+(?:monitor|screen|display)|to\s+workspace|to\s+\d+)|"
     r"full\s*screen|"
-    r"tile\s+everything)\b",
+    r"tile\s+everything|"
+    r"(?:undo|revert|put\s+(?:it\s+)?back)\s+(?:that|what|the|last)|"
+    r"(?:undo|revert)\b|"
+    r"minimize\s+(?:everything|all|windows)|"
+    r"show\s+(?:me\s+)?(?:the\s+)?desktop|"
+    r"(?:make|get)\s+(?:the\s+|this\s+)?(?:window\s+|terminal\s+)?(?:bigger|smaller|larger)|"
+    r"(?:get\s+rid\s+of|hide|clear)\s+(?:all\s+)?(?:the\s+)?windows|"
+    r"(?:I\s+want|i\s+need)\s+(?:this|that|it)\s+(?:full\s*screen|bigger|smaller|on\s+(?:the|my)))\b",
     re.IGNORECASE,
 )
 
@@ -988,6 +1185,9 @@ def execute_window_command(query: str) -> dict:
 
     # Try each pattern handler in priority order
     handlers = [
+        _handle_undo,
+        _handle_minimize_desktop,
+        _handle_bigger_smaller,
         _handle_open_on_monitor,
         _handle_open_app,
         _handle_move_to_monitor,

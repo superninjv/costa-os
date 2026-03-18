@@ -722,6 +722,14 @@ def handle_keybind_query(query: str) -> dict:
             "route": "keybinds",
         }
 
+    # If asking to list/show keybinds, return them directly
+    if re.search(r"(show|list|what are|display|see)\s+.{0,20}(keybind|hotkey|shortcut|bind)", q):
+        return {
+            "response": keybind_context(),
+            "model": "keybinds",
+            "route": "keybinds",
+        }
+
     # Fall through — return context for AI to handle
     return {
         "response": keybind_context(),

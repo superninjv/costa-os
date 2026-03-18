@@ -417,6 +417,8 @@ def score_results(raw_results: list[dict], parsed: dict) -> list[dict]:
             file_scores[path]["score"] += 10
         elif match_type in ("name", "name_glob"):
             file_scores[path]["score"] += 15
+        elif match_type == "config_dir":
+            file_scores[path]["score"] += 25  # direct config directory hit
         elif match_type == "time":
             file_scores[path]["score"] += 8
         elif match_type == "git":
@@ -445,10 +447,26 @@ def score_results(raw_results: list[dict], parsed: dict) -> list[dict]:
             if kw in basename:
                 info["score"] += 8
 
+        # Keyword in full path bonus (catches ~/.config/pipewire/ etc)
+        path_lower = path.lower()
+        for kw in keywords:
+            if kw != "config" and kw != "file" and kw in path_lower:
+                info["score"] += 12
+
         # Penalize deep paths slightly
         depth = path.count("/")
         if depth > 8:
             info["score"] -= (depth - 8) * 0.5
+
+        # Penalize Downloads — rarely the right answer for config searches
+        if "/Downloads/" in path:
+            info["score"] -= 20
+
+        # Bonus for config directories — usually what users are looking for
+        if "/.config/" in path or "/etc/" in path:
+            info["score"] += 10
+        if "/projects/costa-os/" in path:
+            info["score"] += 5
 
     # Convert match_types from set to list for JSON serialization
     scored = []
@@ -496,6 +514,36 @@ def search_files(query: str) -> list[dict]:
     all_results.extend(
         search_by_git(parsed["time_delta"], parsed["location"])
     )
+
+    # 5. Config directory search — check ~/.config/<keyword>/ directly
+    config_dir = Path.home() / ".config"
+    for kw in parsed["keywords"]:
+        if kw in ("config", "file", "the", "my", "where", "is", "find"):
+            continue
+        kw_dir = config_dir / kw
+        if kw_dir.is_dir():
+            # Found a matching config directory — add all files in it
+            try:
+                for f in kw_dir.rglob("*"):
+                    if f.is_file():
+                        all_results.append({
+                            "path": str(f),
+                            "match_type": "config_dir",
+                        })
+            except PermissionError:
+                pass
+        # Also check /etc/<keyword>/
+        etc_dir = Path("/etc") / kw
+        if etc_dir.is_dir():
+            try:
+                for f in etc_dir.rglob("*"):
+                    if f.is_file() and f.stat().st_size < 1_000_000:
+                        all_results.append({
+                            "path": str(f),
+                            "match_type": "config_dir",
+                        })
+            except PermissionError:
+                pass
 
     # Score and rank
     return score_results(all_results, parsed)

@@ -32,7 +32,9 @@ META_PATTERN = re.compile(
     r"\b(what can you do|what are you|how do I use (costa|this|the ai)|how does .{0,10}(ai|costa|routing|router) work|"
     r"(show me |what.s |my )(usage|stats|history)|costa.?ai (usage|stats|help)|"
     r"what models are (available|loaded|running)|how do I (use|train) (the |this )?(router|costa|ai)|"
-    r"list (available )?models|costa help|what commands (do you|can you))\b",
+    r"list (available )?models|costa help|what commands (do you|can you)|"
+    r"what time is it|what.s the (time|date)|any updates (available|pending)|"
+    r"check for updates|what.s the weather)\b",
     re.IGNORECASE,
 )
 
@@ -112,6 +114,57 @@ def _handle_meta(query: str) -> dict | None:
                         "Use 'costa-ai --train-router --eval' for accuracy report.",
             "model": "meta", "route": "meta",
         }
+
+    # Time/date
+    if re.search(r"what time|what.s the time|what.s the date", q):
+        from datetime import datetime
+        now = datetime.now()
+        return {
+            "response": now.strftime("It's %I:%M %p on %A, %B %d."),
+            "model": "meta", "route": "meta",
+        }
+
+    # Weather — delegate to the existing weather script
+    if re.search(r"weather", q):
+        try:
+            weather_out = subprocess.run(
+                [str(Path.home() / ".config/waybar/scripts/weather.sh")],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip()
+            import json as _json
+            data = _json.loads(weather_out)
+            tooltip = data.get("tooltip", "Weather unavailable")
+            return {
+                "response": tooltip.replace("\\n", "\n"),
+                "model": "meta", "route": "meta",
+            }
+        except Exception:
+            pass
+
+    # Updates
+    if re.search(r"updates? (available|pending)|check for updates", q):
+        try:
+            official = subprocess.run(
+                ["checkupdates"], capture_output=True, text=True, timeout=30,
+            ).stdout.strip()
+            aur = subprocess.run(
+                ["yay", "-Qua"], capture_output=True, text=True, timeout=30,
+            ).stdout.strip()
+            official_count = len(official.splitlines()) if official else 0
+            aur_count = len(aur.splitlines()) if aur else 0
+            total = official_count + aur_count
+            if total == 0:
+                resp = "System is up to date."
+            else:
+                resp = f"{total} updates available ({official_count} official, {aur_count} AUR)."
+                if official_count <= 10 and official:
+                    resp += "\n" + official
+            return {
+                "response": resp,
+                "model": "meta", "route": "meta",
+            }
+        except Exception:
+            pass
 
     return None
 from project_switch import switch_project, fuzzy_match, list_projects
@@ -489,7 +542,10 @@ ACTION_PATTERNS = re.compile(
     r"restart|reload|kill|close|open|launch|start|stop|mute|unmute|"
     r"switch (to |)workspace|move (window|this)|minimize|maximize|"
     r"connect|disconnect|enable|disable|toggle|"
-    r"play|pause|skip|next|previous|shuffle)\b",
+    r"play|pause|skip|next|previous|shuffle|"
+    r"show (me |my |the )?(git |docker |running |systemd |system )?(status|log|containers|services|processes|branch)|"
+    r"(run|execute) (the |my )?(test|build|script|command)|"
+    r"(list|check) (my |all |running )?(docker|containers|services|packages|updates|processes))\b",
     re.IGNORECASE,
 )
 
@@ -497,13 +553,28 @@ ACTION_PATTERNS = re.compile(
 SAFE_COMMAND_PATTERNS = [
     r"^wpctl\s+(set-volume|set-mute|get-volume)",
     r"^pactl\s+(set-default|get-default|set-sink-volume|set-source-volume)",
-    r"^hyprctl\s+(dispatch|reload|switchxkblayout)",
+    r"^hyprctl\s+(dispatch|reload|switchxkblayout|monitors|clients|activewindow)",
     r"^killall\s+(waybar|dunst)$",
     r"^notify-send\b",
     r"^playerctl\b",
     r"^brightnessctl\b",
     r"^systemctl\s+(--user\s+)?(restart|start|stop)\s+(pipewire|wireplumber|waybar)",
+    r"^systemctl\s+(--failed|list-timers|status)\b",
     r"^waybar\b",
+    # Read-only system queries — safe to auto-run
+    r"^git\s+(status|branch|log|diff|remote)\b",
+    r"^docker\s+(ps|images|stats|logs)\b",
+    r"^sensors\b",
+    r"^free\b",
+    r"^df\b",
+    r"^lsblk\b",
+    r"^ip\s+(addr|route|link)\b",
+    r"^ss\s+",
+    r"^uname\b",
+    r"^cat\s+/proc/(cpuinfo|meminfo|version)\b",
+    r"^lspci\b",
+    r"^bluetoothctl\s+(show|devices)\b",
+    r"^checkupdates\b",
 ]
 SAFE_RE = re.compile("|".join(SAFE_COMMAND_PATTERNS))
 
@@ -706,7 +777,7 @@ def route_query(query: str, force_model: str | None = None,
                 "model": "window_manager",
                 "route": "window_manager",
                 "context_gathered": False,
-                "escalated": not bool(wm_result.get("commands_run", [None])[0] != "(via Claude)"),
+                "escalated": bool(wm_result.get("commands_run") and wm_result["commands_run"][0] == "(via Claude)"),
                 "command_executed": "; ".join(wm_result["commands_run"]) if wm_result["commands_run"] else None,
                 "elapsed_ms": int(elapsed * 1000),
                 "total_ms": int(elapsed * 1000),
@@ -789,7 +860,12 @@ def route_query(query: str, force_model: str | None = None,
             return _cancelled_result(query, start, input_modality)
 
         # Window manager route from ML (not caught by is_window_command regex)
-        if route == "window_manager" and not force_model:
+        # Skip WM handler for config/settings queries that were misrouted
+        _is_config_query = bool(re.search(
+            r"\b(wallpaper|theme|font|config|setting|keybind|notification|display|resolution)\b",
+            query, re.IGNORECASE
+        ))
+        if route == "window_manager" and not force_model and not _is_config_query:
             wm_result = execute_window_command(query)
             is_not_found = "Could not find" in wm_result.get("result", "") or "No " in wm_result.get("result", "")
             if not wm_result.get("commands_run") and allow_escalation and not is_not_found:
@@ -810,7 +886,7 @@ def route_query(query: str, force_model: str | None = None,
                 "model": "window_manager",
                 "route": "window_manager",
                 "context_gathered": False,
-                "escalated": not bool(wm_result.get("commands_run", [None])[0] != "(via Claude)"),
+                "escalated": bool(wm_result.get("commands_run") and wm_result["commands_run"][0] == "(via Claude)"),
                 "command_executed": "; ".join(wm_result["commands_run"]) if wm_result["commands_run"] else None,
                 "elapsed_ms": int(elapsed * 1000),
                 "total_ms": int(elapsed * 1000),
