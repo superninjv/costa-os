@@ -39,6 +39,10 @@ ROUTE_CLASSES = [
 ]
 
 MODEL_PATH = Path.home() / ".config" / "costa" / "ml_router.pt"
+# Pre-trained model shipped with Costa OS (fallback if user hasn't trained yet)
+SHIPPED_MODEL_PATH = Path(__file__).parent / "models" / "ml_router.pt"
+LLM_CLASSIFY_THRESHOLD = 0.85  # Below this, ask the local LLM to classify
+LLM_CLASSIFY_CACHE: dict[str, tuple[str, float]] = {}  # query → (route, confidence)
 
 ACTION_KEYWORDS = re.compile(
     r"\b(turn|set|restart|kill|open|play|close|stop|start|run|launch|switch|move|resize|toggle|enable|disable|mute|unmute)\b",
@@ -76,6 +80,11 @@ WM_ACTION_KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
+OPUS_KEYWORDS = re.compile(
+    r"\b(architect|design\s+a\s+(system|pipeline|layer|framework|plugin|module|architecture|strategy|infra)|threat\s*model|security\s*(audit|posture|review)|incident\s*response|evaluate\s+(trade|whether)|comprehensive\s+(review|analysis))\b",
+    re.IGNORECASE,
+)
+
 HYPRLAND_CONFIG_KEYWORDS = re.compile(
     r"\b(what\s+(is|are)\s+(my\s+)?(current\s+)?(hyprland|hyprctl)|hyprland\s+(version|config|setting|animation|border|gap|keybind|rule|option|variable)|how\s+do\s+I\s+(set|change|configure|edit)\s+.{0,15}hyprland|what\s+version\s+of\s+hyprland|(my|current)\s+(hyprland\s+)?(animation|border|gap|keybind|rule)s?)\b",
     re.IGNORECASE,
@@ -86,6 +95,143 @@ VRAM_MODEL_MAP = {
     "qwen2.5:7b": 0.66,
     "qwen2.5:3b": 0.33,
 }
+
+# ---------------------------------------------------------------------------
+# Intent structure features — verb+noun patterns that disambiguate routes
+# ---------------------------------------------------------------------------
+
+VERSION_CHECK_RE = re.compile(
+    r"\b(what\s+(version|release)|which\s+version|version\s+of|version\s+(is|do)|is\s+installed|do\s+I\s+have)\b",
+    re.IGNORECASE,
+)
+
+FILE_INTENT_RE = re.compile(
+    r"\b(what\s+(file|config|script|module)\s+(defines?|controls?|sets?|handles?|does|is\s+responsible)|which\s+(file|config|script|module)|the\s+file\s+(that|responsible|for))\b",
+    re.IGNORECASE,
+)
+
+DESIGN_INTENT_RE = re.compile(
+    r"\b(design\s+a|architect\s+a|plan\s+a|evaluate\s+(whether|the)|create\s+a\s+(comprehensive|threat|incident|migration|capacity|security|backup|testing|monitoring|data\s+retention|rollback|permissions))\b",
+    re.IGNORECASE,
+)
+
+# ---------------------------------------------------------------------------
+# Entity vocabulary — known nouns that disambiguate routes
+# ---------------------------------------------------------------------------
+
+EXTERNAL_ENTITIES = {
+    "cloudflare", "github", "gitlab", "bitbucket", "steam", "nvidia", "amd",
+    "intel", "google", "aws", "azure", "digitalocean", "reddit", "twitter",
+    "youtube", "twitch", "spotify", "discord", "slack", "telegram", "whatsapp",
+    "openai", "anthropic", "microsoft", "apple", "meta", "amazon", "netflix",
+    "hacker news", "hackernews", "hn", "stackoverflow", "wikipedia", "arxiv",
+    "pypi", "npm", "crates.io", "dockerhub", "ubuntu", "fedora", "debian",
+    "nba", "nfl", "mlb", "ufc", "f1", "fifa", "champions league", "super bowl",
+    "bitcoin", "ethereum", "crypto", "nasdaq", "s&p", "dow jones",
+    "cve", "exploit", "zero-day", "zeroday", "vulnerability", "advisory",
+    "spacex", "tesla", "boeing", "starlink",
+    "pytorch", "tensorflow", "huggingface", "langchain", "llamacpp",
+}
+
+LOCAL_ENTITIES = {
+    "docker", "podman", "pipewire", "wireplumber", "pulseaudio", "ollama",
+    "waybar", "hyprland", "hyprctl", "dunst", "rofi", "ghostty", "kitty",
+    "alacritty", "systemd", "systemctl", "journalctl", "pacman", "yay",
+    "bluetooth", "bluetoothctl", "wifi", "networkmanager", "nmcli",
+    "zellij", "tmux", "zsh", "bash", "fish", "neovim", "nvim", "vim",
+    "firefox", "chromium", "brave", "code", "vscode",
+    "greetd", "tuigreet", "sddm", "gdm",
+    "pipewire", "easyeffects", "qpwgraph", "pavucontrol",
+    "gpu", "cpu", "ram", "swap", "nvme", "ssd", "partition",
+    "ssh", "sshd", "gpg", "keyring",
+    "nginx", "apache", "postgresql", "postgres", "redis", "mongodb",
+    "xdg", "gtk", "qt", "wayland", "xwayland",
+}
+
+CODE_ENTITIES = {
+    "python", "rust", "typescript", "javascript", "java", "kotlin", "go",
+    "golang", "ruby", "php", "swift", "c++", "cpp", "haskell", "elixir",
+    "fastapi", "flask", "django", "express", "react", "vue", "svelte",
+    "nextjs", "nest", "spring", "actix", "axum", "tokio", "async",
+    "postgres", "redis", "mongodb", "sqlite", "mysql", "graphql", "grpc",
+    "rest", "websocket", "oauth", "jwt", "webhook", "middleware",
+    "dockerfile", "docker-compose", "kubernetes", "k8s", "terraform",
+    "ansible", "github actions", "ci/cd", "pytest", "jest", "cargo",
+}
+
+N_NGRAM_BINS = 16  # Character trigram hash bins (kept small to prevent overfitting)
+
+
+_NEW_RELEASE_RE = re.compile(
+    r"\b(new(er)?\s+version|released|been\s+released|come\s+out|came\s+out|update[ds]?\s+(for|to)|upgrade|changelog)\b",
+    re.IGNORECASE,
+)
+_STATUS_CHECK_RE = re.compile(
+    r"\b(having\s+(issues|problems|outage)|is\s+\w+\s+down|down\s+right\s+now|loading\s+slow|not\s+working)\b",
+    re.IGNORECASE,
+)
+
+
+def _entity_scores(query: str) -> tuple[float, float, float]:
+    """Check if query contains known external, local, or code entities.
+
+    Context-aware: "new version of docker" → external (needs web),
+    while "is docker running" → local. The entity type alone isn't
+    enough — the intent determines the route.
+
+    Returns (external_intent, local_intent, code_intent) as floats 0.0-1.0.
+    """
+    q_lower = query.lower()
+    words = set(q_lower.split())
+
+    has_external = any(e in q_lower for e in EXTERNAL_ENTITIES)
+    has_local = any(e in words or e in q_lower for e in LOCAL_ENTITIES)
+    has_code = any(e in words or e in q_lower for e in CODE_ENTITIES)
+
+    # Intent modifiers: "new version of X" or "X having issues" → needs web
+    # regardless of whether X is a local or external entity
+    needs_web = bool(_NEW_RELEASE_RE.search(q_lower) or _STATUS_CHECK_RE.search(q_lower))
+
+    # External entity OR local entity with web intent → external signal
+    external = has_external or (has_local and needs_web)
+
+    # Local entity WITHOUT web intent → local signal
+    local = has_local and not needs_web
+
+    # Code entity only when query has code ACTION intent (write/implement/fix/debug)
+    has_code_intent = bool(CODE_KEYWORDS.search(q_lower))
+    code = has_code and has_code_intent
+
+    return (1.0 if external else 0.0,
+            1.0 if local else 0.0,
+            1.0 if code else 0.0)
+
+
+def _char_ngram_hash(query: str, n_bins: int = N_NGRAM_BINS) -> np.ndarray:
+    """Hash character trigrams into a fixed-size feature vector.
+
+    Each word's trigrams are hashed to bins, giving the model a
+    word-level fingerprint without needing an explicit vocabulary.
+    Unseen words still produce distinct hash patterns.
+    """
+    bins = np.zeros(n_bins, dtype=np.float32)
+    q = query.lower().strip()
+
+    for word in q.split():
+        # Pad word for edge trigrams
+        padded = f"^{word}$"
+        for i in range(len(padded) - 2):
+            trigram = padded[i:i + 3]
+            # Simple hash to bin index
+            h = hash(trigram) % n_bins
+            bins[h] += 1.0
+
+    # Normalize to 0-1 range
+    max_val = bins.max()
+    if max_val > 0:
+        bins /= max_val
+
+    return bins
 
 # Ordered list matching TOPIC_PATTERNS keys for consistent feature indexing
 TOPIC_KEYS = [
@@ -112,9 +258,10 @@ TOPIC_KEYS = [
     "notifications",
 ]
 
-N_BASE_FEATURES = 14  # length, words, question, action, code, web, hour, vram, file_search, sys_info, deep_q, word_count_high, wm_action, hypr_config
+N_BASE_FEATURES = 21  # 15 keyword + 3 entity vocab + 3 intent structure
 N_TOPIC_FEATURES = len(TOPIC_KEYS)  # 21
-N_FEATURES = N_BASE_FEATURES + N_TOPIC_FEATURES  # ~29-30
+N_NGRAM_FEATURES = N_NGRAM_BINS  # 16
+N_FEATURES = N_BASE_FEATURES + N_TOPIC_FEATURES + N_NGRAM_FEATURES  # 55
 
 
 # ---------------------------------------------------------------------------
@@ -188,6 +335,24 @@ def extract_features(query: str, context: dict | None = None) -> np.ndarray:
     # 14. Hyprland config question (NOT window action)
     features.append(1.0 if HYPRLAND_CONFIG_KEYWORDS.search(q) else 0.0)
 
+    # 15. Opus-level architecture/design keywords
+    features.append(1.0 if OPUS_KEYWORDS.search(q) else 0.0)
+
+    # 16-18. Entity vocabulary (external service, local process, code tool)
+    ext, loc, cod = _entity_scores(q)
+    features.append(ext)
+    features.append(loc)
+    features.append(cod)
+
+    # 19. Version/status check intent ("what version of X" → local)
+    features.append(1.0 if VERSION_CHECK_RE.search(q) else 0.0)
+
+    # 20. File-finding intent ("what file defines X" → file_search)
+    features.append(1.0 if FILE_INTENT_RE.search(q) else 0.0)
+
+    # 21. Architecture/design intent ("design a X" → opus)
+    features.append(1.0 if DESIGN_INTENT_RE.search(q) else 0.0)
+
     # --- Topic pattern features (21) ---
     for key in TOPIC_KEYS:
         pattern = TOPIC_PATTERNS.get(key, "")
@@ -195,6 +360,10 @@ def extract_features(query: str, context: dict | None = None) -> np.ndarray:
             features.append(1.0)
         else:
             features.append(0.0)
+
+    # --- Character trigram hash (64 bins) ---
+    ngram_features = _char_ngram_hash(q)
+    features.extend(ngram_features.tolist())
 
     return np.array(features, dtype=np.float32)
 
@@ -207,17 +376,156 @@ def _build_model(n_features: int, n_classes: int) -> nn.Sequential:
     """Create the MLP classifier.
 
     Architecture:
-        Input(n_features) → Linear(64) → ReLU → Dropout(0.2)
-                          → Linear(32) → ReLU → Linear(n_classes)
+        Input(n_features) → Linear(96) → ReLU → Dropout(0.3)
+                          → Linear(48) → ReLU → Dropout(0.2)
+                          → Linear(n_classes)
     """
     return nn.Sequential(
-        nn.Linear(n_features, 64),
+        nn.Linear(n_features, 96),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(96, 48),
         nn.ReLU(),
         nn.Dropout(0.2),
-        nn.Linear(64, 32),
-        nn.ReLU(),
-        nn.Linear(32, n_classes),
+        nn.Linear(48, n_classes),
     )
+
+
+# ---------------------------------------------------------------------------
+# LLM-based classification for ambiguous queries
+# ---------------------------------------------------------------------------
+
+_LLM_CLASSIFY_PROMPT = """Classify this query into one category. Reply with ONLY the category name.
+
+Categories:
+- local — system info, status, config, packages, hardware (answerable by checking the system)
+- haiku+web — needs current/live data from the internet (news, outages, new releases, scores, CVEs)
+- sonnet — asks to WRITE/CREATE/FIX code, scripts, configs
+- opus — asks to DESIGN/EVALUATE/PLAN architecture, strategy, trade-offs
+- file_search — asks WHICH FILE or WHERE a config/script/setting is
+- window_manager — asks to MOVE/RESIZE/ARRANGE/MINIMIZE windows or change layout
+
+Examples:
+"what GPU do I have" → local
+"is ollama running" → local
+"what's my IP address" → local
+"is docker running" → local
+"fix my audio" → local
+"is github down right now" → haiku+web
+"did they release a new version of docker" → haiku+web
+"is spotify having login issues" → haiku+web
+"write a python retry decorator" → sonnet
+"give me a bash script that monitors disk" → sonnet
+"should I use REST or GraphQL" → opus
+"what's the best database for time series" → opus
+"what file controls my screen brightness" → file_search
+"where do keybinds get defined" → file_search
+"make this window bigger" → window_manager
+"swap these two windows" → window_manager
+
+Query: "{query}"
+Category:"""
+
+
+def _llm_classify(query: str) -> tuple[str | None, float]:
+    """Ask the local LLM to classify a query into a route.
+
+    Uses the smallest available model for speed (~200-500ms).
+    Returns (route, confidence) where confidence is 0.9 if the
+    LLM returns a valid class, 0.0 otherwise.
+    """
+    # Check cache first
+    cache_key = query.strip().lower()
+    if cache_key in LLM_CLASSIFY_CACHE:
+        return LLM_CLASSIFY_CACHE[cache_key]
+
+    import subprocess
+    import json as _json
+
+    # Use the best available model — classification needs reasoning
+    try:
+        classify_model = Path("/tmp/ollama-smart-model").read_text().strip()
+    except Exception:
+        classify_model = "qwen2.5:7b"
+
+    prompt = _LLM_CLASSIFY_PROMPT.format(query=query)
+
+    payload = _json.dumps({
+        "model": classify_model,
+        "prompt": prompt,
+        "stream": False,
+        "keep_alive": "5m",
+        "options": {"temperature": 0.0, "num_predict": 10},
+    })
+
+    try:
+        result = subprocess.run(
+            ["curl", "-s", "http://localhost:11434/api/generate", "-d", payload],
+            capture_output=True, text=True, timeout=10,
+        )
+        data = _json.loads(result.stdout)
+        raw = data.get("response", "").strip().lower()
+    except Exception:
+        return (None, 0.0)
+
+    # Parse the response — find a valid route class
+    matched_route = None
+    matched_conf = 0.0
+
+    for cls in ROUTE_CLASSES:
+        if cls.lower().replace("+", "") in raw.replace("+", "").replace(" ", ""):
+            matched_route = cls
+            matched_conf = 0.9
+            break
+
+    # Try partial match if exact match failed
+    if not matched_route:
+        route_map = {
+            "local": "local",
+            "escalate": "local_will_escalate",
+            "web": "haiku+web",
+            "haiku": "haiku+web",
+            "sonnet": "sonnet",
+            "code": "sonnet",
+            "opus": "opus",
+            "architect": "opus",
+            "design": "opus",
+            "file": "file_search",
+            "search": "file_search",
+            "window": "window_manager",
+        }
+        for keyword, route in route_map.items():
+            if keyword in raw:
+                matched_route = route
+                matched_conf = 0.85
+                break
+
+    if matched_route:
+        LLM_CLASSIFY_CACHE[cache_key] = (matched_route, matched_conf)
+        # Save to DB for MLP distillation — the MLP will learn from LLM decisions
+        _save_llm_routing(query, matched_route)
+        return (matched_route, matched_conf)
+
+    return (None, 0.0)
+
+
+def _save_llm_routing(query: str, route: str):
+    """Save LLM routing decision to DB so the MLP can learn from it on next retrain."""
+    try:
+        from db import get_db
+        db = get_db()
+        # Store in a separate table to avoid polluting query logs
+        db.execute("""CREATE TABLE IF NOT EXISTS llm_routing_cache (
+            id INTEGER PRIMARY KEY,
+            query TEXT NOT NULL,
+            route TEXT NOT NULL,
+            ts TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+        )""")
+        db.execute("INSERT INTO llm_routing_cache (query, route) VALUES (?, ?)",
+                   (query, route))
+        db.commit()
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -245,11 +553,15 @@ class MLRouter:
     def predict(self, query: str) -> tuple[str | None, float]:
         """Predict the best route for a query.
 
+        Uses MLP as fast path. If confidence is below LLM_THRESHOLD,
+        escalates to local LLM for classification (~300ms but much
+        more accurate on conversational/ambiguous queries).
+
         Returns:
             (route_name, confidence) or (None, 0.0) if no model loaded.
         """
         if self.model is None:
-            return (None, 0.0)
+            return _llm_classify(query)
 
         self.model.eval()
         features = extract_features(query)
@@ -261,7 +573,18 @@ class MLRouter:
             confidence, idx = torch.max(probs, dim=1)
 
         route = ROUTE_CLASSES[idx.item()]
-        return (route, confidence.item())
+        conf = confidence.item()
+
+        # High confidence → trust the MLP
+        if conf >= LLM_CLASSIFY_THRESHOLD:
+            return (route, conf)
+
+        # Low confidence → ask the local LLM to classify
+        llm_route, llm_conf = _llm_classify(query)
+        if llm_route and llm_conf > conf:
+            return (llm_route, llm_conf)
+
+        return (route, conf)
 
     def train(self, data: list[tuple[str, str]],
               weights: list[float] | None = None) -> dict:
@@ -301,8 +624,8 @@ class MLRouter:
 
         # Build fresh model
         self.model = _build_model(self.n_features, self.n_classes)
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
-        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=1e-4)
+        criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1)
 
         dataset = TensorDataset(X, y)
 
@@ -402,15 +725,18 @@ class MLRouter:
     # ----- internal -----
 
     def _load(self):
-        """Load saved model from disk if it exists."""
-        if MODEL_PATH.exists():
-            try:
-                checkpoint = torch.load(MODEL_PATH, weights_only=True)
-                self.model = _build_model(self.n_features, self.n_classes)
-                self.model.load_state_dict(checkpoint["model_state_dict"])
-                self.model.eval()
-            except Exception:
-                self.model = None
+        """Load saved model from disk. Tries user-trained model first, then shipped model."""
+        for path in [MODEL_PATH, SHIPPED_MODEL_PATH]:
+            if path.exists():
+                try:
+                    checkpoint = torch.load(path, weights_only=True)
+                    self.model = _build_model(self.n_features, self.n_classes)
+                    self.model.load_state_dict(checkpoint["model_state_dict"])
+                    self.model.eval()
+                    return  # loaded successfully
+                except Exception:
+                    continue
+        self.model = None
 
     def _save(self, synthetic_count: int = 0, real_count: int = 0,
               final_loss: float = 0.0):
@@ -537,6 +863,13 @@ def generate_synthetic_data() -> list[tuple[str, str]]:
         "check swap usage",
         "what's my CPU temperature",
         "show memory usage by process",
+        # --- Counter-examples: queries about WM that are info not actions ---
+        "what window manager am I using",
+        "what compositor is running",
+        "show me the hyprland log",
+        "what's taking up space in home",
+        "check if my SSH key is loaded",
+        "show journal errors from today",
     ]
     data.extend((q, "local") for q in local_queries)
 
@@ -638,6 +971,30 @@ def generate_synthetic_data() -> list[tuple[str, str]]:
         "new CVEs for kernel this month",
         "are there any zero-day exploits announced recently",
         "latest security advisory for openssh",
+        # --- Counter-examples: indirect web queries without "latest/trending" ---
+        "has the new mesa driver been released yet",
+        "is there a new version of hyprland out",
+        "did they release a new kernel this week",
+        "is cloudflare having issues right now",
+        "is github down",
+        "any service outages today",
+        "what games came out this week on steam",
+        "what games released this month",
+        "what did Linus say about rust in the kernel recently",
+        "any new exploits for AMD GPUs",
+        "did the mesa update fix the RDNA issue",
+        "is there a new docker release",
+        "are there any new arch linux announcements",
+        "what's new in the wayland world",
+        # --- Conversational: "did they fix", "is X up to date", "when does" ---
+        "did they fix the mesa RDNA4 bug",
+        "did they patch that kernel vulnerability",
+        "is the arch linux keyring up to date",
+        "is my mesa version current",
+        "when does the next kernel release come out",
+        "when is the next ubuntu LTS",
+        "is there a new version of ollama available",
+        "did mass layoffs hit any more tech companies",
     ]
     data.extend((q, "haiku+web") for q in web_queries)
 
@@ -688,6 +1045,21 @@ def generate_synthetic_data() -> list[tuple[str, str]]:
         "write a GraphQL schema for a blog",
         "create a Terraform module for AWS ECS",
         "implement server-sent events in FastAPI",
+        # --- Negative samples: local entities with code intent ---
+        "write a systemd service manager in python",
+        "implement a PipeWire audio routing tool",
+        "create a GPU monitoring dashboard in rust",
+        "write a docker container health checker",
+        "implement a waybar module in python",
+        # --- Conversational forms: "give me", "can you", "I need" ---
+        "give me a systemd timer that runs every 5 minutes",
+        "give me a bash script that monitors disk usage",
+        "can you write a regex for email validation",
+        "can you make a script that backs up my configs",
+        "I need a python script that watches for file changes",
+        "I need a function that retries on failure",
+        "how would you implement a rate limiter",
+        "how would you build a CLI that parses JSON",
     ]
     data.extend((q, "sonnet") for q in sonnet_queries)
 
@@ -746,6 +1118,27 @@ def generate_synthetic_data() -> list[tuple[str, str]]:
         "architect a module system for costa",
         "design a caching layer for the costa AI router",
         "create an extension framework for costa OS",
+        # --- Negative samples: local entities with architecture intent ---
+        "design a GPU scheduling system for shared workstations",
+        "design a VRAM management strategy for multi-model inference",
+        "architect a system where ollama serves multiple users",
+        "plan a migration from PulseAudio to PipeWire for a fleet",
+        "design a docker orchestration strategy for development",
+        "evaluate security implications of running AI models with root",
+        "design a graceful degradation strategy when GPU memory is full",
+        "create a data retention policy for the AI query database",
+        "design a monitoring strategy for a linux desktop OS",
+        # --- Conversational forms: "should I", "what's the best", "how should I" ---
+        "should I use REST or GraphQL for this project",
+        "should I use SQLite or Postgres for this",
+        "what's the best way to structure a monorepo",
+        "what's the best approach for handling auth",
+        "how should I handle secrets in my deployment",
+        "what database would you recommend for time series data",
+        "how do I make my voice assistant work offline",
+        "what's the right architecture for a real-time dashboard",
+        "how should I approach this migration",
+        "what would you recommend for caching in this system",
     ]
     data.extend((q, "opus") for q in opus_queries)
 
@@ -791,6 +1184,25 @@ def generate_synthetic_data() -> list[tuple[str, str]]:
         "where is the Dockerfile",
         "find all files matching *.service",
         "locate the knowledge base files",
+        # --- Counter-examples: indirect file search without "find/where/locate" ---
+        "which script runs when I press the keybind",
+        "what config controls the waybar clock",
+        "what config file sets the cursor theme",
+        "which file defines the color palette",
+        "what script handles the wallpaper",
+        "which module handles model selection",
+        "what file runs at startup",
+        "which config sets the default font",
+        "where are the voice recordings stored",
+        "what file defines the power menu",
+        # --- Conversational: "what controls", "I need to edit" ---
+        "what controls my screen brightness",
+        "where do keybinds get defined",
+        "what sets up my PATH variable",
+        "I need to edit the volume keybind",
+        "I need to change the notification timeout",
+        "what determines my default browser",
+        "how do I change what happens at startup",
     ]
     data.extend((q, "file_search") for q in file_search_queries)
 
@@ -836,6 +1248,29 @@ def generate_synthetic_data() -> list[tuple[str, str]]:
         "focus the VS Code window",
         "move window to the secondary monitor",
         "tile firefox next to my editor",
+        # --- Counter-examples: conversational WM without explicit keywords ---
+        "make the terminal bigger",
+        "make this window smaller",
+        "I need these two windows side by side",
+        "I need firefox and the editor next to each other",
+        "can you put that on my other screen",
+        "minimize everything",
+        "minimize all windows",
+        "hide all windows",
+        "show the desktop",
+        "I want this bigger",
+        "switch me to the gaming workspace",
+        # --- More conversational WM ---
+        "I can barely see this window make it bigger",
+        "this is taking up the whole screen get it out",
+        "put everything back to normal",
+        "arrange my windows so I can see everything",
+        "swap these two around",
+        "get this off my screen",
+        "can I have browser on one side and code on the other",
+        "just give me a clean desktop",
+        "get rid of everything on screen",
+        "I want to see all my windows at once",
     ]
     data.extend((q, "window_manager") for q in wm_queries)
 
