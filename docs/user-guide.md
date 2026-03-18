@@ -1,6 +1,6 @@
 # Costa OS User Guide
 
-*Version 1.0 --- March 2026*
+*Version 1.0, March 2026*
 
 ---
 
@@ -11,7 +11,7 @@
    - [Philosophy](#philosophy)
    - [What Makes It Different](#what-makes-it-different)
 2. [Getting Started](#2-getting-started)
-   - [First Boot --- What to Expect](#first-boot--what-to-expect)
+   - [First Boot: What to Expect](#first-boot--what-to-expect)
    - [The Installer Wizard](#the-installer-wizard)
    - [Your First Five Minutes](#your-first-five-minutes)
    - [Essential Keybinds](#essential-keybinds)
@@ -98,19 +98,19 @@
 
 ### What Is Costa OS?
 
-Costa OS is a Linux distribution built on Arch Linux and the Hyprland Wayland compositor. Claude Code ships with full system access, so instead of memorizing commands, hunting through settings panels, or reading man pages, you describe what you want --- by voice, by typing, or through keybinds --- and the system does it. It knows your hardware, your running processes, your configs, and your project contexts.
+Costa OS is a Linux distribution built on Arch Linux and the Hyprland Wayland compositor. Claude Code ships with full system access, so instead of memorizing commands, hunting through settings panels, or reading man pages, you describe what you want, by voice, by typing, or through keybinds, and the system does it. It knows your hardware, your running processes, your configs, and your project contexts.
 
 Under the hood, Costa OS is a fully-featured Arch Linux installation with a tiling window manager, a curated set of development tools, and a custom Mediterranean-inspired theme called "Costa." What makes it different is that Claude Code and local models are connected to every component. The clipboard watches what you copy and offers to debug errors. The screenshot tool analyzes images on capture. The music player, window manager, notification system, and status bar all feed into the same routing system.
 
-Costa OS is powered by Claude Code in combination with a local model running on your GPU. Claude Code ships with full system access and handles complex tasks like code generation, debugging, system management, and multi-step workflows. The local model handles routine queries (system status, quick lookups, simple commands) with instant responses and no internet needed. Routing between them is automatic. When cloud AI is used, your queries go directly to Anthropic --- Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
+Costa OS is powered by Claude Code in combination with a local model running on your GPU. Claude Code ships with full system access and handles complex tasks like code generation, debugging, system management, and multi-step workflows. The local model handles routine queries (system status, quick lookups, simple commands) with instant responses and no internet needed. Routing between them is automatic. When cloud AI is used, your queries go directly to Anthropic. Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
 
 ### Philosophy
 
 Costa OS is built on three principles:
 
-**1. Describe what you want, the system does it.** Traditional operating systems force you to learn their language --- command flags, config file syntax, menu hierarchies. Costa OS lets you skip that. Want to install a program? Say "install Blender." Want to change a keybind? Say "bind Super+G to open GIMP." Want to know why your build is slow? Ask, and the system checks your CPU load, running containers, swap usage, and compiler flags before answering.
+**1. Describe what you want, the system does it.** Traditional operating systems force you to learn their language: command flags, config file syntax, menu hierarchies. Costa OS lets you skip that. Want to install a program? Say "install Blender." Want to change a keybind? Say "bind Super+G to open GIMP." Want to know why your build is slow? Ask, and the system checks your CPU load, running containers, swap usage, and compiler flags before answering.
 
-**2. Claude Code at the center, local models for speed.** Claude Code is the primary intelligence --- it can modify any config, install any package, write any script, and navigate graphical applications on your behalf. Local models running on your GPU handle routine queries with sub-second latency and zero internet dependency. The two work together: local for fast, private, everyday tasks; Claude for anything that requires real reasoning. Your data stays private regardless --- Costa OS has no servers, no telemetry, and no accounts.
+**2. Claude Code at the center, local models for speed.** Claude Code is the primary intelligence: it can modify any config, install any package, write any script, and navigate graphical applications on your behalf. Local models running on your GPU handle routine queries with sub-second latency and zero internet dependency. The two work together: local for fast, private, everyday tasks; Claude for anything that requires real reasoning. Your data stays private regardless: Costa OS has no servers, no telemetry, and no accounts.
 
 **3. Maximum customization, zero gatekeeping.** Costa OS is your machine. Every config file is documented, every tool is replaceable, and the entire codebase is open source under the Apache License 2.0. The AI makes customization effortless for beginners, and the underlying Arch Linux foundation means power users can go as deep as they want.
 
@@ -120,9 +120,9 @@ Most Linux distributions hand you a desktop and leave you to figure out the rest
 
 - **Claude Code is your system administrator.** It ships as a first-class citizen with full system access, 30+ MCP tools, and a hardware-aware context file generated at first boot. It can modify any config, install any package, create any script, navigate graphical applications, and debug problems end-to-end. Just describe what you want in plain English.
 
-- **The AI knows your actual system.** Every query is enriched with live data --- running processes, GPU utilization, disk space, network state, audio routing, window layout. When the AI answers, it answers about *your* machine, not a generic one.
+- **The AI knows your actual system.** Every query is enriched with live data: running processes, GPU utilization, disk space, network state, audio routing, window layout. When the AI answers, it answers about *your* machine, not a generic one.
 
-- **Two tiers work together.** Claude Code handles complex tasks --- code generation, multi-file edits, architecture, debugging. Local models on your GPU handle routine queries (system status, quick lookups, simple commands) with sub-second latency and zero internet dependency. Routing between them is automatic.
+- **Two tiers work together.** Claude Code handles complex tasks: code generation, multi-file edits, architecture, debugging. Local models on your GPU handle routine queries (system status, quick lookups, simple commands) with sub-second latency and zero internet dependency. Routing between them is automatic.
 
 - **The entire desktop is AI-aware.** Copy an error message and the clipboard service offers to debug it with AI. Take a screenshot and the AI reads and analyzes it. The voice assistant transcribes speech in 500 milliseconds. Waybar modules show AI status, usage metrics, and processing indicators.
 
@@ -132,13 +132,13 @@ Most Linux distributions hand you a desktop and leave you to figure out the rest
 
 ## 2. Getting Started
 
-### First Boot --- What to Expect
+### First Boot. What to Expect
 
 When you boot the Costa OS ISO for the first time, you will see a graphical installer. This is a GTK4 application that walks you through disk partitioning, user account creation, and initial configuration. No terminal is required during installation.
 
 After installation and reboot, the system runs a first-boot wizard that:
 
-1. **Sets up Claude Code** --- prompts you to authenticate with your Anthropic account (Claude Pro, Max, or API key). This is the first step because once Claude Code is working, it can help fix anything else that goes wrong during setup.
+1. **Sets up Claude Code**: prompts you to authenticate with your Anthropic account (Claude Pro, Max, or API key). This is the first step because once Claude Code is working, it can help fix anything else that goes wrong during setup.
 2. Detects your GPU and installs the appropriate drivers (AMD, NVIDIA, or Intel)
 3. Detects your monitors and generates a multi-monitor Waybar configuration
 4. Generates a hardware-aware `CLAUDE.md` so Claude Code knows your exact setup
@@ -177,7 +177,7 @@ After the first-boot wizard completes, here is what to do:
    ```bash
    costa-ai "what GPU do I have"
    ```
-   The AI will check your actual hardware and respond with the model name, driver version, and VRAM amount. This is a local query --- it never touches the internet.
+   The AI will check your actual hardware and respond with the model name, driver version, and VRAM amount. This is a local query, it never touches the internet.
 
 4. **Try voice input.** Hold `SUPER+ALT+V` and speak a question. For example: "What packages do I have installed for Python?" Release the key when you finish speaking. The audio is transcribed locally by Whisper, then sent to the AI for a response.
 
@@ -231,8 +231,8 @@ These are the keybinds you will use most often. Costa OS uses vim-style navigati
 
 | Keybind | Action |
 |---------|--------|
-| `SUPER+ALT+V` | Voice command --- Claude mode (AI processes your speech and responds) |
-| `SUPER+ALT+B` | Voice command --- Type mode (transcribes speech and types into the focused window) |
+| `SUPER+ALT+V` | Voice command: Claude mode (AI processes your speech and responds) |
+| `SUPER+ALT+B` | Voice command: Type mode (transcribes speech and types into the focused window) |
 
 #### Media and Utilities
 
@@ -277,7 +277,7 @@ You do not need to memorize these paths. The AI knows all of them, and you can a
 
 ## 3. The AI Assistant
 
-The AI assistant is the heart of Costa OS. It is not a chatbot bolted onto the side --- it is deeply integrated into every part of the system, with access to live system state, 30+ structured tools, and the ability to execute safe commands automatically.
+The AI assistant is the heart of Costa OS. It is not a chatbot bolted onto the side, it is deeply integrated into every part of the system, with access to live system state, 30+ structured tools, and the ability to execute safe commands automatically.
 
 ### Three Ways to Interact
 
@@ -300,7 +300,7 @@ This is the most versatile method. It supports flags for JSON output, history br
 
 Hold `SUPER+ALT+V` and speak your question or command naturally. Release when you are done talking. The system records your audio, reduces background noise with DeepFilterNet, detects when you stop speaking with Silero VAD, transcribes your speech with Whisper on your GPU, and sends the text to the AI. The entire pipeline runs locally.
 
-There is also a Type mode (`SUPER+ALT+B`) that transcribes your speech and types the resulting text directly into whatever window is focused --- useful for dictation into text fields, documents, or chat apps.
+There is also a Type mode (`SUPER+ALT+B`) that transcribes your speech and types the resulting text directly into whatever window is focused, useful for dictation into text fields, documents, or chat apps.
 
 **3. Waybar Widget (Text Input)**
 
@@ -314,7 +314,7 @@ Right-click the Costa icon to see the full text of the last AI response.
 
 The AI assistant is not limited to answering questions. It can take actions on your system, and it knows the difference between safe and dangerous operations.
 
-**Information queries** --- The AI gathers live system data before answering:
+**Information queries**: The AI gathers live system data before answering:
 
 ```bash
 costa-ai "what is using my GPU right now"      # checks GPU utilization
@@ -323,7 +323,7 @@ costa-ai "what Python packages are installed"   # queries pacman
 costa-ai "what is my IP address"                # checks ip addr and curl ifconfig.me
 ```
 
-**System actions** --- Safe commands execute automatically:
+**System actions**: Safe commands execute automatically:
 
 ```bash
 costa-ai "turn up the volume to 80%"           # runs wpctl
@@ -332,7 +332,7 @@ costa-ai "switch to workspace 3"                # runs hyprctl
 costa-ai "set brightness to 50%"                # runs brightnessctl
 ```
 
-**Ask-first actions** --- Potentially destructive commands require your confirmation:
+**Ask-first actions**: Potentially destructive commands require your confirmation:
 
 ```bash
 costa-ai "install Blender"                      # shows 'sudo pacman -S blender', asks before running
@@ -340,11 +340,11 @@ costa-ai "restart the Ollama service"            # shows 'systemctl restart olla
 costa-ai "change my terminal font to Fira Code"  # shows the config change, asks before applying
 ```
 
-**Blocked actions** --- Dangerous commands are never auto-executed:
+**Blocked actions**: Dangerous commands are never auto-executed:
 
 Commands involving `rm -rf`, `dd`, `mkfs`, `shutdown`, and similar destructive operations are always flagged. The AI will explain what the command would do and ask you to run it yourself if you really want to.
 
-**Web-augmented queries** --- When local models cannot answer (live news, current events, real-time data), the query escalates to Claude with web search:
+**Web-augmented queries**: When local models cannot answer (live news, current events, real-time data), the query escalates to Claude with web search:
 
 ```bash
 costa-ai "what is the latest Linux kernel version"
@@ -352,7 +352,7 @@ costa-ai "what is the weather in Boston"         # fetches from wttr.in
 costa-ai "who won the game last night"
 ```
 
-**Code generation** --- Complex coding questions route to Claude Sonnet:
+**Code generation**: Complex coding questions route to Claude Sonnet:
 
 ```bash
 costa-ai "write a Rust function that parses CSV files"
@@ -362,13 +362,13 @@ costa-ai "explain what this regex does: ^(?:(?:25[0-5]|...))"
 
 ### How Model Routing Works
 
-When you ask a question, the AI router analyzes your query and picks the best model to answer it. You never need to think about this --- it happens automatically. But understanding the system helps you appreciate why some answers are instant and others take a few seconds.
+When you ask a question, the AI router analyzes your query and picks the best model to answer it. You never need to think about this, it happens automatically. But understanding the system helps you appreciate why some answers are instant and others take a few seconds.
 
 **Local models** run on your GPU and process queries without any internet connection. They are fast and private. The VRAM manager keeps the largest model your GPU can fit loaded in memory at all times:
 
 | Available VRAM | Model Loaded | Quality |
 |---------------|-------------|---------|
-| 12GB+ | qwen2.5:14b | Best local quality --- handles most queries without cloud |
+| 12GB+ | qwen2.5:14b | Best local quality: handles most queries without cloud |
 | 6--12GB | qwen2.5:7b | Good quality, occasional cloud escalation |
 | 3--6GB | qwen2.5:3b | Fast basic answers, more cloud escalation |
 | <3GB (gaming) | None loaded | All queries go to cloud |
@@ -429,7 +429,7 @@ The Costa widget in Waybar is the visual control center for the AI assistant. It
 
 | Action | What It Does |
 |--------|-------------|
-| Left-click | Opens a Rofi text input --- type your question and press Enter |
+| Left-click | Opens a Rofi text input: type your question and press Enter |
 | Right-click | Shows the full text of the last AI response |
 | Middle-click | Opens the stop button to cancel a running query |
 
@@ -441,7 +441,7 @@ Local AI models are not perfect. When the AI gives you a wrong answer, you can r
 
 1. Click the 󰚑 (report) icon in Waybar after receiving a bad answer.
 2. The failed query and response are sent to Claude Haiku.
-3. Claude identifies what went wrong --- missing knowledge, wrong context, or hallucination.
+3. Claude identifies what went wrong, missing knowledge, wrong context, or hallucination.
 4. Claude generates a patch for the relevant knowledge file in `~/.config/costa/knowledge/`.
 5. The patch is applied automatically.
 6. The routing decision is marked as incorrect in the database, feeding into the ML router's next training cycle.
@@ -458,7 +458,7 @@ This creates a dual feedback loop: knowledge files are patched so the local mode
 
 ### Voice Push-to-Talk
 
-The voice assistant uses a push-to-talk model. You hold a key to record, and release it when done. There is no always-on listening --- the microphone is only active while you hold the key.
+The voice assistant uses a push-to-talk model. You hold a key to record, and release it when done. There is no always-on listening, the microphone is only active while you hold the key.
 
 **Two modes:**
 
@@ -471,7 +471,7 @@ The voice assistant uses a push-to-talk model. You hold a key to record, and rel
 
 1. Hold the key and speak normally.
 2. Audio is captured from your microphone and processed through DeepFilterNet, which crushes background noise from ~0.2 RMS to ~0.004 RMS.
-3. Silero VAD (Voice Activity Detection) automatically detects when you stop speaking. You do not need to release the key at the exact moment you stop talking --- the system handles this.
+3. Silero VAD (Voice Activity Detection) automatically detects when you stop speaking. You do not need to release the key at the exact moment you stop talking, the system handles this.
 4. Whisper tiny.en transcribes your speech on the GPU in about 500 milliseconds.
 5. The transcribed text is sent to the AI router, which picks the best model and responds.
 6. The response appears as a scrolling notification in Waybar and as a Dunst notification popup.
@@ -492,14 +492,14 @@ ollama ps                     # check if a model is loaded
 | Problem | Solution |
 |---------|----------|
 | No audio captured | Run `wpctl status` and check that your microphone is the default source |
-| Transcription is garbage | Background noise is too high --- verify DeepFilterNet is running in the pipeline |
+| Transcription is garbage | Background noise is too high: verify DeepFilterNet is running in the pipeline |
 | VAD never stops recording | Silero VAD needs DeepFilterNet preprocessing to work properly |
-| Slow response | The model may not be loaded --- check `ollama ps` and `/tmp/ollama-smart-model` |
+| Slow response | The model may not be loaded: check `ollama ps` and `/tmp/ollama-smart-model` |
 | Nothing happens on keypress | Verify the keybind exists: `hyprctl binds \| grep ALT+V` |
 
 ### Usage Tracking and Budgets
 
-Every AI query is logged to a local SQLite database (`~/.config/costa/costa.db`) with the model used, latency, token counts, and cost estimates. Nothing is sent anywhere --- this is purely local analytics.
+Every AI query is logged to a local SQLite database (`~/.config/costa/costa.db`) with the model used, latency, token counts, and cost estimates. Nothing is sent anywhere, this is purely local analytics.
 
 ```bash
 costa-ai --history                 # browse past queries and responses
@@ -525,7 +525,7 @@ Costa OS uses Hyprland, a modern Wayland tiling compositor. If you have used i3,
 
 ### Understanding Workspaces
 
-Workspaces are virtual desktops. Instead of stacking all your windows on one screen, you spread them across numbered workspaces and switch between them instantly. Think of them as separate rooms in your house --- your code editor is in room 1, your browser is in room 2, your music player is in room 3.
+Workspaces are virtual desktops. Instead of stacking all your windows on one screen, you spread them across numbered workspaces and switch between them instantly. Think of them as separate rooms in your house, your code editor is in room 1, your browser is in room 2, your music player is in room 3.
 
 Costa OS configures workspaces per-monitor:
 
@@ -533,7 +533,7 @@ Costa OS configures workspaces per-monitor:
 |-----------|---------|-------------|
 | 1--4 | Primary monitor (highest resolution/refresh rate) | Main working area |
 | 5--6 | Secondary monitors | Reference material, media, chat |
-| 7 | Virtual headless monitor (Claude Code's workspace) | AI navigation --- invisible |
+| 7 | Virtual headless monitor (Claude Code's workspace) | AI navigation: invisible |
 
 Switch workspaces with `SUPER+<number>`. Move a window to a workspace with `SUPER+SHIFT+<number>`.
 
@@ -571,15 +571,15 @@ costa-ai "tile the editor and terminal side by side"
 
 ### Tiling, Floating, and Fullscreen
 
-By default, windows tile automatically --- they split the available space evenly. There are three window modes:
+By default, windows tile automatically, they split the available space evenly. There are three window modes:
 
-**Tiled** (default) --- Windows automatically arrange themselves in the available space. When you open a new window, existing windows shrink to make room.
+**Tiled** (default): Windows automatically arrange themselves in the available space. When you open a new window, existing windows shrink to make room.
 
-**Floating** --- The window is detached from tiling and can be freely positioned and resized with the mouse. Toggle with `SUPER+SHIFT+F`. Some windows float by default (settings dialogs, popup windows, the music widget).
+**Floating**: The window is detached from tiling and can be freely positioned and resized with the mouse. Toggle with `SUPER+SHIFT+F`. Some windows float by default (settings dialogs, popup windows, the music widget).
 
-**Fullscreen** --- The window takes up the entire screen, covering the Waybar panel. Toggle with `SUPER+F`. There are actually three fullscreen modes:
-- `SUPER+F` --- true fullscreen (covers everything)
-- Maximize mode --- fills the monitor but keeps gaps and Waybar visible
+**Fullscreen**: The window takes up the entire screen, covering the Waybar panel. Toggle with `SUPER+F`. There are actually three fullscreen modes:
+- `SUPER+F`: true fullscreen (covers everything)
+- Maximize mode, fills the monitor but keeps gaps and Waybar visible
 
 To move or resize a floating window with the mouse, hold `SUPER` and drag with the left mouse button (move) or right mouse button (resize).
 
@@ -663,7 +663,7 @@ hyprctl clients -j | jq '.[].class'
 
 Or ask the AI: `costa-ai "what is the window class for spotify"`.
 
-After editing, reload with `hyprctl reload` --- no restart needed.
+After editing, reload with `hyprctl reload`, no restart needed.
 
 ---
 
@@ -746,7 +746,7 @@ k9s                             # TUI for managing Kubernetes clusters
 
 ### Claude Code Integration
 
-Claude Code is not just installed on Costa OS --- it is a first-class citizen with deep system integration.
+Claude Code is not just installed on Costa OS, it is a first-class citizen with deep system integration.
 
 **Launching Claude Code:**
 
@@ -763,13 +763,13 @@ Or left-click the 󰚩 icon in Waybar.
 | Left-click 󰚩 | Launch Claude Code |
 | Right-click 󰚩 | Model picker (switch between Sonnet and Opus) |
 | Scroll on 󰚩 | Cycle through project contexts |
-| Middle-click 󰚩 | Dangerous mode (auto-approve all actions --- use carefully) |
+| Middle-click 󰚩 | Dangerous mode (auto-approve all actions: use carefully) |
 
 **Custom slash commands** ship pre-configured:
 
 | Command | Description |
 |---------|-------------|
-| `/check-system` | Audit system health --- services, disk, memory, GPU |
+| `/check-system` | Audit system health: services, disk, memory, GPU |
 | `/configure-waybar` | Modify Waybar configuration with guidance |
 | `/install` | Install and configure a package with AUR fallback |
 | `/theme` | Apply or modify Costa theme elements |
@@ -781,7 +781,7 @@ Claude Code has 30+ tools available through the Costa OS MCP server (`costa-syst
 
 **Virtual monitor:**
 
-Claude Code operates on an invisible virtual headless monitor (HEADLESS-2, workspace 7, 1920x1080). It can open its own browser, navigate pages, fill forms, and research --- all without interrupting your screen. This uses a proprietary MCP navigation system under development for screen reading, which is 112x cheaper in tokens than screenshot-based approaches.
+Claude Code operates on an invisible virtual headless monitor (HEADLESS-2, workspace 7, 1920x1080). It can open its own browser, navigate pages, fill forms, and research, all without interrupting your screen. This uses a proprietary MCP navigation system under development for screen reading, which is 112x cheaper in tokens than screenshot-based approaches.
 
 To see what Claude is doing on its virtual monitor, click the 󰍹 icon in Waybar. This toggles a live preview window that auto-refreshes every 2 seconds.
 
@@ -804,24 +804,24 @@ zellij                          # start a new session
 ```
 
 Key shortcuts inside Zellij:
-- `Ctrl+T` --- new tab
-- `Ctrl+N` --- new pane
-- `Ctrl+P` --- switch to pane mode (then use arrow keys)
-- `Ctrl+O` --- switch to session mode
+- `Ctrl+T`: new tab
+- `Ctrl+N`: new pane
+- `Ctrl+P`: switch to pane mode (then use arrow keys)
+- `Ctrl+O`: switch to session mode
 
 ### Git Workflow
 
 Git is configured with quality-of-life improvements:
 
-**Delta pager** --- `git diff` shows beautiful side-by-side diffs with syntax highlighting and line numbers, instead of the default unified diff format.
+**Delta pager**: `git diff` shows beautiful side-by-side diffs with syntax highlighting and line numbers, instead of the default unified diff format.
 
-**lazygit** --- A terminal UI for Git that makes staging, committing, branching, and rebasing visual and fast. Launch with:
+**lazygit**: A terminal UI for Git that makes staging, committing, branching, and rebasing visual and fast. Launch with:
 
 ```bash
 lazygit
 ```
 
-**GitHub CLI** --- The `gh` command is pre-installed and authenticated (if you set it up during first boot):
+**GitHub CLI**: The `gh` command is pre-installed and authenticated (if you set it up during first boot):
 
 ```bash
 gh pr create                    # create a pull request
@@ -842,16 +842,16 @@ The Costa theme is a custom Mediterranean coastal palette with a dark base and w
 
 | Color | Hex | Role |
 |-------|-----|------|
-| Base | `#1b1d2b` | Background --- deep navy |
+| Base | `#1b1d2b` | Background: deep navy |
 | Surface | `#252836` | Panels, cards, elevated surfaces |
-| Text | `#d4cfc4` | Primary text --- warm white |
-| Sea | `#5b94a8` | Primary accent --- teal blue |
-| Terracotta | `#c07a56` | Secondary accent --- warm orange |
-| Foam | `#7eb5b0` | Light accent --- soft teal |
-| Sand | `#c9a96e` | Highlight --- golden |
-| Olive | `#8b9968` | Positive/success --- muted green |
-| Lavender | `#9884b8` | Decorative --- purple |
-| Rose | `#b87272` | Error/urgent --- muted red |
+| Text | `#d4cfc4` | Primary text: warm white |
+| Sea | `#5b94a8` | Primary accent: teal blue |
+| Terracotta | `#c07a56` | Secondary accent: warm orange |
+| Foam | `#7eb5b0` | Light accent: soft teal |
+| Sand | `#c9a96e` | Highlight: golden |
+| Olive | `#8b9968` | Positive/success: muted green |
+| Lavender | `#9884b8` | Decorative: purple |
+| Rose | `#b87272` | Error/urgent: muted red |
 
 These colors are defined in multiple places to ensure consistency:
 
@@ -930,7 +930,7 @@ Waybar is the status bar at the top of each monitor. It contains 16+ modules tha
 
 | Template | Used On | Content |
 |----------|---------|---------|
-| main-bar | Primary monitor | All modules --- full control surface |
+| main-bar | Primary monitor | All modules: full control surface |
 | performance-bar | First secondary | GPU, CPU, RAM, disk, temperature monitoring |
 | minimal-bar | Additional secondaries | Workspaces and clock only |
 | taskbar | Same as performance-bar | Window list |
@@ -959,8 +959,8 @@ There are three ways to add or modify keybinds:
 
 Click the 󰌌 icon in Waybar, or run `costa-keybinds-gui`. This opens a GTK4 application with two tabs:
 
-- **Keyboard** --- All keybinds grouped by category (Applications, Window Management, Workspaces, Media, etc.), searchable, with edit/add/delete buttons
-- **Mouse** --- Auto-discovers connected mice, shows button codes, includes a "Press to Detect" feature for identifying buttons
+- **Keyboard**: All keybinds grouped by category (Applications, Window Management, Workspaces, Media, etc.), searchable, with edit/add/delete buttons
+- **Mouse**: Auto-discovers connected mice, shows button codes, includes a "Press to Detect" feature for identifying buttons
 
 To add a new keybind: click the + button, record your key combination (or type it manually if Hyprland intercepts the recording), select the action, and save.
 
@@ -1052,7 +1052,7 @@ Costa OS includes a custom floating music widget that controls any MPRIS-compati
 - Click the music icon (󰎆) or the now-playing text in Waybar
 - Or run: `costa-music-widget`
 
-The widget shows album art, track information, a progress bar with seek controls, playback buttons, and a quality badge showing the live audio format from PipeWire (for example, "24bit / 96kHz" --- highlighted in teal when the format is hi-res).
+The widget shows album art, track information, a progress bar with seek controls, playback buttons, and a quality badge showing the live audio format from PipeWire (for example, "24bit / 96kHz", highlighted in teal when the format is hi-res).
 
 <!-- screenshot: The Costa music widget showing album art on the left, track name and artist, a progress bar, playback controls, and the audio quality badge reading "24bit / 48kHz". -->
 
@@ -1061,7 +1061,7 @@ The widget has a tabbed interface:
 | Tab | Content |
 |-----|---------|
 | **Now Playing** | Album art, controls, progress, quality badge |
-| **Queue** | Current playlist with track list --- click to jump, drag to reorder |
+| **Queue** | Current playlist with track list: click to jump, drag to reorder |
 | **Search** | Search your Strawberry music library by title, artist, or album |
 | **Playlists** | Switch between playlists without opening Strawberry |
 
@@ -1109,7 +1109,7 @@ If no music player is running, you can start playback from the widget:
 1. Open the music widget (click 󰎆 in Waybar)
 2. Click "Start Music"
 3. This launches Strawberry in the background and begins playback
-4. The Strawberry window stays hidden on a special workspace --- the widget controls it
+4. The Strawberry window stays hidden on a special workspace, the widget controls it
 
 If Strawberry has no music library configured, it opens the library setup dialog so you can point it at your music folder (typically `~/Music/`).
 
@@ -1117,9 +1117,9 @@ If Strawberry has no music library configured, it opens the library setup dialog
 
 The music widget supports any MPRIS-compatible player. A dropdown in the widget header shows the active player. Click it to switch between:
 
-- **Strawberry** --- local music library
-- **Spotify** --- streaming (via spotify-launcher)
-- **Firefox** --- browser audio/video
+- **Strawberry**: local music library
+- **Spotify**: streaming (via spotify-launcher)
+- **Firefox**: browser audio/video
 - Any other MPRIS player
 
 From the CLI:
@@ -1132,7 +1132,7 @@ playerctl -p spotify next               # next track on Spotify
 
 ### Library Search and Playlists
 
-The Search tab in the music widget queries Strawberry's SQLite database directly --- you do not need to open Strawberry's GUI. Type to search across artist, album, and track name. Click a result to play it, or right-click to add it to the queue.
+The Search tab in the music widget queries Strawberry's SQLite database directly, you do not need to open Strawberry's GUI. Type to search across artist, album, and track name. Click a result to play it, or right-click to add it to the queue.
 
 The Playlists tab shows all playlists from Strawberry. Click a playlist name to load and play it. To create new playlists, use Strawberry directly: right-click in the playlist area and select "New Playlist."
 
@@ -1483,7 +1483,7 @@ Configuration: `~/.config/dunst/dunstrc`. Restart after changes: `killall dunst;
 
 ### VRAM Manager
 
-The VRAM manager is a background daemon that automatically keeps the best AI model loaded in your GPU memory. You never need to think about model management --- it handles everything.
+The VRAM manager is a background daemon that automatically keeps the best AI model loaded in your GPU memory. You never need to think about model management, it handles everything.
 
 **How it works:**
 
@@ -1570,9 +1570,9 @@ steps:
 
 **Step types:**
 
-- `shell` --- run a command, capture output
-- `ai` --- send a prompt to costa-ai (can include output from previous steps via `input_from`)
-- `condition` --- branch based on previous step output
+- `shell`: run a command, capture output
+- `ai`: send a prompt to costa-ai (can include output from previous steps via `input_from`)
+- `condition`: branch based on previous step output
 
 **Scheduling:**
 
@@ -1586,7 +1586,7 @@ costa-flow schedule                        # list all scheduled workflows
 
 ### Project Management
 
-Costa OS can switch your entire workspace context --- open the right editor, terminal, browser, and services --- with a single command.
+Costa OS can switch your entire workspace context, open the right editor, terminal, browser, and services, with a single command.
 
 **Switching projects:**
 
@@ -1756,8 +1756,8 @@ Costa OS integrates AI analysis directly into the screenshot workflow.
 | `Print` | Screenshot region, save to `~/Pictures/Screenshots/` |
 | `SUPER+Print` | Screenshot region, copy to clipboard |
 | `SUPER+SHIFT+Print` | Screenshot full screen |
-| `SUPER+SHIFT+A` | AI screenshot --- select region, get AI analysis |
-| `SUPER+SHIFT+T` | OCR screenshot --- select region, extract text to clipboard |
+| `SUPER+SHIFT+A` | AI screenshot: select region, get AI analysis |
+| `SUPER+SHIFT+T` | OCR screenshot: select region, extract text to clipboard |
 
 **AI screenshot analysis:**
 
@@ -1826,9 +1826,9 @@ sudo howdy clear                           # remove all models
 
 Costa OS auto-detects touchscreens and configures three components:
 
-- **squeekboard** --- on-screen keyboard that appears automatically in text fields
-- **hyprgrass** --- Hyprland plugin for multi-touch gestures
-- **libinput** --- kernel-level touch input
+- **squeekboard**: on-screen keyboard that appears automatically in text fields
+- **hyprgrass**: Hyprland plugin for multi-touch gestures
+- **libinput**: kernel-level touch input
 
 If no touchscreen is detected, these components are not installed.
 
@@ -1874,10 +1874,10 @@ The Settings Hub is a central GTK4 application for configuring Costa OS. It cove
 | **System** | Package updates, dotfiles sync (chezmoi), re-run first boot |
 
 Each section shows a status indicator:
-- Green checkmark --- fully configured
-- Yellow warning --- partially configured or optional step skipped
-- Red X --- required setup not completed
-- Gray circle --- not applicable (for example, touchscreen on a desktop)
+- Green checkmark, fully configured
+- Yellow warning, partially configured or optional step skipped
+- Red X, required setup not completed
+- Gray circle, not applicable (for example, touchscreen on a desktop)
 
 ### AI Navigation (costa-nav)
 
@@ -2016,7 +2016,7 @@ killall dunst; dunst &disown
 costa-firstboot --reconfigure
 ```
 
-Or through the Settings Hub: System > "Re-run First Boot." This is safe to run --- it skips steps already completed and re-detects hardware.
+Or through the Settings Hub: System > "Re-run First Boot." This is safe to run, it skips steps already completed and re-detects hardware.
 
 **Nuclear option (reset all Costa configs):**
 
@@ -2050,9 +2050,9 @@ Hold `SUPER+ALT+V` and describe your problem.
 
 **Upstream resources:**
 
-- [Arch Wiki](https://wiki.archlinux.org/) --- the definitive resource for Arch Linux
-- [Hyprland Wiki](https://wiki.hyprland.org/) --- Hyprland configuration reference
-- [PipeWire Wiki](https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/home) --- audio system documentation
+- [Arch Wiki](https://wiki.archlinux.org/), the definitive resource for Arch Linux
+- [Hyprland Wiki](https://wiki.hyprland.org/). Hyprland configuration reference
+- [PipeWire Wiki](https://gitlab.freedesktop.org/pipewire/pipewire/-/wikis/home), audio system documentation
 
 ---
 
@@ -2085,7 +2085,7 @@ You can delete any of this data at any time. `rm -rf ~/.config/costa/` removes e
 
 If you choose to use cloud AI (Claude by Anthropic or OpenAI), your API keys are:
 
-- Stored locally in `~/.config/costa/env` with restrictive file permissions (`chmod 600` --- only your user can read them)
+- Stored locally in `~/.config/costa/env` with restrictive file permissions (`chmod 600`, only your user can read them)
 - Sent directly from your machine to the provider's API (`api.anthropic.com` or `api.openai.com`)
 - Never proxied through any Costa OS server (there are no Costa OS servers)
 - Never logged, transmitted, or shared with anyone other than the configured provider
@@ -2100,7 +2100,7 @@ If you choose to use cloud AI (Claude by Anthropic or OpenAI), your API keys are
    ```
 3. Reload: `source ~/.config/costa/env`
 
-Costa OS also works with Claude Pro/Max subscription tokens --- no separate API billing required if you already have a Claude plan.
+Costa OS also works with Claude Pro/Max subscription tokens, no separate API billing required if you already have a Claude plan.
 
 ### Face Auth Security
 
@@ -2118,10 +2118,10 @@ You can disable face auth at any time through the Settings Hub or by removing th
 
 The voice assistant is designed with privacy as a core principle:
 
-1. **Recording** --- Audio is captured only while you hold the push-to-talk key. There is no always-on listening.
-2. **Processing** --- The recording is processed locally by DeepFilterNet (noise reduction) and Whisper (speech-to-text) on your own hardware.
-3. **Deletion** --- The audio file is deleted immediately after transcription. It is never uploaded anywhere.
-4. **Transcription** --- The text goes to your local Ollama model. If cloud escalation is triggered, only the text (never the audio) is sent to the cloud provider.
+1. **Recording**: Audio is captured only while you hold the push-to-talk key. There is no always-on listening.
+2. **Processing**: The recording is processed locally by DeepFilterNet (noise reduction) and Whisper (speech-to-text) on your own hardware.
+3. **Deletion**: The audio file is deleted immediately after transcription. It is never uploaded anywhere.
+4. **Transcription**: The text goes to your local Ollama model. If cloud escalation is triggered, only the text (never the audio) is sent to the cloud provider.
 
 No voice data is ever stored permanently, uploaded, or used for training.
 
@@ -2149,9 +2149,9 @@ Costa OS is open source under the Apache License 2.0. The repository is at [gith
 
 Development is managed by the Costa OS team. External contributions are not accepted via pull requests at this time. However, there are ways to help:
 
-- **Report bugs** --- File an issue on GitHub with steps to reproduce, expected behavior, and actual behavior
-- **Suggest features** --- Open a feature request issue describing what you want and why
-- **Test on hardware** --- Report compatibility results for different GPUs, monitors, and peripherals in a GitHub issue
+- **Report bugs**: File an issue on GitHub with steps to reproduce, expected behavior, and actual behavior
+- **Suggest features**: Open a feature request issue describing what you want and why
+- **Test on hardware**: Report compatibility results for different GPUs, monitors, and peripherals in a GitHub issue
 
 The codebase is open source so you can read, fork, and learn from it, but the canonical repository is maintained exclusively by the team.
 

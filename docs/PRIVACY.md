@@ -68,9 +68,9 @@ That's it. There is no background telemetry, no analytics beacon, no heartbeat p
 
 ---
 
-## No Connection to Any Company
+## Who Develops Costa OS
 
-Costa OS is a community open-source project. It is not operated by, affiliated with, or connected to Synoros, Conduit Software, or any other company. There are no company servers, no corporate data collection, and no business interests in your usage data.
+Costa OS is developed by Synoros Software. The intelligence layer is open source. There are no company servers collecting user data, no corporate telemetry, and no business interests in your usage data.
 
 ---
 

@@ -2,13 +2,13 @@
 
 **Last updated:** March 2026
 
-These terms are straightforward because Costa OS is simple: it's free, open-source software that you can do whatever you want with.
+Costa OS has two parts: the intelligence layer (ai-router, configs, knowledge bases, MCP server) is free, open-source software under the Apache License 2.0. The installer and ISO distribution are proprietary.
 
 ---
 
-## License
+## Open Source Components (Apache 2.0)
 
-Costa OS is released under the **Apache License 2.0**. This means you can:
+The intelligence layer (ai-router, configuration templates, knowledge bases, MCP server) is released under the **Apache License 2.0**. This means you can:
 
 - Use it for anything — personal, commercial, educational, whatever
 - Modify it however you want
@@ -17,6 +17,12 @@ Costa OS is released under the **Apache License 2.0**. This means you can:
 - Sell products built on it
 
 The main requirements are that you include the copyright notice, license text, and state any changes when you redistribute the source code. The Apache License 2.0 also provides an express grant of patent rights from contributors. See the full [LICENSE](../LICENSE) file for the exact legal text.
+
+---
+
+## Proprietary Components
+
+The installer wizard and ISO distribution are proprietary software owned by Synoros Software. You may use the installer as provided but may not redistribute, reverse-engineer, or create derivative works from these components without written permission.
 
 ---
 
@@ -59,7 +65,7 @@ Your API keys are your responsibility. Costa OS stores them locally and sends th
 
 ## Contributions
 
-If you contribute to Costa OS (pull requests, issues, documentation), your contributions are licensed under the same Apache License 2.0 as the rest of the project.
+If you contribute to the open source components of Costa OS (pull requests, issues, documentation), your contributions are licensed under the same Apache License 2.0.
 
 ---
 
