@@ -5,13 +5,13 @@
   "name": "main-bar",
   "output": "__OUTPUT__",
   "layer": "top",
+  "gtk-layer-shell": false,
   "position": "top",
   "height": 44,
   "spacing": 8,
   "margin-top": 6,
   "margin-left": 10,
   "margin-right": 10,
-  "gtk-layer-shell": true,
   "tooltip": true,
 
   "modules-left": [

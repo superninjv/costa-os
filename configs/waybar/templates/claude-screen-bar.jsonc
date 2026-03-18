@@ -6,6 +6,7 @@
   "name": "claude-screen-bar",
   "output": "__OUTPUT__",
   "layer": "top",
+  "gtk-layer-shell": false,
   "position": "top",
   "height": 28,
   "margin-top": 2,

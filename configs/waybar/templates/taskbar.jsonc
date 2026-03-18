@@ -6,6 +6,7 @@
   "name": "taskbar",
   "output": "__OUTPUT__",
   "layer": "top",
+  "gtk-layer-shell": false,
   "position": "bottom",
   "height": 40,
   "margin-bottom": 4,

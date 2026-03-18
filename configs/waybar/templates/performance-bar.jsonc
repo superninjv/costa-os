@@ -7,6 +7,7 @@
   "name": "performance-bar",
   "output": "__OUTPUT__",
   "layer": "top",
+  "gtk-layer-shell": false,
   "position": "top",
   "height": 32,
   "margin-top": 4,
