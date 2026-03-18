@@ -102,7 +102,7 @@ Costa OS is an AI-native Linux distribution built on Arch Linux and the Hyprland
 
 Under the hood, Costa OS is a fully-featured Arch Linux installation with a tiling window manager, a curated set of development tools, and a custom Mediterranean-inspired theme called "Costa." What makes it different is the intelligence layer woven through every component. The clipboard watches what you copy and offers smart actions. The screenshot tool sends images to AI for instant analysis. The music player, the window manager, the notification system, and even the status bar are all connected to the same AI brain.
 
-Costa OS is also a privacy-first system. By default, all AI processing happens locally on your own GPU using open-source models. Cloud AI (Claude by Anthropic) is available when you need more power, but it is entirely optional, and when used, your queries go directly to Anthropic --- Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
+Costa OS is powered by Claude Code, which ships as a first-class citizen with full system access. Claude handles complex tasks --- code generation, debugging, architecture, system management, and multi-step workflows. For routine queries (system status, quick lookups, simple commands), local models on your GPU provide instant responses without an internet connection. When you do use cloud AI, your queries go directly to Anthropic --- Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
 
 ### Philosophy
 
@@ -110,7 +110,7 @@ Costa OS is built on three principles:
 
 **1. AI as the primary interface.** Traditional operating systems force you to learn their language --- command flags, config file syntax, menu hierarchies. Costa OS inverts that relationship. You speak in natural language, and the system translates your intent into action. Want to install a program? Say "install Blender." Want to change a keybind? Say "bind Super+G to open GIMP." Want to know why your build is slow? Ask, and the AI checks your CPU load, running containers, swap usage, and compiler flags before answering.
 
-**2. Local-first, privacy by default.** Your questions, your voice, your clipboard, your files --- none of it leaves your machine unless you explicitly choose to use cloud AI. Local models running on your GPU handle the vast majority of queries with sub-second latency. The system is fully functional offline.
+**2. Claude Code at the center, local models for speed.** Claude Code is the primary intelligence --- it can modify any config, install any package, write any script, and navigate graphical applications on your behalf. Local models running on your GPU handle routine queries with sub-second latency and zero internet dependency. The two work together: local for fast, private, everyday tasks; Claude for anything that requires real reasoning. Your data stays private regardless --- Costa OS has no servers, no telemetry, and no accounts.
 
 **3. Maximum customization, zero gatekeeping.** Costa OS is your machine. Every config file is documented, every tool is replaceable, and the entire codebase is open source under the Apache License 2.0. The AI makes customization effortless for beginners, and the underlying Arch Linux foundation means power users can go as deep as they want.
 
@@ -118,13 +118,13 @@ Costa OS is built on three principles:
 
 Most Linux distributions hand you a desktop and leave you to figure out the rest. Costa OS is different in several concrete ways:
 
-- **You never need to know where a config file lives.** Claude Code, which ships as a first-class citizen with full system access, can modify any config, install any package, and create any script. Just describe what you want in plain English.
+- **Claude Code is your system administrator.** It ships as a first-class citizen with full system access, 30+ MCP tools, and a hardware-aware context file generated at first boot. It can modify any config, install any package, create any script, navigate graphical applications, and debug problems end-to-end. Just describe what you want in plain English.
 
 - **The AI knows your actual system.** Every query is enriched with live data --- running processes, GPU utilization, disk space, network state, audio routing, window layout. When the AI answers, it answers about *your* machine, not a generic one.
 
-- **Model routing is automatic.** Simple questions are answered locally in under a second. Complex questions escalate to cloud models without you lifting a finger. Launch a game and need GPU memory? The AI models step aside silently. Close the game? They reload.
+- **Two tiers work together.** Claude Code handles complex tasks --- code generation, multi-file edits, architecture, debugging. Local models on your GPU handle routine queries (system status, quick lookups, simple commands) with sub-second latency and zero internet dependency. Routing between them is automatic.
 
-- **The entire desktop is AI-aware.** Copy an error message and the clipboard daemon offers to debug it with AI. Take a screenshot and the AI reads and analyzes it. The voice assistant transcribes speech in 500 milliseconds. Waybar modules show AI status, usage metrics, and processing indicators.
+- **The entire desktop is AI-aware.** Copy an error message and the clipboard service offers to debug it with AI. Take a screenshot and the AI reads and analyzes it. The voice assistant transcribes speech in 500 milliseconds. Waybar modules show AI status, usage metrics, and processing indicators.
 
 - **It is still Arch Linux.** Underneath the AI layer, this is a standard Arch installation. `pacman` works. `systemctl` works. You have full root access. Nothing is locked down, hidden, or "simplified" by removing functionality. The AI is an addition, not a restriction.
 
@@ -138,15 +138,16 @@ When you boot the Costa OS ISO for the first time, you will see a graphical inst
 
 After installation and reboot, the system runs a first-boot wizard that:
 
-1. Detects your GPU and installs the appropriate drivers (AMD, NVIDIA, or Intel)
-2. Detects your monitors and generates a multi-monitor Waybar configuration
-3. Detects optional hardware (IR camera for face auth, touchscreen for gestures)
-4. Pulls the best AI model your GPU can handle from Ollama
-5. Builds Whisper.cpp with GPU acceleration for voice transcription
-6. Generates a hardware-aware `CLAUDE.md` so Claude Code knows your exact setup
-7. Optionally sets up face authentication, touchscreen gestures, and API keys
+1. **Sets up Claude Code** --- prompts you to authenticate with your Anthropic account (Claude Pro, Max, or API key). This is the first step because once Claude Code is working, it can help fix anything else that goes wrong during setup.
+2. Detects your GPU and installs the appropriate drivers (AMD, NVIDIA, or Intel)
+3. Detects your monitors and generates a multi-monitor Waybar configuration
+4. Generates a hardware-aware `CLAUDE.md` so Claude Code knows your exact setup
+5. Detects optional hardware (IR camera for face auth, touchscreen for gestures)
+6. Pulls the best local AI model your GPU can handle from Ollama (for fast, offline queries)
+7. Builds Whisper.cpp with GPU acceleration for voice transcription
+8. Optionally sets up face authentication and touchscreen gestures
 
-This process takes a few minutes depending on your internet speed and GPU. When it finishes, you land on a fully configured desktop with the Costa theme, Waybar panels on every monitor, and the AI assistant ready to use.
+This process takes a few minutes depending on your internet speed and GPU. Claude Code authentication happens first so that if any subsequent step fails, you can immediately ask Claude Code to diagnose and fix it. When setup finishes, you land on a fully configured desktop with the Costa theme, Waybar panels on every monitor, and both Claude Code and the local AI assistant ready to use.
 
 <!-- screenshot: The Costa OS desktop after first boot, showing the Waybar panel at the top with the Costa AI widget, now-playing module, and system tray. The desktop shows the Costa default wallpaper with the Costa theme. -->
 
