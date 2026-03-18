@@ -26,6 +26,94 @@ from pathlib import Path
 
 from context import gather_context
 from window_manager import is_window_command, execute_window_command
+
+# Meta queries — questions about Costa OS itself, handled before routing
+META_PATTERN = re.compile(
+    r"\b(what can you do|what are you|how do I use (costa|this|the ai)|how does .{0,10}(ai|costa|routing|router) work|"
+    r"(show me |what.s |my )(usage|stats|history)|costa.?ai (usage|stats|help)|"
+    r"what models are (available|loaded|running)|how do I (use|train) (the |this )?(router|costa|ai)|"
+    r"list (available )?models|costa help|what commands (do you|can you))\b",
+    re.IGNORECASE,
+)
+
+# Multi-intent split patterns
+_SPLIT_RE = re.compile(
+    r"\s+(?:and\s+(?:then\s+)?(?:also\s+)?|then\s+|also\s+|,\s*(?:and\s+)?(?:then\s+)?)"
+    r"(?=\b(?:open|close|move|put|tile|switch|find|show|check|start|stop|run|set|change|"
+    r"install|write|create|make|play|search|locate|list|what|how|is|where|kill|restart|float|resize|reboot|shutdown|update|mute|unmute|lower|raise|clean)\b)",
+    re.IGNORECASE,
+)
+
+
+def _split_multi_intent(query: str) -> list[str]:
+    """Split a multi-intent query into individual queries.
+
+    'install neovim and set it as my default editor' → ['install neovim', 'set it as my default editor']
+    'check if postgres is running and show me the logs' → ['check if postgres is running', 'show me the logs']
+
+    Returns a list with 1 element if the query is single-intent.
+    """
+    parts = _SPLIT_RE.split(query)
+    # Filter empty parts and very short fragments
+    parts = [p.strip() for p in parts if p.strip() and len(p.strip()) > 3]
+    return parts if len(parts) > 1 else [query]
+
+
+def _handle_meta(query: str) -> dict | None:
+    """Handle meta-queries about Costa OS itself."""
+    if not META_PATTERN.search(query):
+        return None
+
+    q = query.lower()
+
+    if re.search(r"what can you do|what are you|costa help|how do i use (costa|this|the ai)|what are you capable", q):
+        return {
+            "response": "I can manage your system, search files, control windows, write code, "
+                        "research topics, and answer questions. Ask naturally — voice, text, or keybinds. "
+                        "Try: 'what GPU do I have', 'move firefox to workspace 3', or 'write a python script'.",
+            "model": "meta", "route": "meta",
+        }
+
+    if re.search(r"usage|stats", q):
+        try:
+            from db import get_usage_stats
+            stats = get_usage_stats("today")
+            return {
+                "response": f"Today: {stats['total_queries']} queries, ${stats['total_cost']:.4f} cost, "
+                            f"{stats['avg_latency_ms']}ms avg, {stats['escalation_rate']:.0%} escalation rate.",
+                "model": "meta", "route": "meta",
+            }
+        except Exception:
+            pass
+
+    if re.search(r"models? (are |)(available|loaded|running)", q):
+        try:
+            model = Path("/tmp/ollama-smart-model").read_text().strip()
+            return {
+                "response": f"Local: {model} (via Ollama). Cloud: Claude Haiku (web), Sonnet (code), Opus (architecture). "
+                            f"Routing is automatic — local for fast queries, cloud when needed.",
+                "model": "meta", "route": "meta",
+            }
+        except Exception:
+            pass
+
+    if re.search(r"(how does|how do).*(rout|ai|costa).*work", q):
+        return {
+            "response": "Queries go through an MLP classifier (instant) with LLM fallback for ambiguous cases (~300ms). "
+                        "Routes: local (Ollama), haiku+web (live data), sonnet (code), opus (architecture), "
+                        "file_search, window_manager. Every query trains the model via auto-labeling.",
+            "model": "meta", "route": "meta",
+        }
+
+    if re.search(r"train.*(router|model)", q):
+        return {
+            "response": "Run 'costa-ai --train-router' to retrain the MLP on logged queries. "
+                        "It retrains automatically every 50 queries. "
+                        "Use 'costa-ai --train-router --eval' for accuracy report.",
+            "model": "meta", "route": "meta",
+        }
+
+    return None
 from project_switch import switch_project, fuzzy_match, list_projects
 from file_search import search_files, format_results as format_file_results, record_file_open
 from keybinds import is_keybind_query, handle_keybind_query
@@ -67,7 +155,7 @@ IDK_RE = re.compile("|".join(IDK_PATTERNS), re.IGNORECASE)
 ROUTE_PATTERNS = {
     "file_search": r"(find|locate|where\s+is|search\s+for)\s+(the\s+|that\s+|a\s+|my\s+)?(file|script|module|config|source|code)|where.s\s+(the|that|my)\s+\w+\s+file|find\s+that\s+\w+\s+(file|script|code)|which\s+file\s+(has|contains|had)",
     "project_switch": r"(switch|change|go|jump|move|open|load|start|launch)\s+(to\s+|into\s+|up\s+)?(the\s+)?\w[\w\s\-]*?\s*(project|env)|switch\s+to\s+(?!workspace\b)\w+",
-    "opus": r"architect|design.*system|research.*in.depth|deep dive|security.*audit|plan.*migration|compare.*approach|trade.?off|comprehensive.*review|evaluate.*strategy",
+    "opus": r"architect|design.*system|research.*in.depth|deep dive|security.*audit|plan.*migration|compare.*approach|trade.?off|comprehensive.*review|evaluate.*strategy|threat\s*model|incident\s*response|capacity\s*plan",
     "sonnet": r"write (a |the |some |me )?(code|script|function|class|test|program|module)|implement|debug|fix (the |this |a )?bug|refactor|make (a |the )?(component|api|endpoint|server|app)|build (a |the )?(project|app|service)|deploy|set up (a |the )?(pipeline|ci|cd|server)",
     "haiku+web": r"(latest |breaking |today.s )?(news|headline)|score.*(game|match)|who.*(won|play|lead)|trending|what happened.*(today|yesterday|world|country)|latest.*update.*(on|about)|search.*for.*(online|web|internet)|look up.*(online|web|person|company|stock|price)|(new|latest|recent)\s+(CVE|vulnerabilit|security\s+(advisory|patch|update|issue))",
     "local+weather": r"weather|forecast|(?:outside|outdoor)\s*temp|temperature\s*(?:outside|outdoors|today|tonight|tomorrow)|(?:how|what).{0,10}(?:hot|cold|warm)\s+(?:is\s+it|outside|today)|rain(?:ing|fall|y)?(?:\s+today|\s+tomorrow|\s+this\s+week)?$",
@@ -275,7 +363,14 @@ def query_ollama(prompt: str, system: str, model: str, timeout: int = 30,
             return ""
 
         data = json.loads(stdout)
-        return data.get("response", "").strip()
+        resp = data.get("response", "").strip()
+        # Truncate if model switches to Chinese/other scripts (qwen2.5 quirk)
+        # CJK Unified Ideographs range: U+4E00–U+9FFF
+        for i, ch in enumerate(resp):
+            if '\u4e00' <= ch <= '\u9fff':
+                resp = resp[:i].rstrip('，。、：；')
+                break
+        return resp
     except subprocess.TimeoutExpired:
         if _ollama_process:
             _ollama_process.kill()
@@ -287,9 +382,9 @@ def query_ollama(prompt: str, system: str, model: str, timeout: int = 30,
 
 
 CLAUDE_MODEL_MAP = {
-    "haiku": "claude-haiku-4-5-20251001",
-    "sonnet": "claude-sonnet-4-6-20250514",
-    "opus": "claude-opus-4-6-20250514",
+    "haiku": "haiku",
+    "sonnet": "sonnet",
+    "opus": "opus",
 }
 
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
@@ -392,7 +487,7 @@ ACTION_PATTERNS = re.compile(
     r"(^|\b)(turn\b.{0,20}\b(up|down|off|on)|set (the |my )?(volume|brightness|wallpaper)|"
     r"(lower|raise|increase|decrease|reduce) (the |my )?(volume|brightness)|"
     r"restart|reload|kill|close|open|launch|start|stop|mute|unmute|"
-    r"switch (to |)workspace|move (window|this)|"
+    r"switch (to |)workspace|move (window|this)|minimize|maximize|"
     r"connect|disconnect|enable|disable|toggle|"
     r"play|pause|skip|next|previous|shuffle)\b",
     re.IGNORECASE,
@@ -480,6 +575,22 @@ def execute_command(cmd: str, timeout: int = 10) -> str:
         return f"(error: {e})"
 
 
+def _is_api_error(response: str) -> bool:
+    """Detect if a response is an API error, not a real answer."""
+    if not response:
+        return True
+    error_patterns = [
+        "out of extra usage",
+        "resets 2pm",
+        "issue with the selected model",
+        "may not exist or you may not have access",
+        "rate limit",
+        "overloaded",
+    ]
+    resp_lower = response.lower()
+    return any(p in resp_lower for p in error_patterns)
+
+
 def is_idk_response(response: str) -> bool:
     """Detect if the local model is saying 'I don't know' in various ways."""
     if not response:
@@ -526,6 +637,51 @@ def route_query(query: str, force_model: str | None = None,
     response = ""
 
     try:
+        # Meta queries — questions about Costa OS itself
+        if not force_model:
+            meta = _handle_meta(query)
+            if meta:
+                elapsed = time.time() - start
+                result = {
+                    "query": query,
+                    "response": meta["response"],
+                    "model": "meta",
+                    "route": "meta",
+                    "context_gathered": False,
+                    "escalated": False,
+                    "command_executed": None,
+                    "elapsed_ms": int(elapsed * 1000),
+                    "total_ms": int(elapsed * 1000),
+                }
+                _log_to_db(result, input_modality)
+                return result
+
+        # Multi-intent splitting — "do X and then do Y"
+        if not force_model:
+            parts = _split_multi_intent(query)
+            if len(parts) > 1:
+                responses = []
+                for part in parts:
+                    sub = route_query(part, force_model=force_model,
+                                      allow_escalation=allow_escalation,
+                                      gather_context_flag=gather_context_flag,
+                                      input_modality=input_modality)
+                    responses.append(sub.get("response", ""))
+                elapsed = time.time() - start
+                result = {
+                    "query": query,
+                    "response": " | ".join(r for r in responses if r),
+                    "model": "multi",
+                    "route": "multi",
+                    "context_gathered": False,
+                    "escalated": False,
+                    "command_executed": None,
+                    "elapsed_ms": int(elapsed * 1000),
+                    "total_ms": int(elapsed * 1000),
+                }
+                _log_to_db(result, input_modality)
+                return result
+
         # Window management — intercept before other routes
         if not force_model and is_window_command(query):
             wm_result = execute_window_command(query)
@@ -632,12 +788,46 @@ def route_query(query: str, force_model: str | None = None,
         if _cancelled:
             return _cancelled_result(query, start, input_modality)
 
+        # Window manager route from ML (not caught by is_window_command regex)
+        if route == "window_manager" and not force_model:
+            wm_result = execute_window_command(query)
+            is_not_found = "Could not find" in wm_result.get("result", "") or "No " in wm_result.get("result", "")
+            if not wm_result.get("commands_run") and allow_escalation and not is_not_found:
+                escalated_response = query_claude(
+                    query, model="haiku",
+                    system="You are a system assistant for Costa OS (Arch Linux + Hyprland). "
+                           "The user wants a window management action. Execute it. Be direct.",
+                    use_tools=True,
+                    timeout=30,
+                )
+                if escalated_response:
+                    wm_result["result"] = escalated_response
+                    wm_result["commands_run"] = ["(via Claude)"]
+            elapsed = time.time() - start
+            result = {
+                "query": query,
+                "response": wm_result["result"],
+                "model": "window_manager",
+                "route": "window_manager",
+                "context_gathered": False,
+                "escalated": not bool(wm_result.get("commands_run", [None])[0] != "(via Claude)"),
+                "command_executed": "; ".join(wm_result["commands_run"]) if wm_result["commands_run"] else None,
+                "elapsed_ms": int(elapsed * 1000),
+                "total_ms": int(elapsed * 1000),
+            }
+            _log_to_db(result, input_modality)
+            return result
+
         # Cloud routes — pass directly (with tool_use for sonnet/opus)
         if route in ("opus", "sonnet"):
             t0 = time.time()
             response = query_claude(query, model=route, timeout=120, use_tools=True)
             model_ms = int((time.time() - t0) * 1000)
             model_used = route
+            # If API is down, fall back to local
+            if _is_api_error(response):
+                response = ""
+                route = "local"
         elif route == "haiku+web":
             t0 = time.time()
             response = query_claude(
@@ -647,6 +837,8 @@ def route_query(query: str, force_model: str | None = None,
             )
             model_ms = int((time.time() - t0) * 1000)
             model_used = "haiku"
+            if _is_api_error(response):
+                response = "Cloud API is currently unavailable. Try again in a few minutes."
         elif route == "local+weather":
             # Fetch weather data and reason locally
             import urllib.parse
@@ -741,10 +933,11 @@ def route_query(query: str, force_model: str | None = None,
                     use_tools=True,
                 )
                 model_ms = int((time.time() - t0) * 1000)
-                if haiku_response:
+                if haiku_response and not _is_api_error(haiku_response):
                     response = haiku_response
                     model_used = "haiku"
                     route = "local+escalated"
+                # If Claude returned an API error, keep the local response
 
         if _cancelled:
             return _cancelled_result(query, start, input_modality)
@@ -769,16 +962,8 @@ def route_query(query: str, force_model: str | None = None,
                 elif safety == "dangerous":
                     response = f"I won't run that automatically — it could be destructive. Command: {cmd}"
                 else:
-                    cmd_output = execute_command(cmd)
-                    command_executed = cmd
-                    followup = query_ollama(
-                        f"You just ran this command: `{cmd}`\nOutput: {cmd_output}\n\nGive a brief natural confirmation. One sentence, no backticks.",
-                        system_prompt, get_ollama_model(), timeout=10,
-                    )
-                    if followup and len(followup) > 5:
-                        response = followup
-                    else:
-                        response = f"Ran `{cmd}`. {cmd_output}"
+                    # "ask" category: show command but don't auto-execute
+                    response = f"{response}\n\nSuggested command: `{cmd}` (run manually to confirm)"
             elif allow_escalation and not escalated and not _cancelled:
                 # Local model described instead of acting — escalate to Claude with tools
                 escalated = True
