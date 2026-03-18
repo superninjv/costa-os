@@ -20,20 +20,20 @@ Or by voice: hold `SUPER+ALT+V` and say "switch to myproject"
 Project configs live in `~/.config/costa/projects/<name>.yaml`:
 
 ```yaml
-name: PARAGON
-directory: ~/projects/paragon
+name: my-webapp
+directory: ~/projects/my-webapp
 workspace: 2
 
 apps:
-  - command: code ~/projects/paragon
+  - command: code ~/projects/my-webapp
     position: left      # optional: left, right, top, bottom, center
-  - command: ghostty -e "cd ~/projects/paragon && zsh"
+  - command: ghostty -e "cd ~/projects/my-webapp && zsh"
     position: right
   - command: firefox --new-window "http://localhost:3000"
     position: floating
 
 env:
-  DATABASE_URL: "postgresql://localhost/paragon"
+  DATABASE_URL: "postgresql://localhost/myapp"
   NODE_ENV: "development"
 
 setup:
@@ -73,7 +73,7 @@ costa-ai "create a project config for ~/projects/myapp with VS Code and a termin
 Project switching uses fuzzy matching on the project name:
 
 ```sh
-costa-ai "switch to para"      # matches "PARAGON"
-costa-ai "switch to son"       # matches "sonical"
-costa-ai "switch to better"    # matches "Better Nautilus"
+costa-ai "switch to web"       # matches "my-webapp"
+costa-ai "switch to api"       # matches "api-server"
+costa-ai "switch to front"     # matches "frontend"
 ```

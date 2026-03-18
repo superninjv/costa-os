@@ -52,7 +52,7 @@ The router: gathers live system context → queries local Ollama → detects "I 
 
 **Read `configs/costa/agents/*.yaml` before doing server ops, deploys, builds, or code reviews.** 6 agents (deployer, sysadmin, architect, builder, janitor, monitor) handle these tasks. Invoke via `costa-agents run <name> "instruction"` or the MCP `system_command` tool.
 
-- **After modifying synoros-platform** → git push, then deploy via the **deployer** agent
+- **After modifying site files** → git push, then deploy via the **deployer** agent
 - **After modifying ISO-related files** → use the **builder** agent
 - **Server SSH/ops** → use **sysadmin** or **deployer** (they share a serial queue)
 - If `costa-agents` CLI isn't available, read the agent YAML for the SSH command and run it directly

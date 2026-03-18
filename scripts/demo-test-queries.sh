@@ -69,7 +69,7 @@ echo ""
 
 # Act 3: Developer Experience
 echo "--- Act 3: Developer Experience ---"
-test_query "Project switch" "switch to PARAGON project" 5
+test_query "Project switch" "switch to my-webapp project" 5
 test_query "Package install" "install redis" 5
 echo ""
 

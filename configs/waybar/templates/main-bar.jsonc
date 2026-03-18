@@ -228,8 +228,9 @@
     },
     "tooltip-format": "{desc}\n{volume}% — {format_source}",
     "on-click": "pavucontrol",
-    "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
-    "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+    "on-click-middle": "swayosd-client --output-volume mute-toggle",
+    "on-scroll-up": "swayosd-client --output-volume 5",
+    "on-scroll-down": "swayosd-client --output-volume -5",
     "scroll-step": 5
   },
 

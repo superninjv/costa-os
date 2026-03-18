@@ -132,7 +132,7 @@ Each tool gets 2-3 seconds."
 
 shot "ACT 3" "11" "1:18-1:25" \
     "Voice: project switch" \
-    "Say: 'switch to PARAGON project'
+    "Say: 'switch to my-webapp project'
 Show the workspace change, editor opening, terminal cd'ing.
 Demonstrate the full context switch."
 

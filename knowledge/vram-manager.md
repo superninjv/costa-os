@@ -28,7 +28,7 @@ ollama ps                      # show all loaded models and VRAM usage
 
 ## How It Decides
 
-1. Checks total GPU VRAM (16GB on RX 9060 XT)
+1. Checks total GPU VRAM (e.g., 8GB, 12GB, 16GB depending on your GPU)
 2. Subtracts VRAM used by other apps (games, browsers, etc.)
 3. Subtracts 2GB headroom buffer (prevents thrashing)
 4. Picks the largest model that fits in remaining space

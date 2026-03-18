@@ -1591,11 +1591,11 @@ Costa OS can switch your entire workspace context --- open the right editor, ter
 **Switching projects:**
 
 ```bash
-costa-ai "switch to PARAGON"               # by name
+costa-ai "switch to my-webapp"               # by name
 costa-ai "switch to para"                   # fuzzy matching works
 ```
 
-Or by voice: hold `SUPER+ALT+V` and say "switch to PARAGON."
+Or by voice: hold `SUPER+ALT+V` and say "switch to my-webapp."
 
 Or through Waybar: click the folder icon to open the project list, or scroll on it to cycle through recent projects.
 
@@ -1611,20 +1611,20 @@ Or through Waybar: click the folder icon to open the project list, or scroll on 
 Create a YAML file in `~/.config/costa/projects/`:
 
 ```yaml
-name: PARAGON
-directory: ~/projects/paragon
+name: my-webapp
+directory: ~/projects/my-webapp
 workspace: 2
 
 apps:
-  - command: code ~/projects/paragon
+  - command: code ~/projects/my-webapp
     position: left
-  - command: ghostty -e "cd ~/projects/paragon && zsh"
+  - command: ghostty -e "cd ~/projects/my-webapp && zsh"
     position: right
   - command: firefox --new-window "http://localhost:3000"
     position: floating
 
 env:
-  DATABASE_URL: "postgresql://localhost/paragon"
+  DATABASE_URL: "postgresql://localhost/my-webapp"
   NODE_ENV: "development"
 
 setup:

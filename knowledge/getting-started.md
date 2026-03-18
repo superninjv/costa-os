@@ -52,13 +52,13 @@ spotify          # music (via spotify-launcher)
 
 ## Workspaces & Monitors
 
-Costa OS uses 3 monitors with 6 workspaces:
+Costa OS assigns workspaces per monitor (auto-detected at first boot):
 
 | Workspace | Monitor | Description |
 |-----------|---------|-------------|
-| 1–4 | DP-1 (center, 2560x1440) | Main workspaces |
-| 5 | HDMI-A-2 (top, 1920x1080) | Secondary/media |
-| 6 | HDMI-A-1 (left, portrait 720x1280) | Reference/chat |
+| 1–4 | Primary (highest res/refresh) | Main workspaces |
+| 5–6 | Secondary monitors (if present) | Reference, media, chat |
+| 7 | Virtual headless (if enabled) | AI navigation |
 
 Switch workspaces: `SUPER+<number>`
 Move a window there: `SUPER+SHIFT+<number>`
