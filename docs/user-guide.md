@@ -98,9 +98,9 @@
 
 ### What Is Costa OS?
 
-Costa OS is an AI-native Linux distribution built on Arch Linux and the Hyprland Wayland compositor. It is designed around one radical idea: **the AI is the operating system interface**. Instead of memorizing commands, hunting through settings panels, or reading man pages, you talk to your computer --- by voice, by typing, or through traditional keybinds --- and it understands what you mean because it knows your system inside and out.
+Costa OS is a Linux distribution built on Arch Linux and the Hyprland Wayland compositor. Claude Code ships with full system access, so instead of memorizing commands, hunting through settings panels, or reading man pages, you describe what you want --- by voice, by typing, or through keybinds --- and the system does it. It knows your hardware, your running processes, your configs, and your project contexts.
 
-Under the hood, Costa OS is a fully-featured Arch Linux installation with a tiling window manager, a curated set of development tools, and a custom Mediterranean-inspired theme called "Costa." What makes it different is the intelligence layer woven through every component. The clipboard watches what you copy and offers smart actions. The screenshot tool sends images to AI for instant analysis. The music player, the window manager, the notification system, and even the status bar are all connected to the same AI brain.
+Under the hood, Costa OS is a fully-featured Arch Linux installation with a tiling window manager, a curated set of development tools, and a custom Mediterranean-inspired theme called "Costa." What makes it different is that Claude Code and local models are connected to every component. The clipboard watches what you copy and offers to debug errors. The screenshot tool analyzes images on capture. The music player, window manager, notification system, and status bar all feed into the same routing system.
 
 Costa OS is powered by Claude Code, which ships as a first-class citizen with full system access. Claude handles complex tasks --- code generation, debugging, architecture, system management, and multi-step workflows. For routine queries (system status, quick lookups, simple commands), local models on your GPU provide instant responses without an internet connection. When you do use cloud AI, your queries go directly to Anthropic --- Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
 
@@ -108,7 +108,7 @@ Costa OS is powered by Claude Code, which ships as a first-class citizen with fu
 
 Costa OS is built on three principles:
 
-**1. AI as the primary interface.** Traditional operating systems force you to learn their language --- command flags, config file syntax, menu hierarchies. Costa OS inverts that relationship. You speak in natural language, and the system translates your intent into action. Want to install a program? Say "install Blender." Want to change a keybind? Say "bind Super+G to open GIMP." Want to know why your build is slow? Ask, and the AI checks your CPU load, running containers, swap usage, and compiler flags before answering.
+**1. Describe what you want, the system does it.** Traditional operating systems force you to learn their language --- command flags, config file syntax, menu hierarchies. Costa OS lets you skip that. Want to install a program? Say "install Blender." Want to change a keybind? Say "bind Super+G to open GIMP." Want to know why your build is slow? Ask, and the system checks your CPU load, running containers, swap usage, and compiler flags before answering.
 
 **2. Claude Code at the center, local models for speed.** Claude Code is the primary intelligence --- it can modify any config, install any package, write any script, and navigate graphical applications on your behalf. Local models running on your GPU handle routine queries with sub-second latency and zero internet dependency. The two work together: local for fast, private, everyday tasks; Claude for anything that requires real reasoning. Your data stays private regardless --- Costa OS has no servers, no telemetry, and no accounts.
 
