@@ -391,6 +391,13 @@ def query_ollama(prompt: str, system: str, model: str, timeout: int = 30,
     if _cancelled:
         return ""
 
+    # Quick check: is Ollama even reachable? (avoids 30s timeout)
+    try:
+        import urllib.request
+        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
+    except Exception:
+        return ""  # Ollama not running, caller will escalate
+
     payload_dict = {
         "model": model,
         "prompt": prompt,
@@ -511,7 +518,7 @@ def query_claude(query: str, model: str = "haiku", tools: list | None = None,
             break
 
     if not claude_bin:
-        return ""
+        return "Claude Code is not installed or not on PATH. Open a terminal and run 'claude' to set it up."
 
     cmd = [
         claude_bin, "-p",
@@ -958,6 +965,8 @@ def route_query(query: str, force_model: str | None = None,
                 model_ms = int((time.time() - t0) * 1000)
                 model_used = "haiku"
                 route = "cloud_only"
+                if not response:
+                    response = "No local model is available and cloud is not reachable. Check your internet connection, or run 'claude' in a terminal to set up Claude Code."
                 elapsed = time.time() - start
                 result = {
                     "query": query, "response": response, "model": model_used,
@@ -1044,7 +1053,9 @@ def route_query(query: str, force_model: str | None = None,
                     response = haiku_response
                     model_used = "haiku"
                     route = "local+escalated"
-                # If Claude returned an API error, keep the local response
+                elif not response or is_idk_response(response):
+                    # Both local and cloud failed
+                    response = "Could not get an answer. The local model was unsure and cloud is not reachable. Check your internet connection or try again."
 
         if _cancelled:
             return _cancelled_result(query, start, input_modality)
