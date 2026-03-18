@@ -102,7 +102,7 @@ Costa OS is a Linux distribution built on Arch Linux and the Hyprland Wayland co
 
 Under the hood, Costa OS is a fully-featured Arch Linux installation with a tiling window manager, a curated set of development tools, and a custom Mediterranean-inspired theme called "Costa." What makes it different is that Claude Code and local models are connected to every component. The clipboard watches what you copy and offers to debug errors. The screenshot tool analyzes images on capture. The music player, window manager, notification system, and status bar all feed into the same routing system.
 
-Costa OS is powered by Claude Code, which ships as a first-class citizen with full system access. Claude handles complex tasks --- code generation, debugging, architecture, system management, and multi-step workflows. For routine queries (system status, quick lookups, simple commands), local models on your GPU provide instant responses without an internet connection. When you do use cloud AI, your queries go directly to Anthropic --- Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
+Costa OS is powered by Claude Code in combination with a local model running on your GPU. Claude Code ships with full system access and handles complex tasks like code generation, debugging, system management, and multi-step workflows. The local model handles routine queries (system status, quick lookups, simple commands) with instant responses and no internet needed. Routing between them is automatic. When cloud AI is used, your queries go directly to Anthropic --- Costa OS has no servers in the middle. There is no telemetry, no analytics, and no accounts.
 
 ### Philosophy
 
