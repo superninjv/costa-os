@@ -276,12 +276,17 @@ def get_system_prompt(model_name: str = "") -> str:
         return "You are the Costa OS local AI assistant. Be concise and direct."
 
 
-def get_ollama_model() -> str:
-    """Read the current best model from the VRAM manager."""
+def get_ollama_model() -> str | None:
+    """Read the current best model from the VRAM manager.
+    Returns None if no local model is available (gaming mode / no GPU).
+    """
     try:
-        return Path("/tmp/ollama-smart-model").read_text().strip()
+        model = Path("/tmp/ollama-smart-model").read_text().strip()
+        if not model or model == "none":
+            return None
+        return model
     except Exception:
-        return "qwen2.5:14b"  # default if VRAM manager hasn't written yet
+        return None
 
 
 def select_knowledge(query: str, model_name: str = "") -> str:
@@ -931,12 +936,38 @@ def route_query(query: str, force_model: str | None = None,
             ollama_model = get_ollama_model()
             prompt = f"Current weather data: {weather}. Summarize this naturally in one sentence."
             t0 = time.time()
-            response = query_ollama(prompt, system_prompt, ollama_model)
+            if ollama_model:
+                response = query_ollama(prompt, system_prompt, ollama_model)
+                model_used = ollama_model
+            else:
+                response = query_claude(prompt, model="haiku")
+                model_used = "haiku"
             model_ms = int((time.time() - t0) * 1000)
-            model_used = ollama_model
         else:
             # Local route — context injection + knowledge + conversation + RAG + escalation
             ollama_model = get_ollama_model()
+
+            # No local model available (no GPU / gaming mode): route everything to cloud
+            if ollama_model is None:
+                t0 = time.time()
+                response = query_claude(
+                    query, model="haiku",
+                    system="You are a helpful assistant for a Linux power user running Costa OS (Arch Linux + Hyprland). Be direct and technical.",
+                    use_tools=True,
+                )
+                model_ms = int((time.time() - t0) * 1000)
+                model_used = "haiku"
+                route = "cloud_only"
+                elapsed = time.time() - start
+                result = {
+                    "query": query, "response": response, "model": model_used,
+                    "route": route, "context_gathered": False, "escalated": False,
+                    "command_executed": None, "elapsed_ms": int(elapsed * 1000),
+                    "total_ms": int(elapsed * 1000),
+                }
+                _log_to_db(result, input_modality)
+                return result
+
             model_used = ollama_model
             system_prompt = get_system_prompt(ollama_model)
 
