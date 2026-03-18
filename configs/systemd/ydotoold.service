@@ -1,0 +1,12 @@
+[Unit]
+Description=ydotool daemon for Wayland input simulation
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ydotoold --socket-path /tmp/.ydotool_socket
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

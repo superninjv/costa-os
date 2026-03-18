@@ -1,0 +1,21 @@
+name: log-digest
+description: Analyze recent journal errors, AI categorizes severity
+trigger:
+  type: schedule
+  calendar: "*-*-* *:30:00"
+steps:
+  - id: errors
+    action: shell
+    command: "journalctl --no-pager -p err -n 30 --since '1 hour ago' 2>/dev/null"
+  - id: has-errors
+    action: condition
+    check: errors
+    contains: " "
+  - id: analyze
+    action: costa-ai
+    query: "Categorize these system errors by severity (critical/warning/ignorable). Only mention critical ones that need attention. Be very brief:\n{{steps.errors.output}}"
+    model: local
+  - id: notify
+    action: notify
+    title: "Log Digest"
+    body: "{{steps.analyze.output}}"

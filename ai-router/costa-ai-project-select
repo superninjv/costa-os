@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Costa AI Project Selector — rofi-based project switcher
+# Lists configured projects and switches to the selected one.
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
+# Get project list from costa-ai (just names for rofi)
+PROJECTS=$(python3 "$SCRIPT_DIR/project_switch.py" --list --json 2>/dev/null | jq -r '.[].name' 2>/dev/null)
+
+if [ -z "$PROJECTS" ]; then
+    notify-send -t 3000 "No projects configured" -a "Costa AI" \
+        "Add project configs to ~/.config/costa/projects/"
+    exit 0
+fi
+
+# Show in rofi
+SELECTED=$(echo "$PROJECTS" | rofi -dmenu -p "Project" -theme-str 'window {width: 400px;}')
+
+if [ -n "$SELECTED" ]; then
+    python3 "$SCRIPT_DIR/project_switch.py" "$SELECTED" 2>/dev/null
+    RESULT=$?
+    if [ $RESULT -eq 0 ]; then
+        notify-send -t 2000 "Switched to $SELECTED" -a "Costa AI"
+    else
+        notify-send -t 3000 "Failed to switch to $SELECTED" -a "Costa AI"
+    fi
+fi

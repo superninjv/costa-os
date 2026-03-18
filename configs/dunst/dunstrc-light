@@ -1,0 +1,72 @@
+# ════════════════════════════════
+#  Costa — Mediterranean Dunst
+#  Light Mode
+# ════════════════════════════════
+
+[global]
+    monitor = __PRIMARY_MONITOR__
+    follow = none
+    width = 360
+    height = (0, 300)
+    origin = top-right
+    offset = 16x16
+    notification_limit = 4
+
+    progress_bar = true
+    progress_bar_height = 10
+    progress_bar_frame_width = 1
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+
+    indicate_hidden = yes
+    transparency = 0
+    separator_height = 2
+    padding = 16
+    horizontal_padding = 16
+    text_icon_padding = 16
+    frame_width = 2
+    gap_size = 6
+    separator_color = frame
+    sort = yes
+
+    font = JetBrainsMono Nerd Font 11
+    line_height = 0
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_age_threshold = 60
+    ellipsize = middle
+    ignore_newline = no
+    stack_duplicates = true
+    hide_duplicate_count = false
+    show_indicators = yes
+
+    icon_position = left
+    min_icon_size = 32
+    max_icon_size = 48
+
+    corner_radius = 12
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+[urgency_low]
+    background = "#f0ede6dd"
+    foreground = "#454a5e"
+    frame_color = "#c9c4b8"
+    timeout = 4
+
+[urgency_normal]
+    background = "#f0ede6dd"
+    foreground = "#1b1d2b"
+    frame_color = "#5b94a8"
+    highlight = "#5b94a8"
+    timeout = 8
+
+[urgency_critical]
+    background = "#f0ede6ee"
+    foreground = "#1b1d2b"
+    frame_color = "#b87272"
+    highlight = "#b87272"
+    timeout = 0

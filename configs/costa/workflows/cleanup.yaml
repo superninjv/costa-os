@@ -1,0 +1,38 @@
+name: cleanup
+description: Find stale tmp files, old pacman cache, dangling Docker images and suggest cleanup
+trigger:
+  type: schedule
+  calendar: "Sun *-*-* 02:00:00"
+steps:
+  - id: tmp-files
+    action: shell
+    command: "count=$(find /tmp -maxdepth 2 -mtime +7 -type f 2>/dev/null | wc -l); size=$(du -sh /tmp 2>/dev/null | awk '{print $1}'); echo \"Stale /tmp files (>7d): $count files, /tmp total: $size\""
+    timeout: 15
+
+  - id: pacman-cache
+    action: shell
+    command: "total=$(du -sh /var/cache/pacman/pkg/ 2>/dev/null | awk '{print $1}'); removable=$(paccache -dk3 2>/dev/null | tail -1); echo \"Cache: $total total. $removable\""
+    timeout: 15
+
+  - id: docker-images
+    action: shell
+    command: "if systemctl is-active --quiet docker; then dangling=$(docker images -f dangling=true -q 2>/dev/null | wc -l); stopped=$(docker ps -a -f status=exited -q 2>/dev/null | wc -l); echo \"Dangling images: $dangling, Stopped containers: $stopped\"; else echo 'Docker not running'; fi"
+
+  - id: journal-size
+    action: shell
+    command: "journalctl --disk-usage 2>/dev/null"
+
+  - id: build-caches
+    action: shell
+    command: "echo \"yay: $(du -sh ~/.cache/yay 2>/dev/null | awk '{print $1}' || echo N/A)\"; echo \"cargo: $(du -sh ~/.cargo/registry 2>/dev/null | awk '{print $1}' || echo N/A)\"; echo \"pip: $(du -sh ~/.cache/pip 2>/dev/null | awk '{print $1}' || echo N/A)\"; echo \"npm: $(du -sh ~/.npm/_cacache 2>/dev/null | awk '{print $1}' || echo N/A)\""
+
+  - id: suggest
+    action: costa-ai
+    query: "Based on this data, suggest safe cleanup commands with estimated space savings. Number each suggestion:\nTmp: {{steps.tmp-files.output}}\nPacman: {{steps.pacman-cache.output}}\nDocker: {{steps.docker-images.output}}\nJournal: {{steps.journal-size.output}}\nCaches: {{steps.build-caches.output}}"
+    model: local
+
+  - id: notify
+    action: notify
+    title: "Weekly Cleanup"
+    body: "{{steps.suggest.output}}"
+    urgency: low

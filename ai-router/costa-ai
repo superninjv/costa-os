@@ -9,15 +9,36 @@ Usage:
     costa-ai "what packages do I have installed for python"
     costa-ai --json "what's using my GPU right now"
     echo "restart waybar" | costa-ai
+
+    # History & search
+    costa-ai --history [N]              # last N queries with timing + model
+    costa-ai --search "docker"          # full-text search past queries
+    costa-ai --usage [today|week|month] # usage summary
+
+    # Budget
+    costa-ai --budget 5.00 month        # set monthly API spend limit
+
+    # Cancel
+    costa-ai --stop                     # cancel running query
+
+    # ML router
+    costa-ai --train-router             # retrain ML classifier from logged data
+    costa-ai --train-router --eval      # train + evaluate + print report
+    costa-ai --router-stats             # show ML router accuracy
+
+    # RAG
+    costa-ai --index <directory>        # index documents for RAG search
+
+    # Presets
+    costa-ai --preset code-review "review this function"
 """
 
 import sys
 import os
+import json
 
 # Allow importing from the ai-router directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from router import route_query
 
 
 def main():
@@ -29,8 +50,218 @@ def main():
     parser.add_argument("--model", help="Force a specific model (local, haiku, sonnet, opus)")
     parser.add_argument("--no-escalate", action="store_true", help="Don't escalate to cloud on failure")
     parser.add_argument("--no-context", action="store_true", help="Skip system context gathering")
+    parser.add_argument("--modality", default="text", help="Input modality (text, voice, rofi)")
+
+    # Phase 1: History, search, usage, budget, stop
+    parser.add_argument("--history", nargs="?", const=20, type=int, metavar="N",
+                        help="Show last N queries (default: 20)")
+    parser.add_argument("--search", metavar="TERM", help="Full-text search past queries")
+    parser.add_argument("--usage", nargs="?", const="today", metavar="PERIOD",
+                        help="Usage stats (today, week, month, all)")
+    parser.add_argument("--budget", nargs=2, metavar=("AMOUNT", "PERIOD"),
+                        help="Set API budget (e.g. --budget 5.00 month)")
+    parser.add_argument("--stop", action="store_true", help="Cancel running query")
+
+    # Phase 5: ML router
+    parser.add_argument("--train-router", action="store_true", help="Train ML routing classifier")
+    parser.add_argument("--train-if-stale", action="store_true", help="Train only if 50+ new queries since last train")
+    parser.add_argument("--eval", action="store_true", help="Evaluate ML router (with --train-router)")
+    parser.add_argument("--router-stats", action="store_true", help="Show ML router stats")
+
+    # Phase 6: RAG & presets
+    parser.add_argument("--index", metavar="DIR", help="Index a directory for RAG search")
+    parser.add_argument("--preset", metavar="NAME", help="Use a prompt preset")
+
     args = parser.parse_args()
 
+    # --- Stop running query ---
+    if args.stop:
+        from router import stop_running_query
+        if stop_running_query():
+            print("Stop signal sent.")
+        else:
+            print("No running query found.")
+        return
+
+    # --- History ---
+    if args.history is not None:
+        from db import get_history
+        rows = get_history(args.history)
+        if not rows:
+            print("No query history yet.")
+            return
+        for row in rows:
+            ts = row["ts"]
+            model = row["model"] or "?"
+            route = row["route"] or "?"
+            ms = row["total_ms"] or 0
+            cost = row["cost_usd"] or 0
+            q = (row["query"] or "")[:60]
+            esc = " (escalated)" if row.get("escalated") else ""
+            print(f"  {ts}  [{model}] ({ms}ms, ${cost:.4f}{esc}) {q}")
+        return
+
+    # --- Search ---
+    if args.search:
+        from db import search_history
+        rows = search_history(args.search)
+        if not rows:
+            print(f"No results for '{args.search}'")
+            return
+        for row in rows:
+            ts = row["ts"]
+            model = row["model"] or "?"
+            q = (row["query"] or "")[:50]
+            r = (row["response"] or "")[:60]
+            print(f"  {ts}  [{model}] Q: {q}")
+            print(f"    A: {r}")
+        return
+
+    # --- Usage ---
+    if args.usage is not None:
+        from db import get_usage_stats, check_budget
+        stats = get_usage_stats(args.usage)
+        budget = check_budget()
+
+        print(f"Usage ({stats['period']}):")
+        print(f"  Queries: {stats['total_queries']}")
+        print(f"  Cost: ${stats['total_cost']:.4f}")
+        print(f"  Avg latency: {stats['avg_latency_ms']}ms")
+        print(f"  Escalation rate: {stats['escalation_rate']:.0%}")
+        if stats["model_breakdown"]:
+            print(f"  Models:")
+            for model, info in stats["model_breakdown"].items():
+                print(f"    {model}: {info['count']} queries (${info['cost']:.4f})")
+        if stats["queries_by_modality"]:
+            print(f"  By modality:")
+            for mod, count in stats["queries_by_modality"].items():
+                print(f"    {mod}: {count}")
+        if budget["budget"] > 0:
+            print(f"  Budget: ${budget['spent']:.4f} / ${budget['budget']:.2f} "
+                  f"(${budget['remaining']:.4f} remaining)")
+            if budget["exceeded"]:
+                print("  ⚠ BUDGET EXCEEDED — cloud queries disabled")
+        return
+
+    # --- Budget ---
+    if args.budget:
+        from db import set_budget
+        try:
+            amount = float(args.budget[0])
+            period = args.budget[1]
+        except ValueError:
+            print("Invalid budget amount")
+            sys.exit(1)
+        set_budget(amount, period)
+        print(f"Budget set: ${amount:.2f} / {period}")
+        return
+
+    # --- Train router (shared pipeline for --train-router and --train-if-stale) ---
+    if args.train_router or args.train_if_stale:
+        try:
+            from ml_router import get_router, generate_synthetic_data, ROUTE_CLASSES
+            from db import get_training_data, backfill_routing_labels
+
+            # --train-if-stale: check staleness + acquire flock
+            if args.train_if_stale:
+                from db import queries_since_last_train
+                pending = queries_since_last_train()
+                if pending < 50:
+                    return  # not stale — exit silently
+                import fcntl
+                lock_fd = open("/tmp/costa-ml-train.lock", "w")
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    return  # another training process is running
+
+            # Step 1: Backfill any unlabeled queries
+            backfilled = backfill_routing_labels()
+            if not args.train_if_stale and backfilled:
+                print(f"Backfilled {backfilled} routing labels")
+
+            # Step 2: Synthetic data (weight 1.0 each)
+            synthetic = generate_synthetic_data()
+            data = list(synthetic)
+            weights = [1.0] * len(data)
+
+            # Step 3: Real labeled queries from DB (weight 3.0 each)
+            logged = get_training_data()
+            real_count = 0
+            for row in logged:
+                if not row["route"] or not row["query"]:
+                    continue
+                label = row["route"]
+                routing_label = row.get("routing_label")
+
+                # Escalated local queries → relabel as local_will_escalate
+                if row.get("escalated") and label == "local":
+                    label = "local_will_escalate"
+                elif routing_label == "incorrect" and not row.get("escalated"):
+                    # Manually corrected mislabel — route was wrong but didn't escalate.
+                    # Skip: we know the route is wrong but don't know the correct one,
+                    # so it shouldn't reinforce the bad route.
+                    continue
+
+                if label not in ROUTE_CLASSES:
+                    continue
+
+                data.append((row["query"], label))
+                weights.append(3.0)
+                real_count += 1
+
+            if not args.train_if_stale:
+                print(f"Training on {len(data)} examples ({len(synthetic)} synthetic + {real_count} real)...")
+
+            router = get_router()
+
+            if args.eval and not args.train_if_stale:
+                report = router.evaluate(data)
+                print(f"Accuracy: {report['accuracy']:.1%}")
+                print("Per-class:")
+                for cls, acc in report.get("per_class_accuracy", {}).items():
+                    print(f"  {cls}: {acc:.1%}")
+            else:
+                stats = router.train(data, weights=weights)
+                if not args.train_if_stale:
+                    print(f"ML router trained and saved. ({stats['duration_s']}s, loss={stats['final_loss']:.4f})")
+        except Exception as e:
+            if not args.train_if_stale:
+                print(f"Training error: {e}")
+                sys.exit(1)
+        return
+
+    # --- Router stats ---
+    if args.router_stats:
+        try:
+            model_path = os.path.expanduser("~/.config/costa/ml_router.pt")
+            if os.path.exists(model_path):
+                import torch
+                state = torch.load(model_path, weights_only=True)
+                print(f"ML router model: {model_path}")
+                print(f"  Size: {os.path.getsize(model_path)} bytes")
+                print("  Status: loaded and active")
+            else:
+                print("ML router: not trained yet")
+                print("  Run: costa-ai --train-router")
+        except Exception as e:
+            print(f"Error: {e}")
+        return
+
+    # --- Index ---
+    if args.index:
+        try:
+            from rag import index_directory
+            stats = index_directory(args.index)
+            print(f"Indexed: {stats['indexed']} files, "
+                  f"skipped: {stats['skipped']}, "
+                  f"errors: {stats['errors']}")
+        except Exception as e:
+            print(f"Index error: {e}")
+            sys.exit(1)
+        return
+
+    # --- Query ---
     # Read query from args or stdin
     if args.query:
         query = " ".join(args.query)
@@ -43,16 +274,33 @@ def main():
     if not query:
         sys.exit(1)
 
+    # Apply preset if specified
+    force_model = args.model
+    if args.preset:
+        presets_path = os.path.expanduser("~/.config/costa/presets.json")
+        try:
+            presets = json.loads(open(presets_path).read())
+            preset = presets.get(args.preset, {})
+            if preset.get("model"):
+                force_model = preset["model"]
+            # Preset system prompts are handled at the model level
+        except Exception:
+            pass
+
+    from router import route_query
+
     result = route_query(
         query,
-        force_model=args.model,
+        force_model=force_model,
         allow_escalation=not args.no_escalate,
         gather_context_flag=not args.no_context,
+        input_modality=args.modality,
     )
 
     if args.json:
-        import json
-        print(json.dumps(result, indent=2))
+        # Remove query from JSON output to avoid duplication
+        output = {k: v for k, v in result.items() if k != "query"}
+        print(json.dumps(output, indent=2))
     else:
         print(result["response"])
 

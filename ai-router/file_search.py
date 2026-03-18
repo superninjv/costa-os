@@ -116,12 +116,20 @@ LOCATION_PATTERNS = [
 ]
 
 
-def _run(cmd: str, timeout: int = 10) -> str:
-    """Run a shell command, return stdout."""
+def _run(cmd: str | list[str], timeout: int = 10) -> str:
+    """Run a command, return stdout.
+
+    Accepts list (no shell) or string (shell=True for pipes). Prefer list form.
+    """
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
+        if isinstance(cmd, list):
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout
+            )
+        else:
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, timeout=timeout
+            )
         return result.stdout.strip()
     except Exception:
         return ""
@@ -252,7 +260,8 @@ def search_by_content(keywords: list[str], location: str | None = None,
         cmd_parts.append(keyword)
         cmd_parts.append(search_dir)
 
-        output = _run(" ".join(f"'{p}'" if " " in p or "*" in p else p for p in cmd_parts))
+        # Use list form directly — no shell needed
+        output = _run(cmd_parts)
         if output:
             for filepath in output.strip().split("\n")[:max_results]:
                 filepath = filepath.strip()
@@ -274,20 +283,20 @@ def search_by_name(keywords: list[str], location: str | None = None,
 
     # Search with file type glob
     if file_glob:
-        cmd = f"fd -t f -g '{file_glob}' --max-depth 8 '{search_dir}' 2>/dev/null | head -n {max_results}"
+        cmd = ["fd", "-t", "f", "-g", file_glob, "--max-depth", "8", search_dir]
         output = _run(cmd)
         if output:
-            for filepath in output.strip().split("\n"):
+            for filepath in output.strip().split("\n")[:max_results]:
                 filepath = filepath.strip()
                 if filepath:
                     results.append({"path": filepath, "match_type": "name_glob"})
 
     # Search with keywords in filename
     for keyword in keywords:
-        cmd = f"fd -t f -i '{keyword}' --max-depth 8 '{search_dir}' 2>/dev/null | head -n {max_results}"
+        cmd = ["fd", "-t", "f", "-i", keyword, "--max-depth", "8", search_dir]
         output = _run(cmd)
         if output:
-            for filepath in output.strip().split("\n"):
+            for filepath in output.strip().split("\n")[:max_results]:
                 filepath = filepath.strip()
                 if filepath:
                     results.append({
@@ -308,23 +317,22 @@ def search_by_time(time_delta: timedelta, location: str | None = None,
     cmd_parts = ["find", search_dir, "-maxdepth", "8", "-type", "f",
                  "-mmin", f"-{minutes}"]
     if file_glob:
-        # Convert glob to find -name pattern
-        cmd_parts.extend(["-name", f"'{file_glob}'"])
+        cmd_parts.extend(["-name", file_glob])
 
     # Exclude noise
     cmd_parts.extend([
-        "-not", "-path", "'*/.git/*'",
-        "-not", "-path", "'*/node_modules/*'",
-        "-not", "-path", "'*/__pycache__/*'",
-        "-not", "-path", "'*/target/*'",
-        "-not", "-path", "'*/.cache/*'",
+        "-not", "-path", "*/.git/*",
+        "-not", "-path", "*/node_modules/*",
+        "-not", "-path", "*/__pycache__/*",
+        "-not", "-path", "*/target/*",
+        "-not", "-path", "*/.cache/*",
     ])
-    cmd_parts.extend(["|", "head", "-n", str(max_results)])
 
-    output = _run(" ".join(cmd_parts))
+    # Use list form (no shell) — handle max_results in Python
+    output = _run(cmd_parts)
     results = []
     if output:
-        for filepath in output.strip().split("\n"):
+        for filepath in output.strip().split("\n")[:max_results]:
             filepath = filepath.strip()
             if filepath:
                 results.append({"path": filepath, "match_type": "time"})
@@ -344,34 +352,38 @@ def search_by_git(time_delta: timedelta | None = None,
     else:
         # Search common project directories
         repos_output = _run(
-            f"find {HOME}/projects -maxdepth 2 -name '.git' -type d 2>/dev/null | head -20"
+            ["find", f"{HOME}/projects", "-maxdepth", "2", "-name", ".git", "-type", "d"]
         )
         repos = []
         if repos_output:
-            repos = [str(Path(r).parent) for r in repos_output.strip().split("\n") if r.strip()]
+            repos = [str(Path(r).parent) for r in repos_output.strip().split("\n")[:20] if r.strip()]
         # Also check home dir
         if Path(HOME, ".git").exists():
             repos.append(HOME)
 
     results = []
-    since = ""
-    if time_delta:
-        days = max(1, int(time_delta.total_seconds() / 86400))
-        since = f"--since='{days} days ago'"
 
     for repo in repos:
-        cmd = f"git -C '{repo}' log --diff-filter=M {since} --name-only --pretty=format: -n 50 2>/dev/null | sort -u | head -n {max_results}"
+        cmd = ["git", "-C", repo, "log", "--diff-filter=M",
+               "--name-only", "--pretty=format:", "-n", "50"]
+        if time_delta:
+            days = max(1, int(time_delta.total_seconds() / 86400))
+            cmd.append(f"--since={days} days ago")
         output = _run(cmd)
         if output:
+            seen = set()
             for relpath in output.strip().split("\n"):
                 relpath = relpath.strip()
-                if relpath:
+                if relpath and relpath not in seen:
+                    seen.add(relpath)
                     fullpath = str(Path(repo) / relpath)
                     if Path(fullpath).exists():
                         results.append({
                             "path": fullpath,
                             "match_type": "git",
                         })
+                    if len(results) >= max_results:
+                        break
 
     return results
 

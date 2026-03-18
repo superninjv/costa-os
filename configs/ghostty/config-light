@@ -1,0 +1,67 @@
+# Ghostty — Costa Mediterranean Theme (Light Mode)
+# Font: JetBrains Mono Nerd Font
+
+font-family = JetBrainsMono Nerd Font
+font-size = 13
+font-thicken = true
+adjust-cell-height = 15%
+
+# ── Costa palette — light Mediterranean ──
+background = f0ede6
+foreground = 1b1d2b
+
+# Normal colors — dark on light
+palette = 0=#d4cfc4
+palette = 1=#b85050
+palette = 2=#6a8058
+palette = 3=#a08030
+palette = 4=#4a7d8f
+palette = 5=#8a6ea8
+palette = 6=#5a9a95
+palette = 7=#3a3e52
+
+# Bright colors
+palette = 8=#bdb8ab
+palette = 9=#c07a56
+palette = 10=#8b9968
+palette = 11=#c9a96e
+palette = 12=#5b94a8
+palette = 13=#9884b8
+palette = 14=#7eb5b0
+palette = 15=#1b1d2b
+
+# Cursor — terracotta on light
+cursor-color = c07a56
+cursor-text = f0ede6
+cursor-style = block
+cursor-style-blink = true
+
+# Selection — tinted sea on light
+selection-background = b8d8e8
+selection-foreground = 1b1d2b
+selection-invert-fg-bg = false
+
+# Window — light, slight transparency
+background-opacity = 0.92
+background-blur-radius = 25
+
+window-padding-x = 16
+window-padding-y = 14
+window-padding-balance = true
+window-padding-color = background
+
+# Behavior
+shell-integration = detect
+scrollback-limit = 10000
+copy-on-select = clipboard
+window-decoration = false
+confirm-close-surface = false
+mouse-hide-while-typing = true
+bold-is-bright = false
+
+# Links
+link-url = true
+
+# Animated Costa aurora background
+custom-shader = shaders/gradient.glsl
+custom-shader-animation = true

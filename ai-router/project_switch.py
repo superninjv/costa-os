@@ -1,11 +1,11 @@
 """Costa AI Project Context Switching — switch workspace layouts per project.
 
-"Switch to sonical" opens the right workspace with the right terminals, editor, and env.
+"Switch to my-project" opens the right workspace with the right terminals, editor, and env.
 
 Project configs are YAML files in ~/.config/costa/projects/.
 
 Usage:
-    python3 project_switch.py sonical
+    python3 project_switch.py my-project
     python3 project_switch.py --list
     python3 project_switch.py --fuzzy "music tabs"
 """
@@ -234,12 +234,22 @@ def notify(title: str, body: str, urgency: str = "normal", timeout: int = 5000):
     ], check=False)
 
 
-def run_cmd(cmd: str, timeout: int = 10) -> tuple[int, str]:
-    """Run a shell command, return (returncode, output)."""
+def run_cmd(cmd: str | list[str], timeout: int = 10) -> tuple[int, str]:
+    """Run a command, return (returncode, output).
+
+    Accepts list (no shell) or string (shell=True). Prefer list form.
+    Note: project_switch commands come from trusted YAML configs, not AI input,
+    but list form is still safer.
+    """
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout,
-        )
+        if isinstance(cmd, list):
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout,
+            )
+        else:
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, timeout=timeout,
+            )
         return result.returncode, result.stdout.strip()
     except subprocess.TimeoutExpired:
         return 1, "(timed out)"

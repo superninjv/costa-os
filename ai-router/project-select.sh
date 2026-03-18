@@ -4,7 +4,7 @@
 #
 # Usage:
 #   ./project-select.sh              # interactive rofi picker
-#   ./project-select.sh "sonical"    # direct switch (no rofi)
+#   ./project-select.sh "my-project"  # direct switch (no rofi)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

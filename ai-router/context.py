@@ -5,18 +5,28 @@ runs the appropriate commands, and returns context to inject into the prompt.
 This gives the local model actual system awareness instead of just static knowledge.
 """
 
+import shlex
 import subprocess
 import re
 import os
 from pathlib import Path
 
 
-def run(cmd: str, timeout: int = 5) -> str:
-    """Run a shell command and return output, empty string on failure."""
+def run(cmd: str | list[str], timeout: int = 5) -> str:
+    """Run a command and return output, empty string on failure.
+
+    Accepts a list (no shell) or string (shell=True for pipes/redirects).
+    Prefer list form for commands with user-derived arguments.
+    """
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
+        if isinstance(cmd, list):
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout
+            )
+        else:
+            result = subprocess.run(
+                cmd, shell=True, capture_output=True, text=True, timeout=timeout
+            )
         return result.stdout.strip()
     except Exception:
         return ""
@@ -36,17 +46,21 @@ def gather_context(query: str) -> str:
         # Check if asking about a specific package
         pkg = _extract_package_name(q)
         if pkg:
-            info = run(f"pacman -Qi {pkg} 2>/dev/null || yay -Qi {pkg} 2>/dev/null")
+            info = run(["pacman", "-Qi", pkg])
+            if not info:
+                info = run(["yay", "-Qi", pkg])
             if info:
                 context_parts.append(f"[Package info for {pkg}]\n{info}")
             else:
                 # Check if it's available but not installed
-                avail = run(f"pacman -Si {pkg} 2>/dev/null | head -5")
+                avail = run(["pacman", "-Si", pkg])
                 if avail:
+                    avail = "\n".join(avail.splitlines()[:5])
                     context_parts.append(f"[{pkg} is available but NOT installed]\n{avail}")
                 else:
-                    aur = run(f"yay -Si {pkg} 2>/dev/null | head -5")
+                    aur = run(["yay", "-Si", pkg])
                     if aur:
+                        aur = "\n".join(aur.splitlines()[:5])
                         context_parts.append(f"[{pkg} is available in AUR but NOT installed]\n{aur}")
                     else:
                         context_parts.append(f"[{pkg} is not found in any repository]")
@@ -54,9 +68,11 @@ def gather_context(query: str) -> str:
             # General package listing — check for topic keywords
             topic = _extract_topic(q)
             if topic:
-                pkgs = run(f"pacman -Qq | grep -i {topic} 2>/dev/null | head -20")
-                if pkgs:
-                    context_parts.append(f"[Installed packages matching '{topic}']\n{pkgs}")
+                all_pkgs = run(["pacman", "-Qq"])
+                topic_lower = topic.lower()
+                matched = [p for p in all_pkgs.splitlines() if topic_lower in p.lower()][:20]
+                if matched:
+                    context_parts.append(f"[Installed packages matching '{topic}']\n" + "\n".join(matched))
                 else:
                     context_parts.append(f"[No installed packages match '{topic}']")
 
@@ -64,17 +80,23 @@ def gather_context(query: str) -> str:
     if _matches(q, r"(service|systemd|systemctl|running|enabled|status|daemon|start|stop|restart)"):
         svc = _extract_service_name(q)
         if svc:
-            status = run(f"systemctl status {svc} 2>/dev/null | head -15")
+            status = run(["systemctl", "status", svc])
+            if status:
+                status = "\n".join(status.splitlines()[:15])
             if not status:
-                status = run(f"systemctl --user status {svc} 2>/dev/null | head -15")
+                status = run(["systemctl", "--user", "status", svc])
+                if status:
+                    status = "\n".join(status.splitlines()[:15])
             if status:
                 context_parts.append(f"[Service status: {svc}]\n{status}")
             else:
                 context_parts.append(f"[Service '{svc}' not found]")
         else:
             # List running services
-            svcs = run("systemctl list-units --type=service --state=running --no-pager --no-legend | head -20")
+            svcs = run(["systemctl", "list-units", "--type=service", "--state=running",
+                        "--no-pager", "--no-legend"])
             if svcs:
+                svcs = "\n".join(svcs.splitlines()[:20])
                 context_parts.append(f"[Running services]\n{svcs}")
 
     # Process / resource queries
@@ -154,18 +176,22 @@ def gather_context(query: str) -> str:
         # If asking about a specific config file
         config_name = _extract_config_path(q)
         if config_name:
-            # Try to find and read it
-            found = run(f"find ~/.config -maxdepth 3 -name '*{config_name}*' -type f 2>/dev/null | head -5")
-            if found:
-                first_file = found.split("\n")[0]
-                content = run(f"head -50 '{first_file}' 2>/dev/null")
-                context_parts.append(f"[Config file: {first_file}]\n{content}")
-            else:
-                found = run(f"find /etc -maxdepth 2 -name '*{config_name}*' -type f 2>/dev/null | head -5")
+            # Sanitize: only allow alphanumeric, dash, underscore, dot
+            if re.match(r'^[\w.\-]+$', config_name):
+                config_home = os.path.expanduser("~/.config")
+                found = run(["find", config_home, "-maxdepth", "3",
+                             "-name", f"*{config_name}*", "-type", "f"])
                 if found:
                     first_file = found.split("\n")[0]
-                    content = run(f"head -50 '{first_file}' 2>/dev/null")
+                    content = run(["head", "-50", first_file])
                     context_parts.append(f"[Config file: {first_file}]\n{content}")
+                else:
+                    found = run(["find", "/etc", "-maxdepth", "2",
+                                 "-name", f"*{config_name}*", "-type", "f"])
+                    if found:
+                        first_file = found.split("\n")[0]
+                        content = run(["head", "-50", first_file])
+                        context_parts.append(f"[Config file: {first_file}]\n{content}")
 
     # Ollama / local AI queries
     if _matches(q, r"(ollama|model|llm|local.*(ai|model)|what model)"):

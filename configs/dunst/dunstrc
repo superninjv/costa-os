@@ -4,7 +4,7 @@
 
 [global]
     monitor = 0
-    follow = mouse
+    follow = none
     width = 360
     height = (0, 300)
     origin = top-right

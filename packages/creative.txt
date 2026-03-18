@@ -2,7 +2,7 @@
 gimp
 inkscape
 krita
-reaper
+audacity
 easyeffects
 qpwgraph
 alsa-utils

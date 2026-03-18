@@ -4,9 +4,12 @@
 
 # Tier 1: Voice assistant only (Whisper STT, no local LLM)
 # whisper.cpp built from source with Vulkan/ROCm
+python-numpy
 
 # Tier 2: Voice + Local LLM (Ollama + small model)
-# ollama or ollama-rocm depending on GPU
+ollama  # or ollama-rocm for AMD GPUs with ROCm support
+python-pytorch
+# python-torchaudio — not in official repos, install via: pip install torchaudio
 
 # Tier 3: Full AI workstation (large models, training)
 # ollama-rocm + rocm-hip-sdk + python ML stack

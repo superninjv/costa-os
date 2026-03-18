@@ -1,0 +1,82 @@
+name: Backup Staleness Check
+description: Verify chezmoi dotfiles sync and git push recency across all projects, warn if anything is more than 24 hours stale.
+trigger:
+  type: schedule
+  calendar: "*-*-* 09:00:00"
+steps:
+  - id: chezmoi_age
+    action: shell
+    command: |
+      chezmoi_dir="$HOME/.local/share/chezmoi"
+      if [ -d "$chezmoi_dir/.git" ]; then
+        last_commit=$(git -C "$chezmoi_dir" log -1 --format='%ci' 2>/dev/null)
+        hours_ago=$(( ($(date +%s) - $(date -d "$last_commit" +%s)) / 3600 ))
+        if [ "$hours_ago" -gt 24 ]; then
+          echo "STALE: chezmoi last committed ${hours_ago}h ago ($last_commit)"
+        else
+          echo "OK: chezmoi committed ${hours_ago}h ago"
+        fi
+      else
+        echo "WARNING: chezmoi directory not found"
+      fi
+
+  - id: chezmoi_uncommitted
+    action: shell
+    command: |
+      chezmoi_dir="$HOME/.local/share/chezmoi"
+      if [ -d "$chezmoi_dir/.git" ]; then
+        changes=$(git -C "$chezmoi_dir" status --porcelain 2>/dev/null | wc -l)
+        if [ "$changes" -gt 0 ]; then
+          echo "STALE: chezmoi has $changes uncommitted changes"
+          git -C "$chezmoi_dir" status --porcelain 2>/dev/null | head -10
+        else
+          echo "OK: chezmoi working tree clean"
+        fi
+      fi
+
+  - id: project_push_ages
+    action: shell
+    command: |
+      stale=""
+      for dir in ~/projects/*/; do
+        name=$(basename "$dir")
+        if [ -d "$dir/.git" ]; then
+          remote=$(git -C "$dir" remote 2>/dev/null | head -1)
+          if [ -n "$remote" ]; then
+            local_sha=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
+            remote_sha=$(git -C "$dir" rev-parse "$remote/$(git -C "$dir" branch --show-current)" 2>/dev/null)
+            if [ "$local_sha" != "$remote_sha" ]; then
+              last_push=$(git -C "$dir" log "$remote/$(git -C "$dir" branch --show-current)..HEAD" --oneline 2>/dev/null | wc -l)
+              echo "STALE: $name has $last_push unpushed commits"
+              stale="yes"
+            else
+              last_date=$(git -C "$dir" log -1 --format='%cr' 2>/dev/null)
+              echo "OK: $name (last push $last_date)"
+            fi
+          else
+            echo "INFO: $name has no remote configured"
+          fi
+        fi
+      done
+      [ -z "$stale" ] && echo "All projects pushed to remote."
+    timeout: 20
+
+  - id: has_stale
+    action: condition
+    check: chezmoi_age
+    contains: "STALE"
+
+  - id: has_stale_projects
+    action: condition
+    check: project_push_ages
+    contains: "STALE"
+
+  - id: alert
+    action: notify
+    title: "Backup Check"
+    body: |
+      {{steps.chezmoi_age.output}}
+      {{steps.chezmoi_uncommitted.output}}
+      ---
+      {{steps.project_push_ages.output}}
+    urgency: normal

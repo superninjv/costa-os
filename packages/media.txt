@@ -1,0 +1,12 @@
+# Costa OS — Media players (optional, pick one or more)
+# The now-playing waybar module works with any MPRIS-compatible player
+
+# Music players (uncomment your choice)
+# spotify-launcher   # Spotify (proprietary, free tier available)
+# strawberry         # Local music + Qobuz/Tidal/Subsonic
+# amberol          # Simple GNOME music player
+# lollypop         # Full-featured GTK music player
+
+# Video
+mpv
+vlc

@@ -1,0 +1,48 @@
+name: ollama-model-update
+description: Check for newer Ollama model versions and notify if updates available
+trigger:
+  type: schedule
+  calendar: "Wed *-*-* 06:00:00"
+steps:
+  - id: local-models
+    action: shell
+    command: "ollama list 2>/dev/null || echo 'Ollama not running'"
+    timeout: 10
+
+  - id: check-updates
+    action: shell
+    command: |
+      models=$(ollama list 2>/dev/null | tail -n +2 | awk '{print $1}')
+      if [ -z "$models" ]; then echo "No models installed"; exit 0; fi
+      for model in $models; do
+        local_digest=$(ollama show "$model" --modelfile 2>/dev/null | grep -oP 'sha256:[a-f0-9]+' | head -1)
+        base="${model%%:*}"
+        tag="${model#*:}"
+        manifest=$(curl -sf "https://registry.ollama.com/v2/library/$base/manifests/$tag" 2>/dev/null)
+        if [ -n "$manifest" ]; then
+          remote_digest=$(echo "$manifest" | python3 -c "import sys,json;m=json.load(sys.stdin);print(m.get('config',{}).get('digest','unknown'))" 2>/dev/null)
+          if [ -n "$remote_digest" ] && [ "$remote_digest" != "unknown" ] && [ "$local_digest" != "$remote_digest" ]; then
+            echo "UPDATE: $model"
+          else
+            echo "OK: $model"
+          fi
+        else
+          echo "SKIP: $model (no manifest)"
+        fi
+      done
+    timeout: 120
+
+  - id: has-updates
+    action: condition
+    check: check-updates
+    contains: "UPDATE"
+
+  - id: summarize
+    action: costa-ai
+    query: "Summarize which Ollama models have updates. Note that qwen2.5:14b, qwen2.5:7b, qwen2.5:3b are the main models:\nLocal: {{steps.local-models.output}}\nUpdate check: {{steps.check-updates.output}}"
+    model: local
+
+  - id: notify
+    action: notify
+    title: "Ollama Model Updates"
+    body: "{{steps.summarize.output}}"

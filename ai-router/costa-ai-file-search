@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Costa AI File Search — rofi-based fuzzy file finder
+# Searches project directories and opens selected file in default editor.
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
+# Get search query from rofi
+QUERY=$(rofi -dmenu -p "Search files" -theme-str 'window {width: 500px;}' < /dev/null)
+[ -z "$QUERY" ] && exit 0
+
+# Search via costa-ai file search
+RESULTS=$(python3 -c "
+import sys
+sys.path.insert(0, '$SCRIPT_DIR')
+from file_search import search_files, format_results
+results = search_files('$QUERY')
+if results:
+    for r in results[:20]:
+        path = r['path']
+        print(path)
+" 2>/dev/null)
+
+if [ -z "$RESULTS" ]; then
+    notify-send -t 2000 "No files found for: $QUERY" -a "Costa AI"
+    exit 0
+fi
+
+# Show results in rofi
+SELECTED=$(echo "$RESULTS" | rofi -dmenu -p "Open" -theme-str 'window {width: 700px;}')
+
+if [ -n "$SELECTED" ]; then
+    # Open in VS Code if available, otherwise xdg-open
+    if command -v code &>/dev/null; then
+        code "$SELECTED"
+    elif command -v codium &>/dev/null; then
+        codium "$SELECTED"
+    else
+        xdg-open "$SELECTED"
+    fi
+fi

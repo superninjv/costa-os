@@ -143,7 +143,7 @@ def _normalize_command(cmd: str) -> str:
     """Normalize a command to its prefix for pattern matching.
 
     'git commit -m "fix: foo"' -> 'git commit'
-    'cd ~/projects/sonical' -> 'cd'
+    'cd ~/projects/my-app' -> 'cd'
     'vim src/main.rs' -> 'vim'
     """
     cmd = cmd.strip()

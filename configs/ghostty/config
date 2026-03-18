@@ -1,0 +1,67 @@
+# Ghostty — Costa Mediterranean Theme
+# Font: JetBrains Mono Nerd Font
+
+font-family = JetBrainsMono Nerd Font
+font-size = 13
+font-thicken = true
+adjust-cell-height = 15%
+
+# ── Costa palette — vivid Mediterranean ──
+background = 12141e
+foreground = d4cfc4
+
+# Normal colors — saturated, rich
+palette = 0=#1e2030
+palette = 1=#c06868
+palette = 2=#8ba07a
+palette = 3=#d0a050
+palette = 4=#5b94a8
+palette = 5=#a080c0
+palette = 6=#6eb5b0
+palette = 7=#b8bcd0
+
+# Bright colors — punchier
+palette = 8=#3a3e52
+palette = 9=#d08860
+palette = 10=#98b888
+palette = 11=#e0b868
+palette = 12=#68a8c0
+palette = 13=#b090d0
+palette = 14=#80c8c0
+palette = 15=#e0dcd0
+
+# Cursor — glowing sand/gold
+cursor-color = d8b060
+cursor-text = 12141e
+cursor-style = block
+cursor-style-blink = true
+
+# Selection — tinted sea
+selection-background = 2a4858
+selection-foreground = e0dcd0
+selection-invert-fg-bg = false
+
+# Window — deeper transparency for shader to shine
+background-opacity = 0.82
+background-blur-radius = 25
+
+window-padding-x = 16
+window-padding-y = 14
+window-padding-balance = true
+window-padding-color = background
+
+# Behavior
+shell-integration = detect
+scrollback-limit = 10000
+copy-on-select = clipboard
+window-decoration = false
+confirm-close-surface = false
+mouse-hide-while-typing = true
+bold-is-bright = false
+
+# Links
+link-url = true
+
+# Animated Costa aurora background
+custom-shader = shaders/gradient.glsl
+custom-shader-animation = true

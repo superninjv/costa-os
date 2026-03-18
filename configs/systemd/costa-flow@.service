@@ -1,0 +1,11 @@
+[Unit]
+Description=Costa Flow workflow: %i
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/costa-os/ai-router/costa-flow run %i
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=HOME=%h
+StandardOutput=journal
+StandardError=journal

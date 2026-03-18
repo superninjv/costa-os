@@ -1,0 +1,59 @@
+name: Morning Briefing
+description: Weather forecast, system health snapshot, and git activity compiled into an AI-generated morning summary notification.
+trigger:
+  type: schedule
+  calendar: "*-*-* 08:00:00"
+steps:
+  - id: weather
+    action: shell
+    command: curl -s 'wttr.in/?format=3' && echo '---' && curl -s 'wttr.in/?format=%C+%t+%h+%w+%P'
+    timeout: 10
+
+  - id: disk_usage
+    action: shell
+    command: df -h --output=target,pcent,avail / /home | tail -n +2
+
+  - id: memory
+    action: shell
+    command: free -h | awk '/^Mem:/{print "RAM: "$3"/"$2" used"}'
+
+  - id: load
+    action: shell
+    command: uptime | sed 's/.*load average/Load average/'
+
+  - id: failed_services
+    action: shell
+    command: systemctl --failed --no-legend --no-pager | head -5 || echo "No failed services"
+
+  - id: git_activity
+    action: shell
+    command: |
+      for dir in ~/projects/*/; do
+        name=$(basename "$dir")
+        if [ -d "$dir/.git" ]; then
+          count=$(git -C "$dir" log --since="yesterday" --oneline 2>/dev/null | wc -l)
+          if [ "$count" -gt 0 ]; then
+            echo "$name: $count commits since yesterday"
+            git -C "$dir" log --since="yesterday" --oneline --no-decorate 2>/dev/null | head -3
+          fi
+        fi
+      done
+    timeout: 15
+
+  - id: summary
+    action: costa-ai
+    query: |
+      Compile a concise morning briefing from this data. Use short bullet points, highlight anything that needs attention.
+      Weather: {{steps.weather.output}}
+      Disk: {{steps.disk_usage.output}}
+      Memory: {{steps.memory.output}}
+      System load: {{steps.load.output}}
+      Failed services: {{steps.failed_services.output}}
+      Git activity: {{steps.git_activity.output}}
+    model: qwen2.5:3b
+
+  - id: notify
+    action: notify
+    title: "Morning Briefing"
+    body: "{{steps.summary.output}}"
+    urgency: normal

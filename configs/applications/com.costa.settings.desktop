@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Costa OS Settings
+GenericName=System Settings
+Comment=Configure monitors, keybinds, AI, and system setup
+Exec=costa-settings
+Icon=preferences-system
+Terminal=false
+Type=Application
+Categories=Settings;System;
+Keywords=settings;setup;configure;monitor;keybind;waybar;ai;ollama;
+StartupWMClass=com.costa.settings

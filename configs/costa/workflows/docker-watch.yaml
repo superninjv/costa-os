@@ -1,0 +1,27 @@
+name: docker-watch
+description: Monitor container health, restart unhealthy, notify
+trigger:
+  type: schedule
+  calendar: "*-*-* *:00/15:00"
+steps:
+  - id: check-docker
+    action: shell
+    command: "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo 'Docker not running'"
+  - id: has-containers
+    action: condition
+    check: check-docker
+    contains: "Up"
+  - id: unhealthy
+    action: shell
+    command: "docker ps --filter health=unhealthy --format '{{.Names}}' 2>/dev/null"
+  - id: restart-unhealthy
+    action: shell
+    command: "docker ps --filter health=unhealthy --format '{{.Names}}' 2>/dev/null | xargs -r -I{} docker restart {}"
+  - id: resources
+    action: shell
+    command: "docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' 2>/dev/null | head -10"
+  - id: notify
+    action: notify
+    title: "Docker Status"
+    body: "Containers:\n{{steps.check-docker.output}}\n\nResources:\n{{steps.resources.output}}"
+    urgency: low

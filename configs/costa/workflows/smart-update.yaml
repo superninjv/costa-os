@@ -1,0 +1,22 @@
+name: smart-update
+description: Check for updates, AI reviews changelogs for breaking changes
+trigger:
+  type: schedule
+  calendar: "Mon *-*-* 10:00:00"
+steps:
+  - id: check-updates
+    action: shell
+    command: "checkupdates 2>/dev/null | head -30"
+    timeout: 60
+  - id: has-updates
+    action: condition
+    check: check-updates
+    contains: "->"
+  - id: analyze
+    action: costa-ai
+    query: "Review these Arch Linux package updates and flag any that might cause breaking changes or need manual intervention. Be brief, highlight only important ones:\n{{steps.check-updates.output}}"
+    model: local
+  - id: notify
+    action: notify
+    title: "Updates Available"
+    body: "{{steps.analyze.output}}"

@@ -1,1 +1,40 @@
-ai-router/__pycache__/
+# Build artifacts
+out/
+*.iso
+
+# VM test images
+vm/
+
+# Private — installer and ISO (separate repo: costa-os-installer)
+installer/
+iso/
+
+# Python
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Logs
+*.log
+
+# User databases and conversation logs (privacy — never ship these)
+*.db
+costa-conversation.json
+
+# Environment/secrets
+.env
+*.key
+*.pem
+
+# Claude Code project config (local)
+.claude/
+
+# Editor
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db

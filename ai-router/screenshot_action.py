@@ -68,8 +68,37 @@ def capture_region() -> str | None:
     return SCREENSHOT_PATH
 
 
+def _get_anthropic_key() -> str | None:
+    """Read the Anthropic API key from environment or costa config."""
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    env_file = Path.home() / ".config" / "costa" / "env"
+    try:
+        for line in env_file.read_text().splitlines():
+            if line.startswith("ANTHROPIC_API_KEY="):
+                return line.split("=", 1)[1].strip()
+    except Exception:
+        pass
+    return None
+
+
 def analyze_screenshot(image_path: str) -> str:
-    """Send screenshot to Claude Haiku for analysis via the claude CLI."""
+    """Send screenshot to Claude Haiku for analysis via the Anthropic API."""
+    import base64
+    import requests
+
+    api_key = _get_anthropic_key()
+    if not api_key:
+        return "No Anthropic API key configured. Add one in ~/.config/costa/env"
+
+    # Read and base64-encode the image
+    try:
+        with open(image_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+    except Exception as e:
+        return f"Failed to read screenshot: {e}"
+
     prompt = (
         "Analyze this screenshot. What do you see? "
         "If it's an error, explain the fix. "
@@ -79,23 +108,42 @@ def analyze_screenshot(image_path: str) -> str:
         "Be concise (1-3 sentences for the analysis)."
     )
 
-    try:
-        result = subprocess.run(
-            [
-                "claude", "-p",
-                "--model", "haiku",
-                "--image", image_path,
+    payload = {
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 1024,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": image_data,
+                    },
+                },
+                {"type": "text", "text": prompt},
             ],
-            input=prompt,
-            capture_output=True, text=True, timeout=60,
+        }],
+    }
+
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+
+    try:
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            json=payload, headers=headers, timeout=60,
         )
-        if result.returncode != 0:
-            return f"Claude analysis failed: {result.stderr.strip()}"
-        return result.stdout.strip()
-    except subprocess.TimeoutExpired:
-        return "Analysis timed out (60s limit)."
-    except FileNotFoundError:
-        return "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-cli"
+        if resp.status_code == 200:
+            data = resp.json()
+            content = data.get("content", [])
+            parts = [block["text"] for block in content if block.get("type") == "text"]
+            return " ".join(parts).strip()
+        return f"Claude API error: {resp.status_code} {resp.text[:200]}"
     except Exception as e:
         return f"Analysis error: {e}"
 

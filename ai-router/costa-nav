@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# costa-nav — AI-powered screen reading for Claude Code
+# Reads AT-SPI accessibility tree, sends to local Ollama for interpretation
+# Claude Code sends a batch of queries, gets back compact structured answers
+#
+# Usage:
+#   costa-nav query '{"app":"firefox","queries":[{"id":"url","find":"current URL"}]}'
+#   costa-nav read firefox          # raw AT-SPI dump for an app
+#   costa-nav screen                # quick desktop state summary
+#   costa-nav apps                  # list apps with AT-SPI access
+
+exec /usr/bin/python3 "$(dirname "$0")/nav.py" "$@"

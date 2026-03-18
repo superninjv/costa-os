@@ -1,0 +1,305 @@
+// Costa OS — Main Bar template
+// Placed on the primary monitor. Full module set.
+// Placeholders: __OUTPUT__, __PERSISTENT_WORKSPACES__
+{
+  "name": "main-bar",
+  "output": "__OUTPUT__",
+  "layer": "top",
+  "position": "top",
+  "height": 44,
+  "spacing": 8,
+  "margin-top": 6,
+  "margin-left": 10,
+  "margin-right": 10,
+  "gtk-layer-shell": true,
+  "tooltip": true,
+
+  "modules-left": [
+    "hyprland/workspaces",
+    "custom/git",
+    "custom/now-playing",
+    "hyprland/window"
+  ],
+
+  "modules-center": [
+    "custom/costa-ai",
+    "custom/ai-report"
+  ],
+
+  "modules-right": [
+    "custom/pomodoro",
+    "custom/claude",
+    "custom/headless-preview",
+    "custom/claude-usage",
+    "custom/troubleshoot",
+    "custom/project",
+    "custom/ssh",
+    "custom/keybinds",
+    "custom/docker",
+    "custom/ptt",
+    "tray",
+    "pulseaudio",
+    "custom/netspeed",
+    "battery",
+    "custom/updates",
+    "clock",
+    "custom/weather",
+    "custom/costa-badge",
+    "custom/settings",
+    "custom/power"
+  ],
+
+  "hyprland/workspaces": {
+    "format": "{icon}",
+    "format-icons": {
+      "1": "<span font_family='JetBrainsMono Nerd Font'>\uf120</span> term",
+      "2": "<span font_family='JetBrainsMono Nerd Font'>\uf0ac</span> web",
+      "3": "<span font_family='JetBrainsMono Nerd Font'>\uf121</span> code",
+      "4": "<span font_family='JetBrainsMono Nerd Font'>\uf013</span> sys",
+      "5": "<span font_family='JetBrainsMono Nerd Font'>\uf11b</span> game",
+      "6": "<span font_family='JetBrainsMono Nerd Font'>\uf025</span> music",
+      "default": "<span font_family='JetBrainsMono Nerd Font'>\uf444</span>"
+    },
+    "markup": true,
+    "on-click": "activate",
+    "on-click-right": "~/.config/waybar/scripts/workspace-manager.sh {name}",
+    "sort-by-number": true,
+    "all-outputs": false,
+    "show-special": false,
+    "persistent-workspaces": "__PERSISTENT_WORKSPACES__"
+  },
+
+  "hyprland/window": {
+    "format": "{}",
+    "max-length": 35,
+    "separate-outputs": true,
+    "rewrite": {
+      "(.*) — Mozilla Firefox": "$1",
+      "(.*) - Visual Studio Code": "$1",
+      "(.*)": "$1"
+    }
+  },
+
+  "custom/now-playing": {
+    "format": "{}",
+    "return-type": "json",
+    "max-length": 55,
+    "exec": "~/.config/waybar/scripts/now-playing.sh",
+    "interval": 3,
+    "tooltip": true,
+    "on-click": "/usr/bin/python3 $HOME/.config/music-widget/widget.py",
+    "on-click-right": "playerctl next",
+    "on-click-middle": "playerctl play-pause",
+    "on-scroll-up": "playerctl position 5+",
+    "on-scroll-down": "playerctl position 5-"
+  },
+
+  "custom/git": {
+    "format": "{}",
+    "return-type": "json",
+    "max-length": 30,
+    "exec": "~/.config/waybar/scripts/git-status.sh",
+    "interval": 10,
+    "tooltip": true,
+    "on-click": "~/.config/waybar/scripts/toggle-app.sh lazygit lazygit"
+  },
+
+  "custom/claude": {
+    "format": "\udb81\udea9",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Claude Code\nClick: launch  |  Middle: dangerous\nRight: model picker  |  Scroll: project",
+    "on-click": "~/.config/waybar/scripts/claude-launcher.sh launch",
+    "on-click-middle": "~/.config/waybar/scripts/claude-launcher.sh dangerous",
+    "on-click-right": "~/.config/waybar/scripts/claude-launcher.sh menu",
+    "on-scroll-up": "~/.config/waybar/scripts/claude-launcher.sh project",
+    "on-scroll-down": "~/.config/waybar/scripts/claude-launcher.sh project"
+  },
+
+  "custom/headless-preview": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "if hyprctl monitors -j 2>/dev/null | grep -q HEADLESS; then echo '{\"text\": \"󰍹\", \"tooltip\": \"Claude Screen — click to toggle preview\"}'; else echo '{\"text\": \"\"}'; fi",
+    "on-click": "/usr/bin/python3 /usr/share/costa-os/scripts/headless-preview.py",
+    "interval": 30
+  },
+
+  "custom/claude-usage": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/claude-usage.sh",
+    "interval": 120,
+    "on-click": "notify-send 'Claude Usage' \"$(~/.config/waybar/scripts/claude-usage.sh | /usr/bin/python3 -c 'import json,sys; d=json.loads(sys.stdin.read()); print(d[\"tooltip\"].replace(\"\\\\n\",\"\\n\"))')\"",
+    "on-click-right": "xdg-open https://console.anthropic.com/settings/billing"
+  },
+
+  "custom/troubleshoot": {
+    "format": "\uf188",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "System Troubleshooter\nClick: run check  |  Right: auto-fix\nMiddle: notify",
+    "on-click": "ghostty -e bash -c '~/.config/waybar/scripts/troubleshoot.sh; echo; read -p \"Press Enter to close...\"'",
+    "on-click-right": "ghostty -e bash -c '~/.config/waybar/scripts/troubleshoot.sh --fix; echo; read -p \"Press Enter to close...\"'",
+    "on-click-middle": "~/.config/waybar/scripts/troubleshoot.sh --notify"
+  },
+
+  "custom/project": {
+    "format": "\uf07b",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Project Switcher\nClick: terminal  |  Right: VS Code",
+    "on-click": "~/.config/waybar/scripts/project-switcher.sh terminal",
+    "on-click-right": "~/.config/waybar/scripts/project-switcher.sh code"
+  },
+
+  "custom/ssh": {
+    "format": "\udb83\udce0",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "SSH Quick Connect",
+    "on-click": "~/.config/waybar/scripts/ssh-menu.sh"
+  },
+
+  "custom/keybinds": {
+    "format": "\udb80\udf0c",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Keybind & Mouse Configurator",
+    "on-click": "hyprctl clients -j | jq -e '.[] | select(.class == \"com.costa.keybinds\")' >/dev/null 2>&1 && hyprctl dispatch closewindow class:com.costa.keybinds || costa-keybinds-gui"
+  },
+
+  "custom/docker": {
+    "format": "\udb81\udc61 {}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/docker-status.sh",
+    "interval": 30,
+    "tooltip": true,
+    "on-click": "~/.config/waybar/scripts/toggle-app.sh lazydocker lazydocker"
+  },
+
+  "custom/netspeed": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/net-speed.sh",
+    "interval": 3,
+    "tooltip": true
+  },
+
+  "custom/updates": {
+    "format": "\udb81\udc14 {}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/updates.sh",
+    "interval": 3600,
+    "tooltip": true,
+    "on-click": "ghostty -e bash -c 'yay -Syu; echo Done; read'"
+  },
+
+  "custom/weather": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/weather.sh",
+    "interval": 1800,
+    "tooltip": true
+  },
+
+  "custom/pomodoro": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/pomodoro.sh status",
+    "interval": 1,
+    "tooltip": true,
+    "on-click": "~/.config/waybar/scripts/pomodoro.sh toggle",
+    "on-click-right": "~/.config/waybar/scripts/pomodoro.sh reset"
+  },
+
+  "clock": {
+    "timezone": "__TIMEZONE__",
+    "format": "{:%I:%M}",
+    "format-alt": "{:%A, %b %d}",
+    "tooltip-format": "<big>{:%B %Y}</big>\n<tt><small>{calendar}</small></tt>",
+    "interval": 60
+  },
+
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "\udb81\udd9f",
+    "format-icons": {
+      "default": ["\uf026", "\uf027", "\uf028"]
+    },
+    "tooltip-format": "{desc}\n{volume}% — {format_source}",
+    "on-click": "pavucontrol",
+    "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
+    "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+    "scroll-step": 5
+  },
+
+  "tray": {
+    "icon-size": 20,
+    "spacing": 10,
+    "show-passive-items": true
+  },
+
+  "custom/costa-ai": {
+    "format": "{}",
+    "return-type": "json",
+    "max-length": 70,
+    "exec": "~/.config/waybar/scripts/costa-ai-status.sh",
+    "on-click": "~/.config/waybar/scripts/toggle-app.sh costa-ai-widget '/usr/bin/python3 $HOME/.config/costa-ai-widget/widget.py'",
+    "on-click-right": "~/.config/waybar/scripts/voice-click.sh",
+    "tooltip": true
+  },
+
+  "custom/ptt": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/ptt-status.sh",
+    "on-click": "~/.config/hypr/push-to-talk.sh",
+    "tooltip": true
+  },
+
+  "custom/ai-report": {
+    "format": "\udb80\ude91",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Report bad AI answer\nClick: report  |  Right: view corrections",
+    "on-click": "/usr/share/costa-os/ai-router/costa-ai-report",
+    "on-click-right": "ghostty -e /usr/share/costa-os/ai-router/costa-ai-report corrections"
+  },
+
+  "custom/settings": {
+    "format": "\uf013",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Costa OS Settings",
+    "on-click": "hyprctl clients -j | jq -e '.[] | select(.class == \"com.costa.settings\")' >/dev/null 2>&1 && hyprctl dispatch closewindow class:com.costa.settings || costa-settings"
+  },
+
+  "battery": {
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": "\udb80\udc84 {capacity}%",
+    "format-plugged": "\udb80\udc84 {capacity}%",
+    "format-icons": ["\udb80\udc7a", "\udb80\udc7b", "\udb80\udc7c", "\udb80\udc7d", "\udb80\udc79"],
+    "tooltip-format": "{timeTo}\n{power:.1f}W"
+  },
+
+  "custom/costa-badge": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/costa-badge.sh",
+    "interval": 3600,
+    "tooltip": true,
+    "on-click": "xdg-open https://github.com/superninjv/costa-os"
+  },
+
+  "custom/power": {
+    "format": "\u23fb",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Power Menu\nLock \u00b7 Logout \u00b7 Suspend \u00b7 Reboot \u00b7 Shutdown",
+    "on-click": "~/.config/rofi/powermenu.sh"
+  }
+}

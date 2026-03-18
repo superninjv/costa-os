@@ -1,0 +1,67 @@
+name: System Health Monitor
+description: Hourly check of disk usage, memory pressure, failed systemd services, and available security updates with alerts on anomalies.
+trigger:
+  type: schedule
+  calendar: "*-*-* *:00:00"
+steps:
+  - id: disk_check
+    action: shell
+    command: df -h --output=target,pcent / /home | awk 'NR>1{gsub(/%/,"",$2); if($2>85) print "WARNING: "$1" at "$2"% usage"; else print "OK: "$1" at "$2"%"}'
+
+  - id: memory_check
+    action: shell
+    command: |
+      free | awk '/^Mem:/{pct=int($3/$2*100); if(pct>90) print "WARNING: RAM at "pct"% ("int($3/1024)"MB/"int($2/1024)"MB)"; else print "OK: RAM at "pct"%"}'
+      free | awk '/^Swap:/{if($2>0){pct=int($3/$2*100); if(pct>50) print "WARNING: Swap at "pct"%"; else print "OK: Swap at "pct"%"} else print "OK: No swap configured"}'
+
+  - id: failed_services
+    action: shell
+    command: |
+      failed=$(systemctl --failed --no-legend --no-pager 2>/dev/null)
+      if [ -n "$failed" ]; then
+        echo "WARNING: Failed services detected:"
+        echo "$failed"
+      else
+        echo "OK: All services running"
+      fi
+
+  - id: security_updates
+    action: shell
+    command: |
+      updates=$(checkupdates 2>/dev/null | grep -iE 'linux|openssl|openssh|sudo|systemd|glibc|curl|wget' | head -10)
+      if [ -n "$updates" ]; then
+        echo "Security-relevant updates available:"
+        echo "$updates"
+      else
+        echo "OK: No security-critical updates pending"
+      fi
+    timeout: 30
+
+  - id: high_cpu
+    action: shell
+    command: ps aux --sort=-%cpu | awk 'NR<=4{if(NR==1 || $3>50.0) print $0}'
+
+  - id: has_issues
+    action: condition
+    check: disk_check
+    contains: "WARNING"
+
+  - id: has_mem_issues
+    action: condition
+    check: memory_check
+    contains: "WARNING"
+
+  - id: has_service_issues
+    action: condition
+    check: failed_services
+    contains: "WARNING"
+
+  - id: alert
+    action: notify
+    title: "System Health Alert"
+    body: |
+      {{steps.disk_check.output}}
+      {{steps.memory_check.output}}
+      {{steps.failed_services.output}}
+      {{steps.security_updates.output}}
+    urgency: critical

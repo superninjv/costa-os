@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Costa Flow — workflow automation CLI.
+
+n8n-style automation for Costa OS. YAML-defined, systemd-scheduled.
+
+Usage:
+    costa-flow run <name>           # execute workflow now
+    costa-flow install <name>       # create systemd timer
+    costa-flow uninstall <name>     # remove systemd timer
+    costa-flow list                 # all workflows + next run
+    costa-flow log <name> [N]       # recent runs (default: 10)
+    costa-flow create               # describe in English → generate YAML
+"""
+
+import sys
+import os
+
+# Allow importing from the ai-router directory
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Costa Flow — workflow automation")
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # run
+    run_parser = subparsers.add_parser("run", help="Execute a workflow now")
+    run_parser.add_argument("name", help="Workflow name")
+
+    # install
+    install_parser = subparsers.add_parser("install", help="Create systemd timer for a workflow")
+    install_parser.add_argument("name", help="Workflow name")
+
+    # uninstall
+    uninstall_parser = subparsers.add_parser("uninstall", help="Remove systemd timer")
+    uninstall_parser.add_argument("name", help="Workflow name")
+
+    # list
+    subparsers.add_parser("list", help="List all workflows")
+
+    # log
+    log_parser = subparsers.add_parser("log", help="Show recent workflow runs")
+    log_parser.add_argument("name", help="Workflow name")
+    log_parser.add_argument("limit", nargs="?", type=int, default=10, help="Number of runs")
+
+    # create
+    subparsers.add_parser("create", help="Create a workflow from English description")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    from workflow import (
+        execute_workflow, list_workflows, install_workflow,
+        uninstall_workflow, get_workflow_log,
+    )
+
+    if args.command == "run":
+        print(f"Running workflow: {args.name}")
+        result = execute_workflow(args.name)
+        if result.get("error"):
+            print(f"Error: {result['error']}")
+            sys.exit(1)
+        print(f"Completed: {result['steps_executed']} steps in {result['total_ms']}ms")
+        for step_id, output in result.get("outputs", {}).items():
+            print(f"  [{step_id}] {str(output)[:100]}")
+
+    elif args.command == "install":
+        success = install_workflow(args.name)
+        if success:
+            print(f"Installed timer for: {args.name}")
+            print(f"  Check status: systemctl --user status costa-flow-{args.name}.timer")
+        else:
+            print(f"Failed to install timer for: {args.name}")
+            sys.exit(1)
+
+    elif args.command == "uninstall":
+        success = uninstall_workflow(args.name)
+        if success:
+            print(f"Uninstalled timer for: {args.name}")
+        else:
+            print(f"Failed to uninstall timer for: {args.name}")
+            sys.exit(1)
+
+    elif args.command == "list":
+        workflows = list_workflows()
+        if not workflows:
+            print("No workflows found in ~/.config/costa/workflows/")
+            print("Create one with: costa-flow create")
+            return
+        print(f"{'Name':<25} {'Description':<40} {'Trigger'}")
+        print("-" * 85)
+        for wf in workflows:
+            trigger = wf.get("trigger", {})
+            trigger_str = trigger.get("calendar", trigger.get("type", "manual"))
+            print(f"{wf['name']:<25} {wf.get('description', '')[:38]:<40} {trigger_str}")
+
+    elif args.command == "log":
+        runs = get_workflow_log(args.name, args.limit)
+        if not runs:
+            print(f"No runs recorded for: {args.name}")
+            return
+        for run in runs:
+            error = run.get("error", "")
+            started = run.get("started_at", "?")
+            ms = run.get("total_ms", 0)
+            steps = run.get("steps_executed", 0)
+            status = "failed" if error else "ok"
+            icon = "✓" if not error else "✗"
+            print(f"  {icon} {started}  {status}  {steps} steps  {ms}ms")
+
+    elif args.command == "create":
+        print("Describe your workflow in plain English:")
+        print("(e.g. 'Every morning at 8am, check weather and system health, then notify me')")
+        try:
+            description = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if not description:
+            return
+
+        # Use costa-ai to generate the workflow YAML
+        from router import route_query
+        prompt = (
+            f"Generate a Costa OS workflow YAML file based on this description: {description}\n\n"
+            "The YAML format supports these step types:\n"
+            "- costa-ai: query the AI router (fields: query, model)\n"
+            "- shell: run a shell command (fields: command, timeout)\n"
+            "- notify: send a notification (fields: title, body)\n"
+            "- condition: check output of a previous step (fields: check, contains/matches)\n"
+            "- wait: pause execution (fields: duration in seconds)\n\n"
+            "Variables: {{steps.step_id.output}} references a previous step's output.\n"
+            "Trigger types: schedule (with calendar field using systemd calendar spec).\n\n"
+            "Output ONLY the YAML, no explanation. Start with 'name:'"
+        )
+        result = route_query(prompt, force_model="sonnet")
+        yaml_content = result.get("response", "")
+
+        if yaml_content:
+            # Clean up markdown code fences if present
+            if "```" in yaml_content:
+                import re
+                match = re.search(r"```(?:yaml)?\s*\n?(.*?)\n?```", yaml_content, re.DOTALL)
+                if match:
+                    yaml_content = match.group(1)
+
+            print("\nGenerated workflow:")
+            print("---")
+            print(yaml_content)
+            print("---")
+
+            # Extract name from YAML
+            import yaml
+            try:
+                data = yaml.safe_load(yaml_content)
+                name = data.get("name", "custom-workflow")
+            except Exception:
+                name = "custom-workflow"
+
+            save_path = os.path.expanduser(f"~/.config/costa/workflows/{name}.yaml")
+            try:
+                confirm = input(f"\nSave to {save_path}? [Y/n] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return
+
+            if confirm in ("", "y", "yes"):
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                with open(save_path, "w") as f:
+                    f.write(yaml_content)
+                print(f"Saved! Run with: costa-flow run {name}")
+        else:
+            print("Failed to generate workflow.")
+
+
+if __name__ == "__main__":
+    main()

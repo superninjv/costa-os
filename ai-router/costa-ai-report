@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Costa AI Report — send bad AI answer to Claude for correction
+# Triggered by waybar report button click
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Activate venv if it exists
+if [ -f "$HOME/.config/costa/venv/bin/activate" ]; then
+    source "$HOME/.config/costa/venv/bin/activate"
+fi
+
+if [ "$1" = "corrections" ]; then
+    exec python3 report.py corrections
+else
+    exec python3 report.py
+fi

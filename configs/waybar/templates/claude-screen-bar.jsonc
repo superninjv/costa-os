@@ -1,0 +1,38 @@
+// Costa OS — Claude Screen Bar template
+// For the headless virtual monitor used by Claude for AI navigation.
+// Minimal — just an indicator and workspace.
+// Placeholders: __OUTPUT__, __PERSISTENT_WORKSPACES__
+{
+  "name": "claude-screen-bar",
+  "output": "__OUTPUT__",
+  "layer": "top",
+  "position": "top",
+  "height": 28,
+  "margin-top": 2,
+  "margin-left": 4,
+  "margin-right": 4,
+
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": ["custom/claude-screen-status"],
+  "modules-right": ["clock"],
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate",
+    "sort-by-number": true,
+    "all-outputs": false,
+    "persistent-workspaces": "__PERSISTENT_WORKSPACES__"
+  },
+
+  "custom/claude-screen-status": {
+    "format": "\udb81\udea9 Claude Screen",
+    "interval": 86400,
+    "exec": "echo tooltip",
+    "tooltip-format": "Headless virtual monitor for AI navigation"
+  },
+
+  "clock": {
+    "format": "{:%I:%M}",
+    "timezone": "__TIMEZONE__"
+  }
+}

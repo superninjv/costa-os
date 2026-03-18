@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Costa Keybinds Configurator — manage keybinds and mouse buttons.
+
+Usage:
+    costa-keybinds list [--filter KEY] [--mod MOD]
+    costa-keybinds add MODS KEY DISPATCHER [ARGS] [--comment TEXT]
+    costa-keybinds remove MODS KEY
+    costa-keybinds modify MODS KEY [--new-key K] [--new-mods M] [--new-action A]
+    costa-keybinds mouse                    # show mouse button mappings
+    costa-keybinds mouse enable-all         # make all buttons bindable
+    costa-keybinds mouse remap INDEX ACTION # remap a specific button
+    costa-keybinds mouse detect             # press a button to identify it
+    costa-keybinds context                  # dump full keybind context (for AI)
+    costa-keybinds --json ...               # output as JSON
+"""
+
+import sys
+import os
+import json
+import argparse
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from keybinds import (
+    list_keybinds, format_keybinds, add_keybind, remove_keybind, modify_keybind,
+    get_mouse_buttons, remap_mouse_button, detect_mouse_button, enable_all_mouse_buttons,
+    keybind_context, G502_LAYOUT,
+)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Costa Keybinds Configurator")
+    parser.add_argument("--json", action="store_true", help="JSON output")
+    sub = parser.add_subparsers(dest="command")
+
+    # list
+    ls = sub.add_parser("list", help="List keybinds")
+    ls.add_argument("--filter", "-f", help="Filter by key/action/description")
+    ls.add_argument("--mod", "-m", help="Filter by modifier (SUPER, ALT, etc.)")
+
+    # add
+    add = sub.add_parser("add", help="Add a keybind")
+    add.add_argument("mods", help="Modifiers (e.g., SUPER, SUPER+SHIFT, or empty string)")
+    add.add_argument("key", help="Key (e.g., Return, F1, mouse:275)")
+    add.add_argument("dispatcher", help="Hyprland dispatcher (e.g., exec, togglefloating)")
+    add.add_argument("args", nargs="?", default="", help="Dispatcher args")
+    add.add_argument("--comment", "-c", default="", help="Comment for this keybind")
+    add.add_argument("--type", "-t", default="bind", help="Bind type (bind, bindm, binde, etc.)")
+
+    # remove
+    rm = sub.add_parser("remove", help="Remove a keybind")
+    rm.add_argument("mods", help="Modifiers")
+    rm.add_argument("key", help="Key")
+
+    # modify
+    mod = sub.add_parser("modify", help="Modify a keybind")
+    mod.add_argument("mods", help="Current modifiers")
+    mod.add_argument("key", help="Current key")
+    mod.add_argument("--new-key", help="New key")
+    mod.add_argument("--new-mods", help="New modifiers")
+    mod.add_argument("--new-dispatcher", help="New dispatcher")
+    mod.add_argument("--new-args", help="New args")
+
+    # mouse
+    mouse = sub.add_parser("mouse", help="Mouse button management")
+    mouse.add_argument("action", nargs="?", default="show",
+                       choices=["show", "enable-all", "remap", "detect"],
+                       help="Mouse action")
+    mouse.add_argument("remap_args", nargs="*", help="For remap: INDEX ACTION")
+
+    # context
+    sub.add_parser("context", help="Full keybind context for AI")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    output_json = args.json
+
+    if args.command == "list":
+        binds = list_keybinds(filter_key=args.filter, filter_mod=args.mod)
+        if output_json:
+            print(json.dumps(binds, indent=2))
+        else:
+            print(f"Keybinds ({len(binds)}):")
+            print(format_keybinds(binds))
+
+    elif args.command == "add":
+        result = add_keybind(args.mods, args.key, args.dispatcher, args.args,
+                             bind_type=args.type, comment=args.comment)
+        if output_json:
+            print(json.dumps(result, indent=2))
+        elif result["success"]:
+            print(f"Added: {result['bind']}")
+        else:
+            print(f"Error: {result['error']}", file=sys.stderr)
+            sys.exit(1)
+
+    elif args.command == "remove":
+        result = remove_keybind(args.mods, args.key)
+        if output_json:
+            print(json.dumps(result, indent=2))
+        elif result["success"]:
+            print(f"Removed: {', '.join(result['removed'])}")
+        else:
+            print(f"Error: {result['error']}", file=sys.stderr)
+            sys.exit(1)
+
+    elif args.command == "modify":
+        result = modify_keybind(
+            args.mods, args.key,
+            new_key=args.new_key, new_mods=args.new_mods,
+            new_dispatcher=args.new_dispatcher, new_args=args.new_args,
+        )
+        if output_json:
+            print(json.dumps(result, indent=2))
+        elif result["success"]:
+            print(f"Modified: {result['modified']}")
+        else:
+            print(f"Error: {result['error']}", file=sys.stderr)
+            sys.exit(1)
+
+    elif args.command == "mouse":
+        if args.action == "show":
+            buttons = get_mouse_buttons()
+            if output_json:
+                print(json.dumps(buttons, indent=2))
+            else:
+                print("Mouse Button Mappings (Logitech G502 Hero):")
+                print(f"{'Idx':<4} {'Physical Button':<40} {'Mapping':<30} {'Hyprland'}")
+                print("─" * 90)
+                for b in buttons:
+                    status = "passthrough" if b["passthrough"] else b["action"]
+                    hypr = b["hypr_code"] if b["hypr_code"] and b["passthrough"] else "—"
+                    bindable = " ✓" if b["passthrough"] and b["index"] > 2 else ""
+                    print(f"{b['index']:<4} {b['physical']:<40} {status:<30} {hypr}{bindable}")
+                hw_only = [b for b in buttons if not b["passthrough"] and b["index"] > 2 and b["index"] < 9]
+                if hw_only:
+                    print(f"\n{len(hw_only)} buttons locked to hardware functions.")
+                    print("Run 'costa-keybinds mouse enable-all' to make them bindable.")
+
+        elif args.action == "enable-all":
+            remapped = enable_all_mouse_buttons()
+            if output_json:
+                print(json.dumps(remapped, indent=2))
+            elif remapped:
+                print(f"Enabled {len(remapped)} buttons for keybinding:")
+                for r in remapped:
+                    print(f"  {r['physical']} → passthrough (now bindable as mouse:{272 + r['button']})")
+                print("\nYou can now bind these in Hyprland, e.g.:")
+                print(f"  bind = , mouse:{272 + remapped[0]['button']}, exec, <command>")
+            else:
+                print("All extra buttons are already enabled.")
+
+        elif args.action == "remap":
+            if len(args.remap_args) < 2:
+                print("Usage: costa-keybinds mouse remap INDEX ACTION", file=sys.stderr)
+                print("  ACTION: 'button' (passthrough), 'resolution-alternate', etc.", file=sys.stderr)
+                sys.exit(1)
+            idx = int(args.remap_args[0])
+            action = args.remap_args[1]
+            result = remap_mouse_button(idx, action)
+            if output_json:
+                print(json.dumps(result, indent=2))
+            elif result["success"]:
+                print(f"Remapped button {idx} ({result['physical']}) → {result['action']}")
+            else:
+                print(f"Error: {result['error']}", file=sys.stderr)
+                sys.exit(1)
+
+        elif args.action == "detect":
+            print("Press an extra mouse button (left/right/middle are ignored)...")
+            print("Waiting 10 seconds...")
+            result = detect_mouse_button(timeout_secs=10)
+            if output_json:
+                print(json.dumps(result, indent=2))
+            elif result:
+                print(f"\nDetected: {result['physical']}")
+                print(f"  evdev code: {result['evdev_code']} ({result['evdev_name']})")
+                print(f"  Hyprland:   {result['hypr_code']}")
+                if result["button_index"] is not None:
+                    print(f"  ratbag idx: {result['button_index']}")
+            else:
+                print("No button press detected within 10 seconds.")
+
+    elif args.command == "context":
+        ctx = keybind_context()
+        if output_json:
+            binds = list_keybinds()
+            buttons = get_mouse_buttons()
+            print(json.dumps({"keybinds": binds, "mouse_buttons": buttons}, indent=2))
+        else:
+            print(ctx)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,38 @@
+// Costa OS — Minimal Bar template
+// For secondary monitors. Workspaces + weather + clock.
+// Placeholders: __OUTPUT__, __PERSISTENT_WORKSPACES__
+{
+  "name": "minimal-bar",
+  "output": "__OUTPUT__",
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+  "margin-top": 4,
+  "margin-left": 6,
+  "margin-right": 6,
+
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": [],
+  "modules-right": ["custom/weather", "clock"],
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate",
+    "sort-by-number": true,
+    "all-outputs": false,
+    "persistent-workspaces": "__PERSISTENT_WORKSPACES__"
+  },
+
+  "custom/weather": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/weather.sh",
+    "interval": 1800,
+    "tooltip": true
+  },
+
+  "clock": {
+    "format": "{:%I:%M}",
+    "timezone": "__TIMEZONE__"
+  }
+}

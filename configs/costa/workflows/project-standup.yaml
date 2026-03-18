@@ -1,0 +1,22 @@
+name: project-standup
+description: Summarize git changes across all projects since yesterday
+trigger:
+  type: schedule
+  calendar: "*-*-* 09:30:00"
+steps:
+  - id: git-changes
+    action: shell
+    command: "for d in ~/projects/*/; do name=$(basename \"$d\"); log=$(git -C \"$d\" log --oneline --since='yesterday' 2>/dev/null | head -5); [ -n \"$log\" ] && echo \"=== $name ===\"$'\\n'\"$log\"$'\\n'; done"
+    timeout: 30
+  - id: has-changes
+    action: condition
+    check: git-changes
+    contains: "==="
+  - id: summarize
+    action: costa-ai
+    query: "Write a concise daily standup summary from these git changes across my projects. Group by project, one bullet each:\n{{steps.git-changes.output}}"
+    model: local
+  - id: notify
+    action: notify
+    title: "Daily Standup"
+    body: "{{steps.summarize.output}}"

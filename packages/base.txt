@@ -44,7 +44,7 @@ rofi-wayland
 libnotify
 
 # Wallpaper & Screenshots
-mpvpaper
+mpvpaper  # AUR
 swww
 grim
 slurp
@@ -77,10 +77,14 @@ noto-fonts-emoji
 
 # Theme
 papirus-icon-theme
-bibata-cursor-theme
+bibata-cursor-theme  # AUR
 adw-gtk-theme
 qt5ct
 qt6ct
+
+# Node.js — required for Claude Code
+nodejs
+npm
 
 # CLI essentials
 ripgrep
@@ -96,7 +100,17 @@ less
 sox
 uv
 
+# GUI framework (keybinds_gui, settings)
+gtk4
+libadwaita
+
+# Media control
+playerctl
+ydotool
+python-pip
+
 # System
 greetd
 greetd-tuigreet
 brightnessctl
+power-profiles-daemon

@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Costa Agents — dispatch tasks to specialized background agents.
+
+Usage:
+  costa-agents list                         List all agents and their status
+  costa-agents dispatch <agent> <task>      Send a task to an agent
+  costa-agents status                       Show active tasks and queue status
+  costa-agents log [agent]                  Show recent task logs
+  costa-agents run <agent> <task>           Run synchronously (wait for result)
+"""
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+from agents import get_pool
+
+
+def cmd_list(args):
+    pool = get_pool()
+    agents = pool.list_agents()
+    if not agents:
+        print("No agents found.")
+        return
+
+    print(f"\n  {'Agent':<16} {'Title':<22} {'Queue':<14} {'Status':<10}")
+    print(f"  {'─'*16} {'─'*22} {'─'*14} {'─'*10}")
+    for a in agents:
+        icon = a["icon"] + " " if a["icon"] else ""
+        q_info = a["queue"]
+        if a["queue_active"] or a["queue_waiting"]:
+            q_info += f" ({a['queue_active']}active/{a['queue_waiting']}wait)"
+        status_color = {
+            "idle": "\033[38;2;139;153;104m",     # olive
+            "running": "\033[38;2;91;148;168m",    # sea
+            "queued": "\033[38;2;201;169;110m",    # sand
+        }.get(a["status"], "")
+        reset = "\033[0m"
+        print(f"  {icon}{a['name']:<14} {a['title']:<22} {q_info:<14} {status_color}{a['status']}{reset}")
+    print()
+
+
+def cmd_dispatch(args):
+    pool = get_pool()
+    instruction = " ".join(args.task)
+    task = pool.dispatch(args.agent, instruction, dispatched_by="cli")
+    if not task:
+        available = ", ".join(pool.agents.keys())
+        print(f"Unknown agent: {args.agent}")
+        print(f"Available: {available}")
+        sys.exit(1)
+    print(f"Dispatched task {task.id} to {args.agent}")
+    print(f"Instruction: {instruction}")
+    print(f"Queue: {pool.agents[args.agent].queue}")
+    print(f"\nTask running in background. Check status with: costa-agents status")
+
+
+def cmd_run(args):
+    pool = get_pool()
+    instruction = " ".join(args.task)
+    task = pool.dispatch(args.agent, instruction, dispatched_by="cli-sync")
+    if not task:
+        available = ", ".join(pool.agents.keys())
+        print(f"Unknown agent: {args.agent}")
+        print(f"Available: {available}")
+        sys.exit(1)
+
+    print(f"Running {args.agent}: {instruction}")
+    agent = pool.agents[args.agent]
+    icon = agent.icon or ">"
+
+    # Wait for completion
+    while task.status in ("queued", "running"):
+        if task.status == "queued":
+            sys.stdout.write(f"\r  {icon} Waiting for {agent.queue} queue...")
+        else:
+            elapsed = time.time() - task.started_at
+            sys.stdout.write(f"\r  {icon} Running... ({elapsed:.0f}s)    ")
+        sys.stdout.flush()
+        time.sleep(0.5)
+
+    print(f"\r  {icon} {task.status.upper()} ({task.finished_at - task.started_at:.1f}s)")
+    print()
+    print(task.result)
+
+
+def cmd_status(args):
+    pool = get_pool()
+    active = [t for t in pool.tasks if t.status in ("queued", "running")]
+
+    if not active:
+        print("No active tasks.")
+        # Show queue status
+        if pool.queues:
+            print("\nQueues:")
+            for name, q in pool.queues.items():
+                print(f"  {name}: {q.active_count}/{q.max_concurrent} active, {q.waiting_count} waiting")
+        return
+
+    print(f"\n  {'Task':<24} {'Agent':<14} {'Status':<10} {'Instruction'}")
+    print(f"  {'─'*24} {'─'*14} {'─'*10} {'─'*30}")
+    for t in active:
+        elapsed = ""
+        if t.started_at:
+            elapsed = f" ({time.time() - t.started_at:.0f}s)"
+        print(f"  {t.id:<24} {t.agent_name:<14} {t.status}{elapsed:<10} {t.instruction[:40]}")
+    print()
+
+
+def cmd_log(args):
+    log_dir = Path.home() / ".local" / "share" / "costa" / "agent-logs"
+    if args.agent:
+        log_file = log_dir / f"{args.agent}.log"
+        if log_file.exists():
+            # Show last 50 lines
+            lines = log_file.read_text().splitlines()
+            for line in lines[-50:]:
+                print(line)
+        else:
+            print(f"No logs for agent: {args.agent}")
+    else:
+        if not log_dir.exists():
+            print("No agent logs yet.")
+            return
+        for f in sorted(log_dir.glob("*.log")):
+            name = f.stem
+            size = f.stat().st_size
+            lines = f.read_text().count("\n")
+            print(f"  {name:<16} {lines} entries, {size/1024:.1f}KB")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Costa OS Agent Pool")
+    sub = parser.add_subparsers(dest="command")
+
+    sub.add_parser("list", help="List all agents")
+
+    p_dispatch = sub.add_parser("dispatch", help="Dispatch task to agent (background)")
+    p_dispatch.add_argument("agent", help="Agent name")
+    p_dispatch.add_argument("task", nargs="+", help="Task instruction")
+
+    p_run = sub.add_parser("run", help="Run task synchronously (wait for result)")
+    p_run.add_argument("agent", help="Agent name")
+    p_run.add_argument("task", nargs="+", help="Task instruction")
+
+    sub.add_parser("status", help="Show active tasks")
+
+    p_log = sub.add_parser("log", help="Show task logs")
+    p_log.add_argument("agent", nargs="?", help="Agent name (omit for summary)")
+
+    args = parser.parse_args()
+
+    if args.command == "list":
+        cmd_list(args)
+    elif args.command == "dispatch":
+        cmd_dispatch(args)
+    elif args.command == "run":
+        cmd_run(args)
+    elif args.command == "status":
+        cmd_status(args)
+    elif args.command == "log":
+        cmd_log(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
