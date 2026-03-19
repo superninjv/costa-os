@@ -24,6 +24,13 @@ import sys
 import time
 from pathlib import Path
 
+# CLI-Anything fast path — deterministic CLI wrappers for supported apps
+try:
+    from cli_registry import lookup as cli_lookup, match_query_to_command, run_cli
+    _CLI_AVAILABLE = True
+except ImportError:
+    _CLI_AVAILABLE = False
+
 # ─── Paths ────────────────────────────────────────────────────
 
 COSTA_DIR = Path.home() / ".config" / "costa"
@@ -438,6 +445,46 @@ def get_model_capability() -> str:
     return "low"
 
 
+# ─── Tier -1: CLI-Anything fast path ─────────────────────────
+
+def try_cli_query(app: str, query: str) -> dict | None:
+    """Try answering via a CLI-Anything wrapper (~50ms, 0 LLM tokens).
+
+    Returns {"value": ..., "tier": "cli", "confidence": "high"} or None.
+    Falls through silently on any failure so AT-SPI/Ollama takes over.
+    """
+    if not _CLI_AVAILABLE:
+        return None
+
+    entry = cli_lookup(app)
+    if not entry:
+        return None
+
+    cmd = match_query_to_command(entry, query)
+    if not cmd:
+        return None
+
+    result = run_cli(entry, cmd)
+    if result is None:
+        return None
+
+    # CLI returned valid JSON — wrap it as a tiered result
+    # If result is a simple value dict, extract it; otherwise return as-is
+    if isinstance(result, dict):
+        # Common patterns: {"url": "..."}, {"tabs": [...]}, {"value": ...}
+        if "value" in result:
+            return {"value": result["value"], "tier": "cli", "confidence": "high"}
+        # Single-key result — extract the value
+        keys = [k for k in result if not k.startswith("_")]
+        if len(keys) == 1:
+            return {"value": result[keys[0]], "tier": "cli", "confidence": "high"}
+        return {"value": result, "tier": "cli", "confidence": "high"}
+    elif isinstance(result, list):
+        return {"value": result, "tier": "cli", "confidence": "high"}
+
+    return None
+
+
 # ─── Tier 0: Regex pattern extraction ────────────────────────
 
 # Patterns for common value types found in AT-SPI text
@@ -573,15 +620,23 @@ def query_ollama(system_prompt: str, user_prompt: str, json_mode: bool = True,
 
 
 def tiered_query(query: str, content: str, atspi_data: dict,
-                 system_prompt: str, force_smart: bool = False) -> dict:
+                 system_prompt: str, force_smart: bool = False,
+                 app: str = "") -> dict:
     """Route a query through the fastest capable tier.
 
+    Tier -1 (CLI-Anything): ~50ms — deterministic CLI wrapper (0 LLM tokens)
     Tier 0 (regex): <50ms — structured value extraction
     Tier 1 (fast model): ~300ms — simple interpretation
     Tier 2 (smart model): ~3s — complex reasoning
 
     Adapts to available hardware. Falls up to next tier on low confidence.
     """
+    # ── Tier -1: CLI-Anything ──
+    if not force_smart and app:
+        cli_result = try_cli_query(app, query)
+        if cli_result:
+            return cli_result
+
     # ── Tier 0: Regex ──
     if not force_smart:
         regex_result = try_regex_extract(query, content, atspi_data)
@@ -1017,6 +1072,25 @@ def execute_action(action: dict) -> dict:
             else:
                 result["error"] = "Claude's browser not open"
 
+        elif act == "cli":
+            # Execute a CLI-Anything command directly
+            if not _CLI_AVAILABLE:
+                result["error"] = "CLI-Anything not available"
+            else:
+                entry = cli_lookup(target) if target else None
+                cli_cmd = action.get("command", "")
+                if not entry:
+                    result["error"] = f"No CLI wrapper for '{target}'"
+                elif not cli_cmd:
+                    result["error"] = "No command specified for cli action"
+                else:
+                    cli_out = run_cli(entry, cli_cmd, timeout=action.get("timeout", 10))
+                    if cli_out is not None:
+                        result["ok"] = True
+                        result["output"] = cli_out
+                    else:
+                        result["error"] = f"CLI command failed: {cli_cmd}"
+
         else:
             result["error"] = f"Unknown action: {act}"
 
@@ -1116,7 +1190,14 @@ def handle_query(request: dict) -> dict:
         qid = q.get("id", "unknown")
         find = q.get("find", "")
 
-        # Try regex first (instant)
+        # Try CLI-Anything first (deterministic, ~50ms)
+        cli_result = try_cli_query(app, find)
+        if cli_result:
+            result[qid] = cli_result.get("value")
+            tiers_used.add("cli")
+            continue
+
+        # Try regex (instant)
         regex_result = try_regex_extract(find, content, atspi)
         if regex_result and regex_result.get("confidence") == "high":
             result[qid] = regex_result.get("value")
@@ -1177,9 +1258,12 @@ def handle_query(request: dict) -> dict:
             for q in complex_qs:
                 result[q["id"]] = None
 
+    # Check if CLI wrapper was used
+    cli_entry = cli_lookup(app) if _CLI_AVAILABLE else None
     result["_meta"] = {
         "model": get_model(),
         "fast_model": fast_model or "(none)",
+        "cli_wrapper": cli_entry.get("entry_point") if cli_entry else "(none)",
         "tiers_used": sorted(tiers_used),
         "app": app,
         "window": atspi.get("window", ""),
@@ -1290,7 +1374,7 @@ def execute_plan(plan: dict) -> dict:
                 sys_prompt = PLAN_SYSTEM
                 if site_kb:
                     sys_prompt += f"\n\nSite knowledge:\n{site_kb}"
-                answer = tiered_query(step["find"], content, last_atspi, sys_prompt)
+                answer = tiered_query(step["find"], content, last_atspi, sys_prompt, app=app)
                 results[step_id] = answer.get("value", answer)
                 step_log.append({"step": step_id, "type": "query",
                                 "tier": answer.get("tier", "?"), "result": answer})
@@ -1406,6 +1490,30 @@ def execute_plan(plan: dict) -> dict:
                 else:
                     step_log.append({"step": step_id, "type": "fallback", "triggered": False})
 
+            elif step_type == "cli_query":
+                # Direct CLI-Anything query — skip AT-SPI entirely
+                cli_app = step.get("app", app)
+                cli_cmd = step.get("command", "")
+                if isinstance(cli_cmd, list):
+                    cli_cmd = " ".join(cli_cmd)
+                cli_result = None
+                if _CLI_AVAILABLE and cli_cmd:
+                    entry = cli_lookup(cli_app)
+                    if entry:
+                        cli_result = run_cli(entry, cli_cmd, timeout=step.get("timeout", 10))
+                if cli_result is not None:
+                    results[step_id] = cli_result
+                    step_log.append({"step": step_id, "type": "cli_query", "tier": "cli"})
+                else:
+                    # Fall back to AT-SPI query if CLI fails
+                    content = read_current_screen(cli_app)
+                    find = step.get("find", cli_cmd)
+                    answer = tiered_query(find, content, last_atspi,
+                                          PLAN_SYSTEM, app=cli_app)
+                    results[step_id] = answer.get("value", answer)
+                    step_log.append({"step": step_id, "type": "cli_query",
+                                    "tier": answer.get("tier", "fallback")})
+
             elif step_type == "read":
                 # Just read and store the current screen content
                 content = read_current_screen()
@@ -1501,6 +1609,7 @@ def main():
                 "screen": "costa-nav screen — desktop state",
                 "apps": "costa-nav apps — list accessible apps",
                 "knowledge": "costa-nav knowledge [app] — show loaded knowledge",
+                "cli-registry": "costa-nav cli-registry [list|refresh|check <app>] — CLI-Anything wrappers",
             }
         }, indent=2))
         sys.exit(1)
@@ -1551,6 +1660,27 @@ def main():
         # List all site knowledge files
         result["site_files"] = [f.name for f in SITE_KNOWLEDGE_DIR.glob("*.md")]
         print(json.dumps(result, indent=2))
+
+    elif cmd == "cli-registry":
+        if not _CLI_AVAILABLE:
+            print(json.dumps({"error": "CLI registry module not available"}))
+            sys.exit(1)
+        from cli_registry import list_registry, refresh_registry, lookup as _lookup
+        subcmd = sys.argv[2] if len(sys.argv) > 2 else "list"
+        if subcmd == "list":
+            print(json.dumps(list_registry(), indent=2))
+        elif subcmd == "refresh":
+            refresh_registry()
+            print(json.dumps(list_registry(), indent=2))
+        elif subcmd == "check":
+            app_name = sys.argv[3] if len(sys.argv) > 3 else ""
+            entry = _lookup(app_name) if app_name else None
+            if entry:
+                print(json.dumps({"available": True, **entry}, indent=2))
+            else:
+                print(json.dumps({"available": False, "app": app_name}))
+        else:
+            print(json.dumps({"error": f"Unknown cli-registry subcommand: {subcmd}"}))
 
     elif cmd == "learn":
         # Manual learning entry: costa-nav learn <app> "fact to remember"

@@ -1,7 +1,7 @@
 ---
-l0: "Configuration locations, Costa theme colors, settings app, wallpaper, multi-monitor waybar setup"
-l1_sections: ["Config Locations", "Costa OS Settings App", "Re-running Setup", "Adding API Keys After Install", "Costa Theme Colors", "Waybar", "Ghostty Terminal", "Rofi Launcher", "Dunst Notifications", "Wallpaper", "Multi-Monitor"]
-tags: [config, setup, theme, colors, settings, api-keys, waybar, wallpaper, ghostty, rofi, dunst]
+l0: "Configuration locations, Obsidian vault, Costa theme colors, settings app, wallpaper, multi-monitor waybar setup"
+l1_sections: ["Config Locations", "Obsidian Vault", "Costa OS Settings App", "Re-running Setup", "Adding API Keys After Install", "Costa Theme Colors", "Waybar", "Ghostty Terminal", "Rofi Launcher", "Dunst Notifications", "Wallpaper", "Multi-Monitor"]
+tags: [config, setup, theme, colors, settings, api-keys, waybar, wallpaper, ghostty, rofi, dunst, obsidian, notes]
 ---
 # Costa OS Setup & Configuration
 
@@ -11,6 +11,7 @@ tags: [config, setup, theme, colors, settings, api-keys, waybar, wallpaper, ghos
 - API keys: ~/.config/costa/env (mode 600)
 - GPU detection: ~/.config/costa/gpu.conf
 - Knowledge bases: ~/.config/costa/knowledge/
+- Obsidian vault: ~/notes/ (Claude's persistent memory, connected via MCP)
 - Hyprland: ~/.config/hypr/hyprland.conf
 - Monitor overrides: ~/.config/hypr/monitors.conf
 - Waybar: ~/.config/waybar/config and style.css
@@ -19,6 +20,24 @@ tags: [config, setup, theme, colors, settings, api-keys, waybar, wallpaper, ghos
 - Dunst: ~/.config/dunst/dunstrc
 - Howdy (face auth): /lib/security/howdy/config.ini
 - Touch config: ~/.config/hypr/touch.conf
+
+## Obsidian Vault
+
+Claude's persistent memory lives at `~/notes/`. Connected to Claude Code via the obsidian MCP server (configured in `~/.claude.json`). Claude reads and writes notes here to maintain context across conversations.
+
+**Folder structure:**
+- `projects/` — per-project context, goals, decisions, blockers
+- `feedback/` — user corrections and confirmed preferences for Claude behavior
+- `reference/` — external links, API endpoints, dashboard URLs
+- `daily/` — session logs, things learned, ideas
+- `costa-os/` — system decisions, config changes, feature rationale
+- `architecture/` — technical trade-offs, design patterns
+
+**Usage:**
+- Browse in Obsidian app, any text editor, or ask Claude to search/read/write
+- Claude checks the vault at conversation start for relevant context
+- "Remember this" saves to the vault; "check your notes about X" searches it
+- RAG indexing: `costa-ai --index ~/notes` adds vault to the AI search corpus
 
 ## Costa OS Settings App
 Open from any of these:

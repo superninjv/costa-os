@@ -42,7 +42,7 @@ Traditional computer use for AI agents requires screenshots — each one costs *
 
 ### The Solution
 
-costa-nav reads applications directly through the Linux accessibility tree (AT-SPI) and uses your best local Ollama model to interpret what's on screen. Claude never sees raw page content — it gets compact JSON answers.
+costa-nav reads applications through deterministic CLI wrappers (~50ms, zero tokens) or the Linux accessibility tree (AT-SPI) with local Ollama interpretation. Claude never sees raw page content — it gets compact JSON answers.
 
 ### The Numbers
 
@@ -52,11 +52,13 @@ costa-nav reads applications directly through the Linux accessibility tree (AT-S
 | Raw page text                    | ~929                | 11x           |
 | **costa-nav query**              | **~82**             | **1x**        |
 | **costa-nav plan (conditional)** | **~51**             | **0.6x**      |
+| **CLI-Anything fast path**       | **~30**             | **0x (deterministic)** |
 
-**112x fewer tokens than screenshots.** For a task requiring 10 screen reads: **$1.38 → $0.01**.
+**112x fewer tokens than screenshots.** For a task requiring 10 screen reads: **$1.38 → $0.01**. With CLI-Anything wrappers, many reads drop to ~50ms with zero LLM tokens.
 
 ### Speed Tiers
 
+- **CLI-Anything tier** (~50ms) — Deterministic app queries through CLI wrappers. "What tabs are open?" routes to `cli-anything-firefox tabs list --json`. Zero LLM tokens, zero model calls. Ships with 12 app wrappers (Firefox, Thunar, VS Code, GIMP, OBS, and more).
 - **Regex tier** (<50ms) — Simple value reads (window title, focused element) extracted with pattern matching. No model call.
 - **Fast tier** (~3s) — Batch Ollama queries for structured data extraction. Multiple questions answered in one model call.
 - **Smart tier** (~13s) — Conditional multi-step plans. Read → decide → act → verify, all executed locally in a single round trip.
@@ -64,10 +66,10 @@ costa-nav reads applications directly through the Linux accessibility tree (AT-S
 ### How It Works
 
 1. Claude sends a plan: "check credit balance, if under $10 find the warning message"
-2. costa-nav reads the app via AT-SPI (free, instant)
-3. Local Ollama interprets the content (free, ~3s)
+2. costa-nav checks for a CLI-Anything wrapper first (~50ms, deterministic)
+3. If no wrapper: reads the app via AT-SPI, local Ollama interprets (free, ~3s)
 4. Actions execute mechanically (clicks, typing, scrolling)
-5. Claude gets back 50-80 tokens of structured answers
+5. Claude gets back 30-80 tokens of structured answers
 
 **One round trip. Zero screenshots. Zero API cost for screen reading.**
 
@@ -102,8 +104,9 @@ This is what makes Costa OS the easiest Linux distro ever: you never need to lea
   - Scroll: cycle projects
 - **Usage Tracking** — Waybar module showing Claude usage (Plan quota or API spend and token counts)
 - **Knowledge Bases as MCP Resources** — 21 topic-specific knowledge files available as MCP resources (`costa://knowledge/<topic>`). Claude Code reads them on demand when relevant — audio questions pull pipewire-audio.md, package questions pull arch-admin.md, etc.
+- **Obsidian Vault as Persistent Memory** — Every Costa OS install includes an Obsidian vault at `~/notes/` connected to Claude via MCP. Claude reads and writes notes to remember your preferences, track project context, store references, and maintain behavioral corrections across conversations. The vault is organized by purpose: `projects/`, `feedback/`, `reference/`, `daily/`, `architecture/`. You can browse and edit notes in Obsidian or any editor — Claude keeps them up to date automatically.
 - **Custom Slash Commands** — Pre-built commands for common tasks: `/check-system` (health check), `/install <pkg>` (smart install with AUR fallback), `/theme` (modify Costa palette), `/configure-waybar` (add/edit modules), `/troubleshoot` (diagnose issues)
-- **Auto-Configuration** — First boot generates hardware-aware CLAUDE.md, configures MCP server, installs slash commands, and sets trust for the home directory. Re-run anytime via `costa-settings`
+- **Auto-Configuration** — First boot generates hardware-aware CLAUDE.md, configures MCP server and Obsidian vault, installs slash commands, and sets trust for the home directory. Re-run anytime via `costa-settings`
 
 ---
 
@@ -267,7 +270,7 @@ A Unix socket priority queue daemon handles concurrent requests:
 | **12GB+** | qwen2.5:14b (~11GB) | qwen2.5:3b | Best local intelligence — handles most queries without cloud |
 | **8-12GB** | qwen2.5:7b (~6.5GB) | qwen2.5:3b | Strong local reasoning, occasional cloud escalation |
 | **6-8GB** | qwen2.5:7b (~6.5GB) | qwen2.5:3b | Good reasoning, costa-nav works. Tight VRAM — may step down to 3B under GPU pressure |
-| **4-6GB** | qwen2.5:3b (~4GB) | qwen2.5:3b | Quick local answers, more cloud escalation. costa-nav limited — falls back to screenshots |
+| **4-6GB** | qwen2.5:3b (~4GB) | qwen2.5:3b | Quick local answers, more cloud escalation. costa-nav works with CLI-Anything wrappers; AT-SPI queries limited at 3B |
 | **<4GB / Gaming** | All models unloaded | On-demand | Cloud-only while GPU is busy (games, rendering, etc.) |
 
 - **Budget-Based** — Subtracts other app VRAM usage + 2GB headroom, avoids thrashing

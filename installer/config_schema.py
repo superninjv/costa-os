@@ -35,8 +35,7 @@ class OllamaModelPair:
         (24000, "qwen2.5:32b", ["qwen2.5:14b", "qwen2.5:7b", "qwen2.5:3b"], "qwen2.5:3b"),
         (12000, "qwen2.5:14b", ["qwen2.5:7b", "qwen2.5:3b"], "qwen2.5:3b"),
         (8000, "qwen2.5:7b", ["qwen2.5:3b"], "qwen2.5:3b"),
-        (4000, "qwen2.5:3b", ["qwen2.5:1.5b"], "qwen2.5:1.5b"),
-        (2000, "qwen2.5:1.5b", [], None),
+        (4000, "qwen2.5:3b", [], None),  # 3b is minimum for reliable navigation
     ]
 
     def __init__(self, vram_mb: int):
@@ -85,8 +84,10 @@ class HardwareProfile:
             return AiTier.FULL_WORKSTATION
         elif self.gpu_vram_mb >= 6000:
             return AiTier.VOICE_AND_LLM
-        elif self.gpu_vram_mb >= 2000 or self.ram_mb >= 16000:
-            return AiTier.VOICE_ONLY
+        elif self.gpu_vram_mb >= 4000 or self.ram_mb >= 16000:
+            return AiTier.VOICE_AND_LLM  # 3b minimum for local LLM
+        elif self.gpu_vram_mb >= 2000:
+            return AiTier.VOICE_ONLY  # Whisper only, no local LLM
         else:
             return AiTier.CLOUD_ONLY
 
@@ -138,7 +139,7 @@ class CostaConfig:
     # User
     username: str = ""
     hostname: str = "costa"
-    timezone: str = "America/New_York"
+    timezone: str = "UTC"
     locale: str = "en_US.UTF-8"
 
     # Hardware (auto-detected)
@@ -152,6 +153,14 @@ class CostaConfig:
     ollama_fast_model: str = "qwen2.5:3b"   # summaries + speed-critical
     whisper_model: str = "base.en"
 
+    # Services & API keys
+    openai_api_key: str = ""
+    setup_github: bool = True
+    install_vesktop: bool = True
+
+    # Keybinds
+    ptt_keybind: tuple = ("$mainMod ALT", "V")
+
     # Package selections
     install_dev_tools: bool = True
     install_creative: bool = False
@@ -161,6 +170,15 @@ class CostaConfig:
     has_microphone: bool = True
     mic_device: str = ""
     speaker_device: str = ""
+
+    # AI Navigation — Claude operates on a virtual headless monitor
+    enable_ai_navigation: bool = False
+
+    # Hardware-detected features (set by first-boot, used by wizard/settings)
+    has_ir_camera: bool = False
+    has_touchscreen: bool = False
+    enable_face_auth: bool = False
+    enable_touchscreen: bool = False
 
     # Theme
     theme: str = "costa"  # future: allow custom themes

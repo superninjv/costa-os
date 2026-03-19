@@ -58,6 +58,14 @@ Claude Code has its own virtual monitor for visual/interactive work:
 - Claude can open browsers, view pages, and interact with GUIs on this monitor
 - Switch to workspace 7 (`SUPER+7`) to see what Claude is doing
 
+## Obsidian Vault — Persistent Memory
+
+Claude Code has read/write access to the Obsidian vault at `~/notes/` via the `obsidian` MCP server. This is Claude's long-term memory — preferences, project context, references, and behavioral corrections persist across conversations.
+
+Vault folders: `projects/`, `feedback/`, `reference/`, `daily/`, `costa-os/`, `architecture/`
+
+Claude should check the vault at conversation start for relevant context, and write notes when learning user preferences, project details, or useful references. Users can browse and edit notes in Obsidian or any text editor.
+
 ## Knowledge Base
 
 21 knowledge files are injected as MCP resources, giving Claude Code deep knowledge about:
@@ -65,7 +73,7 @@ Claude Code has its own virtual monitor for visual/interactive work:
 - Costa OS features (voice, AI routing, workflows, etc.)
 - Admin tasks (Arch Linux, networking, security, etc.)
 
-Files live in `~/projects/costa-os/knowledge/`.
+Files live in `~/.config/costa/knowledge/` (copied from shipped files during first-boot).
 
 ## Configuration
 

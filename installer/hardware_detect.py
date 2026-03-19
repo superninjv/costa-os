@@ -139,6 +139,46 @@ def detect_audio_devices() -> tuple[list[str], list[str]]:
     return sources, sinks
 
 
+def detect_ir_camera() -> str:
+    """Detect IR camera for face auth. Returns device path or empty string."""
+    try:
+        import glob
+        for dev in sorted(glob.glob("/dev/video*")):
+            try:
+                out = subprocess.check_output(
+                    ["v4l2-ctl", "--device", dev, "--all"],
+                    text=True, stderr=subprocess.DEVNULL, timeout=5,
+                )
+                if re.search(r"infrared|IR camera|Windows Hello|IR Emitter", out, re.IGNORECASE):
+                    return dev
+                card = re.search(r"Card type\s*:\s*(.+)", out)
+                if card and re.search(r"\bIR\b|infrared|Tobii|RealSense|Hello", card.group(1), re.IGNORECASE):
+                    return dev
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return ""
+
+
+def detect_touchscreen() -> tuple[bool, str]:
+    """Detect touchscreen. Returns (has_touchscreen, device_name)."""
+    try:
+        out = subprocess.check_output(
+            ["libinput", "list-devices"],
+            text=True, stderr=subprocess.DEVNULL, timeout=5,
+        )
+        device_name = ""
+        for line in out.split("\n"):
+            if line.startswith("Device:"):
+                device_name = line.split(":", 1)[1].strip()
+            if "Capabilities:" in line and "touch" in line.lower():
+                return True, device_name
+    except Exception:
+        pass
+    return False, ""
+
+
 def detect_all() -> HardwareProfile:
     """Run full hardware detection."""
     gpu_vendor, gpu_name, gpu_vram = detect_gpu()

@@ -13,6 +13,7 @@ The AI is the primary interface — users interact via voice, text, or tradition
 - Compositor: Hyprland (Wayland tiling window manager)
 - AI Layer: costa-ai router (local Ollama + Claude API with 30+ tools + ML routing)
 - Persistence: SQLite database (~/.config/costa/costa.db) for query history, usage, costs
+- Knowledge: Obsidian vault (~/notes/) — Claude's persistent memory, connected via MCP
 - Workflows: costa-flow engine with YAML definitions + systemd timers
 - Voice: Whisper.cpp STT → costa-ai → action/response
 - Theme: Costa (Mediterranean coastal dark palette)

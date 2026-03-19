@@ -86,6 +86,9 @@ qt6ct
 nodejs
 npm
 
+# Knowledge management
+obsidian  # AUR — Claude's persistent knowledge vault
+
 # CLI essentials
 ripgrep
 fd

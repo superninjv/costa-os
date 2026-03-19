@@ -26,9 +26,19 @@ This manifest maps every code component to every file that documents or ships kn
 - `docs/advertising.md` — project management section
 
 ### Navigation (`ai-router/nav.py`)
-- `knowledge/costa-nav.md` — full architecture, levels, plans, best practices
+- `knowledge/costa-nav.md` — full architecture, levels, plans, CLI-Anything fast path, best practices
 - `docs/advertising.md` — costa-nav section (flagship feature)
 - `docs/hardware-compatibility.md` — AT-SPI requirements
+
+### CLI-Anything Registry (`ai-router/cli_registry.py`)
+- `knowledge/costa-nav.md` — CLI fast path section, registry management
+- `configs/claude/CLAUDE.md` — cli_registry MCP tool, nav_query CLI routing
+- `configs/costa/cli-registry.json` — default shipped registry entries
+
+### CLI-Anything Wrappers (`cli-wrappers/`)
+- `knowledge/costa-nav.md` — CLI fast path section
+- `docs/advertising.md` — costa-nav performance, CLI wrapper support
+- `installer/first-boot.sh` — wrapper installation during setup
 
 ### Keybinds GUI (`ai-router/keybinds_gui.py`)
 - `knowledge/keybinds.md` — GUI docs, bind types, mouse detection
@@ -151,6 +161,12 @@ This manifest maps every code component to every file that documents or ships kn
 ### Claude Code Setup (`scripts/setup-claude-code.sh`)
 - `knowledge/costa-setup.md` — setup process
 - `docs/advertising.md` — Claude Code section
+
+### Obsidian Vault (`~/notes/`, setup in `installer/first-boot.sh`)
+- `configs/claude/CLAUDE.md` — Obsidian vault section, MCP usage instructions
+- `docs/advertising.md` — persistent memory feature in Claude Code section
+- `knowledge/costa-setup.md` — vault location, folder structure
+- `scripts/setup-claude-code.sh` — obsidian MCP server config in ~/.claude.json
 
 ### Face Auth / Touchscreen (`installer/first-boot.sh` detect + setup functions)
 - `knowledge/security.md` — howdy commands, PAM config, touchscreen setup, troubleshooting

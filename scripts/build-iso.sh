@@ -57,6 +57,7 @@ cp "$PROJECT_DIR"/scripts/wallpaper.sh "$COSTA_SHARE/scripts/"
 cp "$PROJECT_DIR"/scripts/ollama-manager.sh "$COSTA_SHARE/scripts/"
 cp "$PROJECT_DIR"/scripts/generate-waybar-config.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/headless-preview.py "$COSTA_SHARE/scripts/" 2>/dev/null || true
+cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 
 # Installer
 mkdir -p "$COSTA_SHARE/installer"
@@ -93,6 +94,55 @@ if [ -d "$PROJECT_DIR/mcp-server" ]; then
     mkdir -p "$COSTA_SHARE/mcp-server"
     cp "$PROJECT_DIR"/mcp-server/*.py "$COSTA_SHARE/mcp-server/" 2>/dev/null || true
     cp "$PROJECT_DIR"/mcp-server/requirements.txt "$COSTA_SHARE/mcp-server/" 2>/dev/null || true
+fi
+
+# CLI-Anything wrappers (deterministic app CLIs for costa-nav fast path)
+# Base tier: always shipped (firefox, thunar)
+# Optional tiers: shipped alongside their package categories
+if [ -d "$PROJECT_DIR/cli-wrappers" ]; then
+    mkdir -p "$COSTA_SHARE/cli-wrappers"
+
+    # Base tier — always included
+    for app in firefox thunar; do
+        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
+            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
+    done
+
+    # Creative tier — ships with creative packages
+    for app in gimp inkscape krita audacity obs-studio; do
+        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
+            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
+    done
+
+    # Dev tier
+    for app in code; do
+        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
+            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
+    done
+
+    # Media tier
+    for app in mpv strawberry; do
+        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
+            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
+    done
+
+    # Gaming tier
+    for app in steam; do
+        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
+            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
+    done
+
+    # Social/communication tier
+    for app in vesktop; do
+        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
+            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
+    done
+
+    # Remove build artifacts
+    find "$COSTA_SHARE/cli-wrappers" -name "*.egg-info" -type d -exec rm -rf {} + 2>/dev/null || true
+    find "$COSTA_SHARE/cli-wrappers" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+    echo "  Included CLI-Anything wrappers ($(ls -d "$COSTA_SHARE"/cli-wrappers/*/ 2>/dev/null | wc -l) apps)"
 fi
 
 # Default wallpapers

@@ -38,12 +38,18 @@ mkdir -p "$CLAUDE_DIR"
 # ─── 3. Write/merge ~/.claude.json with MCP server config ────
 CLAUDE_JSON="$HOME/.claude.json"
 
-COSTA_MCP_CONFIG=$(cat << 'MCPEOF'
+NOTES_DIR="$HOME/notes"
+
+COSTA_MCP_CONFIG=$(cat << MCPEOF
 {
   "mcpServers": {
     "costa-system": {
       "command": "python3",
       "args": ["/usr/share/costa-os/mcp-server/costa_system.py"]
+    },
+    "obsidian": {
+      "command": "npx",
+      "args": ["-y", "obsidian-mcp", "$NOTES_DIR"]
     }
   },
   "projects": {}

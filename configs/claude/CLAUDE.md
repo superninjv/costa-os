@@ -10,6 +10,7 @@ When the user says "install firefox", run the install. When they say "my audio i
 
 - **Before answering system questions**, use `read_screen` or `nav_query` to check current desktop state.
 - **Before modifying configs**, read the relevant knowledge file via MCP resources (`costa://knowledge/<topic>`).
+- **Check your Obsidian vault** (`~/notes/`) for relevant context at the start of conversations and when the user references prior work. Write notes when you learn user preferences, project context, or useful references.
 - **Use `system_command`** for package installs, service management, and config changes — don't print shell commands for the user to copy-paste.
 - **Use `nav_query` instead of `screenshot`** — it is 112x cheaper (text-based AT-SPI, not image-based). Only fall back to `screenshot` when visual layout matters (theme issues, pixel alignment, rendering bugs).
 - **Check `hyprctl configerrors`** after every Hyprland config edit. If there are errors, fix them before moving on.
@@ -41,7 +42,7 @@ When the user asks about any of these topics, **read the corresponding knowledge
 | Config locations | `costa://knowledge/costa-setup` | Where configs live, settings app, API keys, theme colors |
 | Voice assistant | `costa://knowledge/voice-assistant` | PTT, whisper, speech recognition, model routing |
 | AI router | `costa://knowledge/ai-router` | How costa-ai routes queries, VRAM management, model tiers |
-| AI navigation | `costa://knowledge/costa-nav` | AT-SPI screen reading, nav plans, routines, headless monitor |
+| AI navigation | `costa://knowledge/costa-nav` | AT-SPI screen reading, CLI-Anything fast path, nav plans, routines, headless monitor |
 | Development tools | `costa://knowledge/dev-tools` | Python/Node/Rust/Java, Docker, git, CLI tools |
 | Security | `costa://knowledge/security` | Face auth (howdy), IR camera, touchscreen, PAM config |
 | File operations | `costa://knowledge/file-operations` | Finding files, opening, copying, bulk operations |
@@ -55,6 +56,38 @@ When the user asks about any of these topics, **read the corresponding knowledge
 | Notifications | `costa://knowledge/notifications` | Dunst config, do not disturb, notification history |
 
 If you change any system behavior, **update the matching knowledge file** so both you and the local Ollama model stay accurate. These files are the single source of truth — stale knowledge means wrong answers.
+
+## Obsidian Vault — Your Persistent Memory
+
+The Obsidian vault at `~/notes/` is your long-term memory. You have full read/write access via the **obsidian** MCP server. Use it to stay coherent across conversations.
+
+### What to store
+
+| Folder | What goes here |
+|--------|---------------|
+| `projects/` | Per-project context: goals, architecture, blockers, decisions |
+| `feedback/` | User corrections and confirmed preferences for your behavior |
+| `reference/` | External links, API endpoints, dashboard URLs, credentials locations |
+| `daily/` | Session logs, things learned, ideas |
+| `costa-os/` | System decisions, config changes, feature rationale |
+| `architecture/` | Technical trade-offs, design patterns, system diagrams |
+
+### When to read
+
+- **Start of conversation** — check `feedback/` for behavioral guidance and `projects/` for active work context
+- **User asks about prior work** — search the vault before saying "I don't have context"
+- **Before recommending** — check if there's a note about why something was done a certain way
+
+### When to write
+
+- **User says "remember this"** — save immediately to the appropriate folder
+- **User corrects your approach** — save to `feedback/` with the rule + why + when to apply
+- **You learn project context** — save to `projects/` (deadlines, stakeholders, constraints)
+- **You find useful references** — save to `reference/` (URLs, config locations, API docs)
+
+### How to write
+
+Use the obsidian MCP tools. Notes should have clear titles and be organized by topic, not chronologically. Update existing notes rather than creating duplicates. Keep notes concise — facts and decisions, not prose.
 
 ## When in Project Directories
 
@@ -92,15 +125,42 @@ costa-ai "question"               # AI query (auto-routes to best model)
 costa-keybinds-gui                # Interactive keybind viewer
 costa-settings                    # System settings GUI
 costa-nav                         # AI navigation interface
+costa-nav cli-registry list       # Show available CLI-Anything wrappers
 ```
+
+## CLI-Anything Wrappers
+
+Apps with CLI-Anything wrappers can be queried deterministically (~50ms, 0 LLM tokens) instead of AT-SPI + Ollama. **nav_query routes through these automatically**, but you can also call them directly via `system_command` for operations nav_query doesn't cover.
+
+Run `cli_registry` MCP tool with `{"action": "list"}` to see installed wrappers and their capabilities. Each wrapper supports `--help` for command discovery and `--json` for structured output.
+
+**Direct CLI usage** (via `system_command`):
+```
+cli-anything-firefox tabs list --json          # List open tabs
+cli-anything-firefox navigation current-url --json
+cli-anything-thunar files list --json --path /home/user/Documents
+cli-anything-strawberry playback status --json  # Now playing
+cli-anything-strawberry library search --json --query "miles davis"
+cli-anything-obs status --json                  # Recording/streaming state
+cli-anything-code workspace current --json      # Current VS Code workspace
+cli-anything-mpv status --json                  # Playback state
+cli-anything-steam library list --json          # Installed games
+```
+
+**When to use direct CLI vs nav_query:**
+- Use `nav_query` when you need to read screen content or the user asks "what's on screen"
+- Use direct CLI when you need specific app data (library search, file listing, game list) that doesn't require screen reading
+- The CLI is always faster and more reliable than AT-SPI for supported operations
 
 ## Working Style
 
 - **Use planning mode** for non-trivial tasks — align on approach before implementing.
 - **Use all available skills, MCP tools, and agents proactively.** If a tool exists for the job, use it instead of doing things manually.
 - **Run `read_screen`** to understand what the user is looking at before giving workspace or window advice.
-- **Prefer `nav_query`** over `screenshot` for understanding screen content — it returns structured text from AT-SPI, not pixels.
-- **Use `nav_plan`** for multi-step UI automation — it generates a sequence of actions and executes them.
+- **Prefer `nav_query`** over `screenshot` for understanding screen content — it returns structured text from AT-SPI, not pixels. When CLI-Anything wrappers are installed, queries route through deterministic CLIs first (~50ms, 0 tokens).
+- **Use `cli_registry`** to check which apps have CLI-Anything wrappers for fast, deterministic access.
+- **Use CLI-Anything directly** via `system_command` for app-specific operations like library search, file listing, or game management — faster than building a nav_plan.
+- **Use `nav_plan`** for multi-step UI automation — use `cli_query` step type when a CLI wrapper exists for the target app.
 - **Use `nav_routine`** for repeated workflows the user does often — save them for one-command replay.
 - **Act, then explain.** Users expect the AI to be the interface, not a manual. Do the thing, then tell them what you did.
 

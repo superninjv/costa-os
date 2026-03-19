@@ -1,0 +1,205 @@
+[
+  {
+    "window_class": "firefox",
+    "entry_point": "cli-anything-firefox",
+    "package": "cli-anything-firefox",
+    "version": "0.1.0",
+    "capabilities": ["tabs", "navigation", "bookmarks", "history", "page_content"],
+    "query_map": {
+      "url": "navigation current-url --json",
+      "tabs": "tabs list --json",
+      "tab": "tabs list --json",
+      "bookmarks": "bookmarks list --json",
+      "history": "history recent --json",
+      "title": "navigation current-title --json",
+      "page_content": null
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "thunar",
+    "entry_point": "cli-anything-thunar",
+    "package": "cli-anything-thunar",
+    "version": "0.1.0",
+    "capabilities": ["files", "tabs", "navigation", "bookmarks"],
+    "query_map": {
+      "files": "files list --json",
+      "directory": "navigation current-dir --json",
+      "path": "navigation current-dir --json",
+      "tabs": "tabs list --json",
+      "bookmarks": "bookmarks list --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "org.strawberrymusicplayer.strawberry",
+    "entry_point": "cli-anything-strawberry",
+    "package": "cli-anything-strawberry",
+    "version": "0.1.0",
+    "capabilities": ["playback", "queue", "library", "search"],
+    "query_map": {
+      "playing": "playback status --json",
+      "song": "playback now-playing --json",
+      "track": "playback now-playing --json",
+      "music": "playback status --json",
+      "queue": "queue list --json",
+      "search": "library search --json --query",
+      "library": "library stats --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "obs",
+    "entry_point": "cli-anything-obs",
+    "package": "cli-anything-obs",
+    "version": "0.1.0",
+    "capabilities": ["status", "scenes", "sources", "recording", "streaming"],
+    "query_map": {
+      "status": "status --json",
+      "scene": "scenes current --json",
+      "scenes": "scenes list --json",
+      "sources": "sources list --json",
+      "recording": "recording status --json",
+      "streaming": "streaming status --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "gimp",
+    "entry_point": "cli-anything-gimp",
+    "package": "cli-anything-gimp",
+    "version": "0.1.0",
+    "capabilities": ["status", "images", "recent", "tools", "export"],
+    "query_map": {
+      "status": "status --json",
+      "images": "images list --json",
+      "image": "images list --json",
+      "recent": "recent list --json",
+      "tool": "tools current --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "code",
+    "entry_point": "cli-anything-code",
+    "package": "cli-anything-code",
+    "version": "0.1.0",
+    "capabilities": ["workspace", "extensions", "files", "settings"],
+    "query_map": {
+      "workspace": "workspace current --json",
+      "project": "workspace current --json",
+      "folder": "workspace current --json",
+      "recent": "workspace recent --json",
+      "extensions": "extensions list --json",
+      "files": "files open --json",
+      "settings": "settings get --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "vesktop",
+    "entry_point": "cli-anything-vesktop",
+    "package": "cli-anything-vesktop",
+    "version": "0.1.0",
+    "capabilities": ["status", "channel", "voice", "settings"],
+    "query_map": {
+      "status": "status --json",
+      "channel": "channel current --json",
+      "server": "channel current --json",
+      "voice": "voice status --json",
+      "settings": "settings get --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "steam",
+    "entry_point": "cli-anything-steam",
+    "package": "cli-anything-steam",
+    "version": "0.1.0",
+    "capabilities": ["library", "status", "games", "downloads"],
+    "query_map": {
+      "games": "library list --json",
+      "library": "library list --json",
+      "installed": "library count --json",
+      "status": "status --json",
+      "running": "running --json",
+      "downloads": "downloads --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "mpv",
+    "entry_point": "cli-anything-mpv",
+    "package": "cli-anything-mpv",
+    "version": "0.1.0",
+    "capabilities": ["playback", "playlist", "properties"],
+    "query_map": {
+      "playing": "status --json",
+      "status": "status --json",
+      "video": "now-playing --json",
+      "movie": "now-playing --json",
+      "playlist": "playlist --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "inkscape",
+    "entry_point": "cli-anything-inkscape",
+    "package": "cli-anything-inkscape",
+    "version": "0.1.0",
+    "capabilities": ["status", "documents", "recent", "export"],
+    "query_map": {
+      "status": "status --json",
+      "documents": "documents list --json",
+      "document": "documents list --json",
+      "recent": "recent list --json",
+      "file": "status --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "krita",
+    "entry_point": "cli-anything-krita",
+    "package": "cli-anything-krita",
+    "version": "0.1.0",
+    "capabilities": ["status", "documents", "recent", "resources"],
+    "query_map": {
+      "status": "status --json",
+      "documents": "documents list --json",
+      "document": "documents list --json",
+      "recent": "recent list --json",
+      "brushes": "resources list --json --type brushes",
+      "file": "status --json"
+    },
+    "installed": false,
+    "source": "shipped"
+  },
+  {
+    "window_class": "audacity",
+    "entry_point": "cli-anything-audacity",
+    "package": "cli-anything-audacity",
+    "version": "0.1.0",
+    "capabilities": ["status", "projects", "recent", "devices"],
+    "query_map": {
+      "status": "status --json",
+      "projects": "projects list --json",
+      "project": "projects list --json",
+      "recent": "recent list --json",
+      "devices": "devices list --json",
+      "microphone": "devices list --json --direction input",
+      "speakers": "devices list --json --direction output"
+    },
+    "installed": false,
+    "source": "shipped"
+  }
+]

@@ -1,7 +1,7 @@
 ---
-l0: "AI navigation system: AT-SPI accessibility tree reading, query/plan/routine levels, headless monitor"
-l1_sections: ["Architecture", "Query Best Practices", "Plan Patterns", "Dedicated Monitor & Focus Protection", "Common Pitfalls", "Failure Handling", "Site Knowledge", "Routines"]
-tags: [navigation, at-spi, accessibility, screen-read, headless, virtual-monitor, plan, routine, ollama]
+l0: "AI navigation system: AT-SPI accessibility tree reading, CLI-Anything fast path, query/plan/routine levels, headless monitor"
+l1_sections: ["Architecture", "CLI-Anything Fast Path", "Query Best Practices", "Plan Patterns", "Dedicated Monitor & Focus Protection", "Common Pitfalls", "Failure Handling", "Site Knowledge", "Routines"]
+tags: [navigation, at-spi, accessibility, screen-read, headless, virtual-monitor, plan, routine, ollama, cli-anything]
 ---
 
 # costa-nav — AI Navigation Tool Knowledge
@@ -14,9 +14,53 @@ Update it when you discover new patterns or anti-patterns.
 
 costa-nav has 4 levels:
 - **Level 0** `read <app>` — raw AT-SPI accessibility dump, no Ollama, for debugging
-- **Level 1** `query '{json}'` — batch questions answered by local Ollama
+- **Level 1** `query '{json}'` — batch questions answered by local Ollama (with CLI-Anything fast path)
 - **Level 2** `plan '{json}'` — conditional plan with actions, executed locally
 - **Level 3** `routine <name>` — saved plans triggered by name
+
+### Tiered Query System
+Queries route through the fastest capable tier:
+- **Tier -1 (CLI-Anything)**: ~50ms, 0 LLM tokens — deterministic CLI wrapper calls
+- **Tier 0 (Regex)**: <50ms — pattern matching for money, URLs, percentages, counts
+- **Tier 1 (Fast model)**: ~300ms — simple questions via 3B model
+- **Tier 2 (Smart model)**: ~3s — complex reasoning via 7B/14B model
+
+Each tier falls through to the next on failure or low confidence.
+
+## CLI-Anything Fast Path
+
+When a CLI-Anything wrapper is installed for an app, costa-nav bypasses AT-SPI + Ollama entirely for supported queries. The wrapper calls the app's real backend API and returns structured JSON.
+
+### How it works
+1. costa-nav checks the CLI registry (`~/.config/costa/cli-registry.json`)
+2. If a wrapper exists and is installed, it matches the query to a CLI subcommand
+3. The CLI runs as a subprocess (~50ms), returns JSON
+4. If the CLI fails or can't handle the query, AT-SPI + Ollama take over transparently
+
+### Registry management
+```bash
+costa-nav cli-registry list      # Show all registered wrappers
+costa-nav cli-registry refresh   # Scan for new wrappers
+costa-nav cli-registry check firefox  # Check if Firefox has a wrapper
+```
+
+### Using CLI queries in plans
+Plans can use the `cli_query` step type to go directly to a CLI wrapper:
+```json
+{"type": "cli_query", "id": "tabs", "app": "firefox", "command": "tabs list --json"}
+```
+If the CLI wrapper is unavailable, it falls back to AT-SPI automatically.
+
+Plans can also use the `cli` action type for CLI-driven actions:
+```json
+{"type": "action", "action": "cli", "target": "firefox", "command": "tabs close --index 3 --json"}
+```
+
+### MCP tool
+Use `cli_registry` MCP tool to check/manage wrappers from Claude Code:
+- `{"action": "list"}` — show all registered wrappers and their status
+- `{"action": "check", "app": "firefox"}` — check if a specific app has a wrapper
+- `{"action": "refresh"}` — rescan installed packages for new wrappers
 
 ## Query Best Practices
 

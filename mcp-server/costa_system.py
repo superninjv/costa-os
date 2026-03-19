@@ -659,6 +659,31 @@ async def list_tools():
                 "required": ["name"],
             },
         ),
+        Tool(
+            name="cli_registry",
+            description=(
+                "Manage CLI-Anything wrappers for app navigation. CLI wrappers provide "
+                "deterministic, fast (~50ms) access to app state without AT-SPI or Ollama. "
+                "When a wrapper exists, nav_query uses it automatically. "
+                "Actions: 'list' (show all wrappers), 'check' (check specific app), "
+                "'refresh' (scan for new wrappers)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "check", "refresh"],
+                        "description": "Action: list all wrappers, check a specific app, or refresh registry",
+                        "default": "list",
+                    },
+                    "app": {
+                        "type": "string",
+                        "description": "App to check (only for 'check' action)",
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -757,6 +782,7 @@ async def call_tool(name: str, arguments: dict):
             "nav_query": handle_nav_query,
             "nav_plan": handle_nav_plan,
             "nav_routine": handle_nav_routine,
+            "cli_registry": handle_cli_registry,
             "read_screen": handle_read_screen,
             "read_window": handle_read_window,
             "screenshot": handle_screenshot,
@@ -822,6 +848,18 @@ async def handle_nav_plan(args: dict):
 async def handle_nav_routine(args: dict):
     name = args.get("name", "")
     output = await _run_costa_nav(["routine", name], timeout=120)
+    return [TextContent(type="text", text=output)]
+
+
+async def handle_cli_registry(args: dict):
+    action = args.get("action", "list")
+    if action == "check":
+        app = args.get("app", "")
+        output = await _run_costa_nav(["cli-registry", "check", app])
+    elif action == "refresh":
+        output = await _run_costa_nav(["cli-registry", "refresh"])
+    else:
+        output = await _run_costa_nav(["cli-registry", "list"])
     return [TextContent(type="text", text=output)]
 
 
