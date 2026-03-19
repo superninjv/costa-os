@@ -105,8 +105,12 @@ This is what makes Costa OS the easiest Linux distro ever: you never need to lea
 - **Usage Tracking** — Waybar module showing Claude usage (Plan quota or API spend and token counts)
 - **Knowledge Bases as MCP Resources** — 21 topic-specific knowledge files available as MCP resources (`costa://knowledge/<topic>`). Claude Code reads them on demand when relevant — audio questions pull pipewire-audio.md, package questions pull arch-admin.md, etc.
 - **Obsidian Vault as Persistent Memory** — Every Costa OS install includes an Obsidian vault at `~/notes/` connected to Claude via MCP. Claude reads and writes notes to remember your preferences, track project context, store references, and maintain behavioral corrections across conversations. The vault is organized by purpose: `projects/`, `feedback/`, `reference/`, `daily/`, `architecture/`. You can browse and edit notes in Obsidian or any editor — Claude keeps them up to date automatically.
+- **Daily Session Notes** — Each Claude Code session auto-creates a daily note (`~/notes/daily/YYYY-MM-DD.md`). Claude appends session progress, decisions, and discoveries throughout the day. Today's and yesterday's notes load at session start, giving Claude continuous context across conversations.
+- **Memory Flush Before Compaction** — When Claude Code's context window fills up and compacts, a hook automatically triggers Claude to save important session context to daily notes before it's lost. No more "I don't have context about what we were doing" after long sessions.
+- **Vault Search (FTS5)** — Full-text search across all notes and indexed documents via the `vault_search` MCP tool. BM25-ranked results with file paths and relevance scores. The vault is auto-indexed hourly via a systemd timer.
+- **Multi-Channel Presence** — Costa AI is accessible from Telegram (`/ai <query>`) and Discord, not just the terminal. Same AI, same memory, same knowledge base — different interface. Configure API tokens in `~/.config/costa/env`.
 - **Custom Slash Commands** — Pre-built commands for common tasks: `/check-system` (health check), `/install <pkg>` (smart install with AUR fallback), `/theme` (modify Costa palette), `/configure-waybar` (add/edit modules), `/troubleshoot` (diagnose issues)
-- **Auto-Configuration** — First boot generates hardware-aware CLAUDE.md, configures MCP server and Obsidian vault, installs slash commands, and sets trust for the home directory. Re-run anytime via `costa-settings`
+- **Auto-Configuration** — First boot generates hardware-aware CLAUDE.md, configures MCP server, Obsidian vault, memory hooks, and RAG indexing. Re-run anytime via `costa-settings`
 
 ---
 

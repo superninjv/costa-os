@@ -162,4 +162,69 @@ if [ -d "$HOME/projects" ]; then
     done
 fi
 
+# ─── 7. Install Claude Code hooks (memory flush, session context) ──
+echo "→ Configuring Claude Code hooks..."
+
+SETTINGS_DIR="$CLAUDE_DIR"
+SETTINGS_FILE="$SETTINGS_DIR/settings.json"
+
+# Build hooks config — merge with existing settings if present
+HOOKS_CONFIG=$(cat << 'HOOKSEOF'
+{
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/share/costa-os/scripts/costa-memory-flush.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/share/costa-os/scripts/costa-session-start.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+HOOKSEOF
+)
+
+if [ -f "$SETTINGS_FILE" ]; then
+    # Merge hooks into existing settings
+    MERGED=$(jq -s '.[0] * .[1]' "$SETTINGS_FILE" <(echo "$HOOKS_CONFIG"))
+    echo "$MERGED" > "$SETTINGS_FILE"
+    echo "  ✓ Merged hooks into existing settings.json"
+else
+    echo "$HOOKS_CONFIG" | jq '.' > "$SETTINGS_FILE"
+    echo "  ✓ Created settings.json with memory hooks"
+fi
+
+# ─── 8. Initial RAG index of Obsidian vault ────────────────────
+echo "→ Indexing Obsidian vault for search..."
+COSTA_SHARE="/usr/share/costa-os"
+if [ -f "$COSTA_SHARE/ai-router/rag.py" ] && [ -d "$HOME/notes" ]; then
+    python3 "$COSTA_SHARE/ai-router/rag.py" index-defaults 2>&1 | tail -1 || true
+    echo "  ✓ Vault indexed for RAG search"
+fi
+
+# ─── 9. Install vault-reindex workflow (hourly re-indexing) ────
+if [ -f "$COSTA_SHARE/configs/costa/workflows/vault-reindex.yaml" ]; then
+    mkdir -p "$HOME/.config/costa/workflows"
+    cp -n "$COSTA_SHARE/configs/costa/workflows/vault-reindex.yaml" "$HOME/.config/costa/workflows/" 2>/dev/null
+    # Install as systemd timer if costa-flow is available
+    if command -v costa-flow &>/dev/null; then
+        costa-flow install vault-reindex 2>/dev/null || true
+        echo "  ✓ Vault reindex workflow installed (hourly)"
+    fi
+fi
+
 echo "  ✓ Claude Code setup complete"

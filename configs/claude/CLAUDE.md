@@ -85,6 +85,20 @@ The Obsidian vault at `~/notes/` is your long-term memory. You have full read/wr
 - **You learn project context** — save to `projects/` (deadlines, stakeholders, constraints)
 - **You find useful references** — save to `reference/` (URLs, config locations, API docs)
 
+### Daily notes
+
+A daily note at `~/notes/daily/YYYY-MM-DD.md` is auto-created each session. Use it as a running log:
+- Append what you worked on at natural milestones (task completed, direction changed, blocker hit)
+- Include decisions made and their rationale
+- Note any user corrections or preferences discovered
+- Before context compaction, the system will remind you to flush important context here
+
+Today's and yesterday's daily notes are automatically loaded at session start, so you always have recent context.
+
+### Vault search
+
+Use the `vault_search` MCP tool to semantically search across all notes and indexed documents. This uses FTS5 full-text search — much faster than reading files one by one. Search before saying "I don't have context about that."
+
 ### How to write
 
 Use the obsidian MCP tools. Notes should have clear titles and be organized by topic, not chronologically. Update existing notes rather than creating duplicates. Keep notes concise — facts and decisions, not prose.

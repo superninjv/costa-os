@@ -163,10 +163,28 @@ This manifest maps every code component to every file that documents or ships kn
 - `docs/advertising.md` — Claude Code section
 
 ### Obsidian Vault (`~/notes/`, setup in `installer/first-boot.sh`)
-- `configs/claude/CLAUDE.md` — Obsidian vault section, MCP usage instructions
+- `configs/claude/CLAUDE.md` — Obsidian vault section, MCP usage instructions, daily notes, vault search
 - `docs/advertising.md` — persistent memory feature in Claude Code section
 - `knowledge/costa-setup.md` — vault location, folder structure
-- `scripts/setup-claude-code.sh` — obsidian MCP server config in ~/.claude.json
+- `scripts/setup-claude-code.sh` — obsidian MCP server config, hooks, RAG indexing
+
+### Memory Hooks (`scripts/costa-memory-flush.sh`, `scripts/costa-session-start.sh`)
+- `configs/claude/CLAUDE.md` — daily notes section, compaction behavior
+- `scripts/setup-claude-code.sh` — hook installation in settings.json
+- `scripts/build-iso.sh` — script staging
+- `docs/advertising.md` — persistent memory feature
+
+### Vault Search (`mcp-server/costa_system.py` vault_search tool)
+- `configs/claude/CLAUDE.md` — vault search section
+- `knowledge/claude-code.md` — MCP tools listing
+
+### RAG Auto-Index (`configs/costa/workflows/vault-reindex.yaml`)
+- `scripts/setup-claude-code.sh` — initial index + workflow install
+- `knowledge/costa-setup.md` — indexing docs
+
+### Multi-Channel Bridge (`configs/costa/workflows/multi-channel-bridge.yaml`)
+- `knowledge/costa-setup.md` — Telegram/Discord config
+- `docs/advertising.md` — multi-channel presence
 
 ### Face Auth / Touchscreen (`installer/first-boot.sh` detect + setup functions)
 - `knowledge/security.md` — howdy commands, PAM config, touchscreen setup, troubleshooting

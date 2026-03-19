@@ -42,12 +42,22 @@ Costa OS provides an MCP server (`costa-system`) with 30+ tools that let Claude 
 
 - **System info** — read running processes, services, hardware status
 - **Window management** — list, focus, move, resize windows via Hyprland
-- **Navigation** — open browsers, navigate URLs, read page content
+- **Navigation** — open browsers, navigate URLs, read page content via AT-SPI + CLI-Anything
 - **Media control** — play/pause, volume, track switching
 - **Screenshots** — capture windows or regions
 - **File operations** — read/write/search files
+- **Vault search** — FTS5 semantic search across Obsidian vault and indexed documents
+- **CLI registry** — manage deterministic app wrappers for fast navigation
 
 Claude Code uses these tools automatically when relevant to your request.
+
+## Memory Hooks
+
+Claude Code has two automatic hooks installed:
+- **SessionStart** — loads today's + yesterday's daily notes and recent feedback at session start
+- **PreCompact** — before context compaction, reminds Claude to save session progress to daily notes
+
+These ensure Claude maintains context across conversations and never loses important information during long sessions.
 
 ## Virtual Monitor
 

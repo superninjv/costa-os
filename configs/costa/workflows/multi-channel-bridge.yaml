@@ -1,0 +1,66 @@
+name: Multi-Channel Bridge
+description: >
+  Lightweight bridge that polls messaging platforms for commands directed at Costa AI.
+  Supports Discord (via Vesktop webhooks) and Telegram bot API.
+  Configure API tokens in ~/.config/costa/env before enabling.
+trigger:
+  type: schedule
+  calendar: "*-*-* *:*:00/30"  # Every 30 seconds
+steps:
+  # ── Telegram polling ──
+  - id: telegram_poll
+    action: shell
+    command: |
+      source ~/.config/costa/env 2>/dev/null
+      [ -z "$COSTA_TELEGRAM_TOKEN" ] && exit 0
+
+      OFFSET_FILE=~/.config/costa/telegram-offset
+      OFFSET=$(cat "$OFFSET_FILE" 2>/dev/null || echo "0")
+
+      UPDATES=$(curl -s "https://api.telegram.org/bot${COSTA_TELEGRAM_TOKEN}/getUpdates?offset=${OFFSET}&timeout=1&limit=5" 2>/dev/null)
+      [ -z "$UPDATES" ] && exit 0
+
+      echo "$UPDATES" | python3 -c "
+      import json, sys, subprocess
+      data = json.load(sys.stdin)
+      if not data.get('ok') or not data.get('result'):
+          sys.exit(0)
+      for update in data['result']:
+          msg = update.get('message', {})
+          text = msg.get('text', '')
+          chat_id = msg.get('chat', {}).get('id', '')
+          update_id = update['update_id']
+          # Save offset
+          with open('$OFFSET_FILE', 'w') as f:
+              f.write(str(update_id + 1))
+          # Only process messages starting with /ai or @costa
+          if text.startswith('/ai ') or text.startswith('@costa '):
+              query = text.split(' ', 1)[1] if ' ' in text else ''
+              if query:
+                  result = subprocess.run(
+                      ['costa-ai', query],
+                      capture_output=True, text=True, timeout=30
+                  )
+                  response = result.stdout.strip()[:4000] or 'No response'
+                  # Send reply
+                  import urllib.request, urllib.parse
+                  url = f'https://api.telegram.org/bot$COSTA_TELEGRAM_TOKEN/sendMessage'
+                  payload = urllib.parse.urlencode({
+                      'chat_id': chat_id,
+                      'text': response,
+                      'parse_mode': 'Markdown'
+                  }).encode()
+                  urllib.request.urlopen(url, payload, timeout=10)
+      "
+    timeout: 15
+
+  # ── Discord webhook listener ──
+  - id: discord_poll
+    action: shell
+    command: |
+      source ~/.config/costa/env 2>/dev/null
+      [ -z "$COSTA_DISCORD_WEBHOOK" ] && exit 0
+      # Discord webhooks are outbound-only; for inbound we need a bot.
+      # This step is a placeholder — full Discord bot requires a persistent daemon.
+      echo "Discord bridge: webhook configured (outbound only)"
+    timeout: 5

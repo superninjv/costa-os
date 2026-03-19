@@ -684,6 +684,30 @@ async def list_tools():
                 },
             },
         ),
+        Tool(
+            name="vault_search",
+            description=(
+                "Semantic search across the Obsidian vault (~/notes/) and indexed documents. "
+                "Uses SQLite FTS5 full-text search with BM25 ranking. Returns matching chunks "
+                "with file paths and relevance scores. Use this to find notes about past "
+                "conversations, project context, user preferences, and saved references."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (natural language or keywords)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results to return (default 5)",
+                        "default": 5,
+                    },
+                },
+                "required": ["query"],
+            },
+        ),
     ]
 
 
@@ -793,6 +817,7 @@ async def call_tool(name: str, arguments: dict):
             "manage_window": handle_manage_window,
             "system_command": handle_system_command,
             "scroll_window": handle_scroll_window,
+            "vault_search": handle_vault_search,
         }.get(name)
         if handler:
             return await handler(arguments)
@@ -861,6 +886,43 @@ async def handle_cli_registry(args: dict):
     else:
         output = await _run_costa_nav(["cli-registry", "list"])
     return [TextContent(type="text", text=output)]
+
+
+# ─── vault_search ─────────────────────────────────────────────
+
+async def handle_vault_search(args: dict):
+    """Search the Obsidian vault and indexed documents via RAG (SQLite FTS5)."""
+    query = args.get("query", "")
+    limit = args.get("limit", 5)
+    if not query:
+        return [TextContent(type="text", text="Error: query is required")]
+
+    # Try to use the RAG module
+    rag_path = Path(__file__).parent.parent / "ai-router"
+    try:
+        sys.path.insert(0, str(rag_path))
+        from rag import search, ensure_db
+        ensure_db()
+        results = search(query, limit=limit)
+
+        if not results:
+            return [TextContent(type="text", text=f"No results found for: {query}\n\nTip: Run 'costa-ai --index ~/notes' to index the vault.")]
+
+        output = f"Search results for: {query}\n\n"
+        for i, r in enumerate(results, 1):
+            path = r.get("path", "unknown")
+            content = r.get("content", "").strip()
+            rank = r.get("rank", 0)
+            output += f"--- Result {i} ({path}) [score: {rank:.1f}] ---\n"
+            output += content[:500]
+            if len(content) > 500:
+                output += "...(truncated)"
+            output += "\n\n"
+        return [TextContent(type="text", text=output)]
+    except ImportError:
+        return [TextContent(type="text", text="RAG module not available. Index with: costa-ai --index ~/notes")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Search error: {str(e)}")]
 
 
 # ─── read_screen ──────────────────────────────────────────────

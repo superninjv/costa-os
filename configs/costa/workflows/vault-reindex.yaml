@@ -1,0 +1,27 @@
+name: Vault Reindex
+description: Periodically re-index the Obsidian vault and project files for RAG semantic search.
+trigger:
+  type: schedule
+  calendar: "*-*-* *:00:00"  # Every hour
+steps:
+  - id: index_vault
+    action: shell
+    command: python3 /usr/share/costa-os/ai-router/rag.py index-defaults 2>&1 | tail -1
+    timeout: 60
+
+  - id: check_projects
+    action: shell
+    command: |
+      INDEXED=0
+      for dir in ~/projects/*/; do
+        if [ -d "$dir/.git" ]; then
+          python3 /usr/share/costa-os/ai-router/rag.py index "$dir" 2>&1 | tail -1
+          INDEXED=$((INDEXED + 1))
+        fi
+      done
+      echo "Re-indexed $INDEXED projects"
+    timeout: 120
+
+  - id: stats
+    action: shell
+    command: python3 /usr/share/costa-os/ai-router/rag.py stats 2>&1

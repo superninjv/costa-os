@@ -58,6 +58,9 @@ cp "$PROJECT_DIR"/scripts/ollama-manager.sh "$COSTA_SHARE/scripts/"
 cp "$PROJECT_DIR"/scripts/generate-waybar-config.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/headless-preview.py "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
+cp "$PROJECT_DIR"/scripts/costa-memory-flush.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
+cp "$PROJECT_DIR"/scripts/costa-session-start.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
+chmod +x "$COSTA_SHARE/scripts/costa-"* 2>/dev/null || true
 
 # Installer
 mkdir -p "$COSTA_SHARE/installer"
