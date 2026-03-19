@@ -49,7 +49,9 @@ fi
 if [ -d "$FEEDBACK_DIR" ] && ls "$FEEDBACK_DIR"/*.md &>/dev/null; then
     echo "--- Active Feedback ---"
     for f in $(ls -t "$FEEDBACK_DIR"/*.md 2>/dev/null | head -5); do
-        echo "• $(head -1 "$f" | sed 's/^#\+ //')"
+        # Skip YAML frontmatter, get first heading or meaningful line
+        TITLE=$(awk '/^---$/{fm++; next} fm<2{next} /^#/{gsub(/^#+ /,""); print; exit} /[a-zA-Z]/{print; exit}' "$f")
+        [ -n "$TITLE" ] && echo "• $TITLE"
     done
     echo ""
 fi
