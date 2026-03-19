@@ -48,6 +48,21 @@ The router: gathers live system context → queries local Ollama → detects "I 
 - AI Layer: Whisper STT + Ollama (local) + Claude API (cloud) + smart routing
 - Package manager: pacman + yay (AUR)
 
+## Workflow Commands
+- `/commit` — analyze changes and commit with auto-generated message
+- `/deploy` — test, commit, push, invoke deployer agent, healthcheck
+- `/ship-site` — push synoros-platform, deploy via deployer agent
+- `/sync-docs` — verify all docs match code per SYNC_MANIFEST
+- `/feature-dev` — 7-phase structured development workflow
+- `/code-review` — parallel agent code review
+- `/note` — write to Obsidian vault (`~/notes/`) with frontmatter
+- `/workflow` — design n8n automation workflows
+
+## MCP Servers
+- **obsidian** — read/write Obsidian vault at `~/notes/` for persistent knowledge
+- **n8n** — workflow design knowledge (docs-only, no running instance needed)
+- **costa-system** — system tools, screen reading, navigation
+
 ## System Agents — USE THESE
 
 **Read `configs/costa/agents/*.yaml` before doing server ops, deploys, builds, or code reviews.** 6 agents (deployer, sysadmin, architect, builder, janitor, monitor) handle these tasks. Invoke via `costa-agents run <name> "instruction"` or the MCP `system_command` tool.

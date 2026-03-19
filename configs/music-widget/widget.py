@@ -15,7 +15,6 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-
 from gi.repository import Gtk, Gdk, GdkPixbuf, GLib, Pango
 import subprocess
 import sqlite3
@@ -69,7 +68,7 @@ CSS = """
 @define-color lavender   #9884b8;
 
 window {
-    background-color: alpha(@base, 0.95);
+    background-color: @base;
     border: 1px solid @surface2;
     border-radius: 14px;
 }
@@ -412,7 +411,8 @@ class MusicWidget(Gtk.Window):
         self.set_default_size(WIDGET_WIDTH, WIDGET_HEIGHT)
         self.set_resizable(False)
         self.set_decorated(False)
-        self.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+
+        self.set_type_hint(Gdk.WindowTypeHint.POPUP_MENU)
 
         css_provider = Gtk.CssProvider()
         css_provider.load_from_data(CSS.encode())
@@ -1418,7 +1418,6 @@ def main():
 
     win = MusicWidget()
     win.connect("destroy", lambda *_: Gtk.main_quit())
-    win.position_near_waybar()
     win.show_all()
 
     try:

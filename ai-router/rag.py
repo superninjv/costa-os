@@ -22,9 +22,15 @@ DEFAULT_EXTENSIONS = {
     ".sh", ".yaml", ".yml", ".toml", ".json", ".conf", ".cfg",
 }
 
+# Default directories to index (user's notes, project knowledge)
+DEFAULT_INDEX_DIRS = [
+    Path.home() / "notes",
+]
+
 # Directories to skip during recursive walk
 SKIP_DIRS = {
     ".git", "__pycache__", "node_modules", "target", "dist", "build",
+    ".obsidian",
 }
 
 # Patterns that indicate a query references personal documents
@@ -348,6 +354,17 @@ def get_index_stats() -> dict:
         return {"total_docs": 0, "total_chunks": 0, "total_size": 0, "last_indexed": None}
 
 
+def index_defaults() -> dict:
+    """Index all default directories (user notes, etc.)."""
+    totals = {"indexed": 0, "skipped": 0, "errors": 0}
+    for d in DEFAULT_INDEX_DIRS:
+        if d.is_dir():
+            result = index_directory(d)
+            for k in totals:
+                totals[k] += result[k]
+    return totals
+
+
 def clear_index() -> None:
     """Drop and recreate FTS5 table and metadata table."""
     conn = get_db()
@@ -370,10 +387,11 @@ def _format_size(size_bytes: int) -> str:
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  python3 rag.py index <directory>   — index a directory")
-        print('  python3 rag.py search "query"      — search and print results')
-        print("  python3 rag.py stats               — show index stats")
-        print("  python3 rag.py clear               — clear index")
+        print("  python3 rag.py index <directory>   -- index a directory")
+        print("  python3 rag.py index-defaults      -- index default dirs (~/notes/)")
+        print('  python3 rag.py search "query"      -- search and print results')
+        print("  python3 rag.py stats               -- show index stats")
+        print("  python3 rag.py clear               -- clear index")
         sys.exit(1)
 
     command = sys.argv[1]
@@ -389,6 +407,18 @@ if __name__ == "__main__":
         elapsed = time.monotonic() - t0
         print(
             f"Done in {elapsed:.1f}s — "
+            f"indexed: {stats['indexed']}, "
+            f"skipped: {stats['skipped']}, "
+            f"errors: {stats['errors']}"
+        )
+
+    elif command == "index-defaults":
+        print("Indexing default directories ...")
+        t0 = time.monotonic()
+        stats = index_defaults()
+        elapsed = time.monotonic() - t0
+        print(
+            f"Done in {elapsed:.1f}s -- "
             f"indexed: {stats['indexed']}, "
             f"skipped: {stats['skipped']}, "
             f"errors: {stats['errors']}"
