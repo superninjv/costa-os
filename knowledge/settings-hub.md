@@ -1,7 +1,7 @@
 ---
 l0: "Costa Settings Hub: centralized GUI for display, security, input, AI, development, and system configuration"
 l1_sections: ["How to Open Settings Hub", "Display Settings", "Security Settings", "Input Settings", "AI Settings", "Development Settings", "System Settings", "Status Indicators"]
-tags: [settings, configuration, display, security, ai, ollama, chezmoi, github, ssh, monitors, wallpaper, face-auth, touchscreen, keybinds, updates]
+tags: [settings, configuration, display, security, ai, ollama, chezmoi, github, ssh, monitors, wallpaper, face-auth, touchscreen, keybinds, updates, versioning, costa-update]
 ---
 
 # Costa Settings Hub
@@ -122,11 +122,20 @@ gh ssh-key add ~/.ssh/id_ed25519.pub --title "Costa OS"
 
 ## System Settings
 
-### How do I check for updates?
-- Settings Hub → System → "Check for Updates"
-- Runs `sudo pacman -Syu` and `yay -Sua` for AUR packages
-- Shows a summary of what will be updated before applying
-- CLI: `sudo pacman -Syu && yay -Sua`
+### How do I update Costa OS?
+- Settings Hub → System → "Costa OS Update"
+- Or run from terminal: `costa-update`
+- Shows current version and checks for updates
+- Updates Costa layer (ai-router, configs, knowledge) via git
+- Updates system packages via pacman/yay
+- Claude reviews changes and fixes breakage automatically
+- Fallback: local Ollama model, or manual checklist if no AI available
+
+### How do I check my version?
+```bash
+costa-update --version    # prints current version
+costa-update --check      # checks for updates without applying
+```
 
 ### How do I sync my dotfiles?
 - Settings Hub → System → Dotfiles → "Sync Now"

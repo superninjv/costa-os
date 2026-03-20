@@ -94,6 +94,15 @@ This manifest maps every code component to every file that documents or ships kn
 
 ### Settings Hub (`installer/settings.py`)
 - `docs/advertising.md` — settings hub section
+- `knowledge/settings-hub.md` — all settings sections
+
+### Update System (`scripts/costa-update.sh`, `VERSION`)
+- `knowledge/settings-hub.md` — update instructions, version check
+- `docs/advertising.md` — update system section
+- `CHANGELOG.md` — release notes per version
+- `iso/profiledef.sh` — reads VERSION for ISO naming
+- `scripts/build-iso.sh` — stamps version in ISO filename
+- `installer/settings.py` — version display and update button
 
 ### First-Boot (`installer/first-boot.sh`)
 - `knowledge/costa-setup.md` — re-running setup, config locations
@@ -108,10 +117,17 @@ This manifest maps every code component to every file that documents or ships kn
 - `knowledge/ai-router.md` — model tiers per VRAM
 - `docs/system-requirements.md` — hardware tiers
 
+### Navigator Agent (`configs/costa/agents/navigator.yaml`)
+- `knowledge/costa-nav.md` — navigator agent section
+- `knowledge/agents.md` — agent list table and details
+- `docs/advertising.md` — agent pool table
+- `CLAUDE.md` — agent count and list
+- `configs/claude/CLAUDE.md` — "When Navigation Fails" section
+
 ### MCP Server (`mcp-server/costa_system.py`)
 - `knowledge/costa-nav.md` — AT-SPI architecture
 - `docs/advertising.md` — Claude Code as native citizen section
-- `configs/claude/CLAUDE.md` — MCP resource URIs in knowledge table
+- `configs/claude/CLAUDE.md` — MCP resource URIs in knowledge table, navigation recovery guidance
 
 ### SQLite Persistence (`ai-router/db.py`)
 - `knowledge/ai-router.md` — query logging, usage stats, cost tracking, conversation history
@@ -157,6 +173,29 @@ This manifest maps every code component to every file that documents or ships kn
 ### Claude Code Commands (`configs/claude/commands/`)
 - `configs/claude/CLAUDE.md` — custom commands section
 - `docs/advertising.md` — Claude Code integration section
+
+### Context7 MCP Server (user-level `~/.claude.json`)
+- `configs/claude/CLAUDE.md` — Library Documentation section
+- `configs/claude/CLAUDE-baseline.md` — Library Documentation section
+- `CLAUDE.md` — MCP Servers list
+
+### Claude Code Enhanced MCP Server (user-level `~/.claude.json`)
+- `configs/claude/CLAUDE.md` — Task Delegation section
+- `configs/claude/CLAUDE-baseline.md` — Task Delegation section
+- `CLAUDE.md` — MCP Servers list
+
+### Global Custom Commands (`~/.claude/commands/`)
+- `~/.claude/commands/office-hours.md` — structured async standup
+- `~/.claude/commands/qa.md` — systematic QA checklist
+- `~/.claude/commands/retro.md` — engineering retrospective
+
+### Code Review Graph (`.mcp.json`, `.code-review-graph/`)
+- `CLAUDE.md` — MCP Servers list
+- `.mcp.json` — project-level MCP server config (auto-registered by `code-review-graph install`)
+
+### Project Custom Commands (`.claude/commands/`)
+- `.claude/commands/team-review.md` — multi-agent code review
+- `CLAUDE.md` — Workflow Commands list
 
 ### Claude Code Setup (`scripts/setup-claude-code.sh`)
 - `knowledge/costa-setup.md` — setup process

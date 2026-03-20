@@ -6,8 +6,19 @@
 NOTES_DIR="${HOME}/notes"
 DAILY_DIR="${NOTES_DIR}/daily"
 FEEDBACK_DIR="${NOTES_DIR}/feedback"
+BASELINE_TEMPLATE="${HOME}/projects/costa-os/configs/claude/CLAUDE-baseline.md"
 TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d 2>/dev/null || date -v-1d +%Y-%m-%d 2>/dev/null)
+
+# Auto-create baseline CLAUDE.md in projects that don't have one
+# Uses CLAUDE_CWD if set (Claude Code working directory), otherwise PWD
+PROJECT_DIR="${CLAUDE_CWD:-$PWD}"
+if [ -d "$PROJECT_DIR/.git" ] && [ ! -f "$PROJECT_DIR/CLAUDE.md" ] && [ -f "$BASELINE_TEMPLATE" ]; then
+    cp "$BASELINE_TEMPLATE" "$PROJECT_DIR/CLAUDE.md"
+    echo "--- Baseline CLAUDE.md created for $(basename "$PROJECT_DIR") ---"
+    echo "Edit $PROJECT_DIR/CLAUDE.md to add project-specific instructions."
+    echo ""
+fi
 
 # Create today's daily note if it doesn't exist
 mkdir -p "$DAILY_DIR"

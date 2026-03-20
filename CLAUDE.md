@@ -4,7 +4,7 @@ AI-native Linux distribution built on Arch Linux + Hyprland. The AI is the OS in
 
 ## Build & Test
 ```bash
-# Build ISO (requires archiso)
+# Build ISO (requires archiso) — stamps version from VERSION file
 sudo ./scripts/build-iso.sh
 
 # Test in VM
@@ -13,6 +13,20 @@ sudo ./scripts/build-iso.sh
 # Run installer wizard standalone (for development)
 python3 installer/wizard.py
 ```
+
+## Versioning & Releases
+```bash
+# Check current version
+cat VERSION
+
+# Bump version (increments patch by 0.0.1, creates git tag)
+./scripts/bump-version.sh
+
+# Build + upload ISO to DO Spaces (removes old version)
+sudo ./scripts/build-iso.sh
+./scripts/upload-iso.sh
+```
+Version lives in `VERSION` file. Git tags (`v1.0.9`, `v1.0.10`, ...) mark releases. ISO filenames include version: `costa-os-1.0.9-x86_64.iso`.
 
 ## Project Structure (public repo)
 - `ai-router/` — Core intelligence layer (context gathering, model routing, auto-escalation)
@@ -55,17 +69,25 @@ The router: gathers live system context → queries local Ollama → detects "I 
 - `/sync-docs` — verify all docs match code per SYNC_MANIFEST
 - `/feature-dev` — 7-phase structured development workflow
 - `/code-review` — parallel agent code review
+- `/team-review` — multi-agent review (security + performance + API contracts) for large PRs
 - `/note` — write to Obsidian vault (`~/notes/`) with frontmatter
 - `/workflow` — design n8n automation workflows
+- `/office-hours` — structured async standup / design thinking brainstorm
+- `/qa` — systematic QA checklist generation and testing
+- `/retro` — engineering retrospective with commit analysis and metrics
 
 ## MCP Servers
-- **obsidian** — read/write Obsidian vault at `~/notes/` for persistent knowledge
-- **n8n** — workflow design knowledge (docs-only, no running instance needed)
 - **costa-system** — system tools, screen reading, navigation
+- **context7** — version-specific library documentation (prevents hallucinated API signatures)
+- **claude-code-enhanced** — delegate mechanical subtasks to child Claude Code sessions
+- **code-review-graph** — AST-based knowledge graph for token-efficient code reviews (project-level, `.mcp.json`)
+
+## Obsidian Vault (`~/notes/`)
+Persistent knowledge store. Read/write directly with native tools (Read, Write, Edit, Grep, Glob) — no MCP server needed.
 
 ## System Agents — USE THESE
 
-**Read `configs/costa/agents/*.yaml` before doing server ops, deploys, builds, or code reviews.** 6 agents (deployer, sysadmin, architect, builder, janitor, monitor) handle these tasks. Invoke via `costa-agents run <name> "instruction"` or the MCP `system_command` tool.
+**Read `configs/costa/agents/*.yaml` before doing server ops, deploys, builds, or code reviews.** 7 agents (deployer, sysadmin, architect, builder, janitor, monitor, navigator) handle these tasks. Invoke via `costa-agents run <name> "instruction"` or the MCP `system_command` tool.
 
 - **After modifying site files** → git push, then deploy via the **deployer** agent
 - **After modifying ISO-related files** → use the **builder** agent

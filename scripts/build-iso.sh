@@ -15,8 +15,15 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Read version
+VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null | tr -d '[:space:]')
+if [ -z "$VERSION" ]; then
+    echo "ERROR: VERSION file not found or empty"
+    exit 1
+fi
+
 echo "╔══════════════════════════════════════╗"
-echo "║     Costa OS — ISO Build Script      ║"
+echo "║   Costa OS v$VERSION — ISO Build      ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
@@ -60,7 +67,19 @@ cp "$PROJECT_DIR"/scripts/headless-preview.py "$COSTA_SHARE/scripts/" 2>/dev/nul
 cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-memory-flush.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-session-start.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
+cp "$PROJECT_DIR"/scripts/costa-update.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 chmod +x "$COSTA_SHARE/scripts/costa-"* 2>/dev/null || true
+
+# VERSION file
+cp "$PROJECT_DIR/VERSION" "$COSTA_SHARE/"
+
+# Install costa-update to PATH
+mkdir -p "$AIROOTFS/usr/local/bin"
+cat > "$AIROOTFS/usr/local/bin/costa-update" << 'WRAPPER'
+#!/bin/bash
+exec /usr/share/costa-os/scripts/costa-update.sh "$@"
+WRAPPER
+chmod +x "$AIROOTFS/usr/local/bin/costa-update"
 
 # Installer
 mkdir -p "$COSTA_SHARE/installer"
@@ -165,7 +184,14 @@ mkdir -p "$WORK_DIR" "$OUT_DIR"
 mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" "$ISO_PROFILE"
 
 echo ""
+# Rename ISO to versioned filename
+BUILT_ISO=$(ls -t "$OUT_DIR"/costa-os-*.iso 2>/dev/null | head -1)
+if [ -n "$BUILT_ISO" ] && [ "$(basename "$BUILT_ISO")" != "costa-os-${VERSION}-x86_64.iso" ]; then
+    mv "$BUILT_ISO" "$OUT_DIR/costa-os-${VERSION}-x86_64.iso"
+fi
+
 echo "→ ISO built successfully!"
-ls -lh "$OUT_DIR"/costa-os-*.iso
+ls -lh "$OUT_DIR/costa-os-${VERSION}-x86_64.iso"
 echo ""
-echo "Test with: ./scripts/test-vm.sh"
+echo "Upload with: ./scripts/upload-iso.sh"
+echo "Test with:   ./scripts/test-vm.sh"

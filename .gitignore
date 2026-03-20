@@ -29,6 +29,9 @@ costa-conversation.json
 
 # Claude Code project config (local)
 .claude/
+.claude.json
+.mcp.json
+.code-review-graph/
 
 # Editor
 .vscode/

@@ -60,7 +60,7 @@ If you change any system behavior, **update the matching knowledge file** so bot
 
 ## Obsidian Vault — Your Persistent Memory
 
-The Obsidian vault at `~/notes/` is your long-term memory. You have full read/write access via the **obsidian** MCP server. Use it to stay coherent across conversations.
+The Obsidian vault at `~/notes/` is your long-term memory. Read/write directly with native tools (Read, Write, Edit, Grep, Glob). Use it to stay coherent across conversations.
 
 ### What to store
 
@@ -98,11 +98,11 @@ Today's and yesterday's daily notes are automatically loaded at session start, s
 
 ### Vault search
 
-Use the `vault_search` MCP tool to semantically search across all notes and indexed documents. This uses FTS5 full-text search — much faster than reading files one by one. Search before saying "I don't have context about that."
+Use `Grep` to search across all notes (regex-capable, fast). Use `vault_search` via costa-system MCP as an alternative. Search before saying "I don't have context about that."
 
 ### How to write
 
-Use the obsidian MCP tools. Notes should have clear titles and be organized by topic, not chronologically. Update existing notes rather than creating duplicates. Keep notes concise — facts and decisions, not prose.
+Use native `Write` and `Edit` tools directly on `~/notes/`. Notes should have clear titles and be organized by topic, not chronologically. Update existing notes rather than creating duplicates. Keep notes concise — facts and decisions, not prose.
 
 ## When in Project Directories
 
@@ -167,6 +167,12 @@ cli-anything-steam library list --json          # Installed games
 - Use direct CLI when you need specific app data (library search, file listing, game list) that doesn't require screen reading
 - The CLI is always faster and more reliable than AT-SPI for supported operations
 
+## Additional MCP Servers
+
+- **context7** — fetch version-specific library docs on demand. Use when unsure about API signatures instead of guessing.
+- **claude-code-enhanced** — delegate mechanical subtasks (tests, lint, metrics) to a child Claude session. Each delegation = full API call, so use for token-heavy mechanical work only.
+- **code-review-graph** — AST knowledge graph for reviews. Query call chains, type hierarchies, symbol refs instead of reading entire files. Available in projects with `.mcp.json`.
+
 ## Working Style
 
 - **Use planning mode** for non-trivial tasks — align on approach before implementing.
@@ -180,6 +186,41 @@ cli-anything-steam library list --json          # Installed games
 - **Use `nav_plan`** for multi-step UI automation — use `cli_query` step type when a CLI wrapper exists for the target app.
 - **Use `nav_routine`** for repeated workflows the user does often — save them for one-command replay.
 - **Act, then explain.** Users expect the AI to be the interface, not a manual. Do the thing, then tell them what you did.
+
+## When Navigation Fails
+
+If `read_window` or `nav_query` returns empty, do NOT jump to screenshots. Follow this recovery path:
+
+1. **Page still loading?** — Wait 500-1000ms and retry. SPAs (React, Vue) update the DOM after navigation.
+2. **CLI wrapper available?** — Run `cli_registry {"action": "check", "app": "<class>"}`. Many apps have deterministic CLI wrappers that bypass AT-SPI entirely.
+3. **Query too broad?** — Narrow your search. "credit balance in sidebar" beats "describe the page."
+4. **Try a nav_plan with fallback chain:**
+   ```json
+   {"type": "fallback",
+     "try": [{"type": "query", "id": "x", "find": "target element"}],
+     "catch": [
+       {"type": "wait", "ms": 500},
+       {"type": "action", "action": "scroll", "target": "app", "direction": "down", "amount": 3},
+       {"type": "query", "id": "x", "find": "target element anywhere on page"}
+     ]
+   }
+   ```
+5. **Text split across nodes?** — Try "any mention of X" instead of targeting a specific element.
+6. **Deeply nested content?** — Use `read_window` with `depth: 10-12`.
+7. **Delegate to navigator agent** — `costa-agents run navigator "read the current page in Firefox"` for complex multi-step navigation.
+
+### When screenshot IS appropriate
+- Verifying visual layout, themes, pixel alignment
+- Reading actual images, videos, or icons
+- Diagnosing rendering bugs or visual glitches
+
+### When screenshot is NEVER appropriate
+- Reading text content from any application
+- Checking app state (tabs, playback, settings)
+- Finding UI elements or buttons
+- Any task where the answer is text — use CLI wrappers, nav_query, or read_window instead
+
+Screenshots cost **112x more tokens** than nav_query (~9,180 vs ~82 tokens). A 10-step task: **$1.38 with screenshots vs $0.01 with nav_query**.
 
 ## PipeWire Gotchas
 

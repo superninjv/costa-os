@@ -19,6 +19,7 @@ Agents are specialized AI personas with focused system prompts, specific tool ac
 | **deployer** | qwen2.5:14b (local) | Docker, CI/CD, server config, deployments |
 | **janitor** | qwen2.5:3b (local) | Clean caches, remove orphan packages, free disk |
 | **monitor** | qwen2.5:3b (local) | Watch logs, alert on errors, track resource usage |
+| **navigator** | qwen2.5:7b+ (local) | Screen reading, app interaction, UI automation via AT-SPI and CLI wrappers |
 
 ## How to Use Agents
 
@@ -90,6 +91,14 @@ Watch logs, alert on errors, track resource usage.
 ```bash
 costa-agents run monitor "watch journalctl for errors"
 costa-agents run monitor "alert me if CPU goes above 90%"
+```
+
+### navigator (local, qwen2.5:7b+)
+Screen reading, app interaction, UI automation. Follows the full decision tree: CLI wrapper → nav_query → nav_plan → read_window → screenshot (last resort). Includes recovery strategies for failed reads and focus protection.
+```bash
+costa-agents run navigator "list all open Firefox tabs"
+costa-agents run navigator "check my Vast.ai credit balance"
+costa-agents run navigator "fill out the registration form on the current page"
 ```
 
 ## Queue Management

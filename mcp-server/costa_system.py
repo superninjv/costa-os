@@ -372,10 +372,14 @@ async def list_tools():
         Tool(
             name="screenshot",
             description=(
-                "Take a screenshot. Returns the image for Claude to analyze visually. "
-                "ONLY use this when you need to see visual content (images, videos, "
-                "layout, colors) that can't be read as text. For text content, "
-                "use read_window instead — it's faster and cheaper. "
+                "Take a screenshot. Returns an image (112x more tokens than text methods). "
+                "WARNING: Screenshots cost ~9,180 tokens each. A 10-step task costs $1.38 "
+                "with screenshots vs $0.01 with nav_query. If you are reading TEXT content, "
+                "something went wrong — go back and use: (1) cli_registry to check for a "
+                "CLI wrapper, (2) nav_query for AT-SPI + Ollama, (3) read_window for raw "
+                "AT-SPI tree. ONLY use screenshot for: verifying visual layout/themes, "
+                "reading actual images or icons, diagnosing rendering bugs. "
+                "NEVER use for: reading text, checking app state, finding UI elements. "
                 "Modes: 'full' (entire screen), 'window' (specific window), "
                 "'region' (x,y,w,h coordinates)."
             ),
@@ -412,14 +416,17 @@ async def list_tools():
             name="type_text",
             description=(
                 "Type text into a specific window WITHOUT affecting the user's keyboard. "
-                "Does NOT move focus or cursor. Requires the window class name."
+                "Briefly swaps focus on Wayland then restores it. "
+                "Pass window_class (e.g. 'firefox') or a Hyprland address (e.g. '0x55e7...') "
+                "from list_windows / hyprctl clients to target a specific window when "
+                "multiple windows share the same class."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "window_class": {
                         "type": "string",
-                        "description": "Window class to type into",
+                        "description": "Window class or Hyprland address (0x...) to type into",
                     },
                     "text": {
                         "type": "string",
@@ -438,14 +445,16 @@ async def list_tools():
             name="send_key",
             description=(
                 "Send a keyboard shortcut to a specific window. "
-                "Does NOT affect the user's keyboard. Examples: 'ctrl+s', 'Return', 'Escape'."
+                "Briefly swaps focus on Wayland then restores it. "
+                "Pass window_class (e.g. 'firefox') or a Hyprland address (0x...) "
+                "to target a specific window. Examples: 'ctrl+s', 'Return', 'Escape'."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "window_class": {
                         "type": "string",
-                        "description": "Window class to send key to",
+                        "description": "Window class or Hyprland address (0x...) to send key to",
                     },
                     "key": {
                         "type": "string",
@@ -459,14 +468,16 @@ async def list_tools():
             name="click_window",
             description=(
                 "Click at a position within a specific window. Coordinates are relative "
-                "to the window's top-left corner. Does NOT move the user's cursor."
+                "to the window's top-left corner. Does NOT move the user's cursor. "
+                "Pass window_class (e.g. 'firefox') or a Hyprland address (0x...) "
+                "to target a specific window."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "window_class": {
                         "type": "string",
-                        "description": "Window class to click in",
+                        "description": "Window class or Hyprland address (0x...) to click in",
                     },
                     "x": {"type": "integer", "description": "X coordinate relative to window"},
                     "y": {"type": "integer", "description": "Y coordinate relative to window"},
@@ -728,13 +739,22 @@ def find_x11_window(class_name: str) -> str | None:
 
 
 def find_hypr_window(class_name: str, prefer_workspace: str = "") -> dict | None:
-    """Find Hyprland window by class name.
+    """Find Hyprland window by class name (or address if prefixed with '0x').
 
     When multiple windows match (e.g. two Firefox instances), prefers:
     1. Window on the specified workspace (if given)
     2. Window on Claude's headless workspace (ws 7)
     3. First match as fallback
     """
+    # Direct address lookup — bypass class matching entirely
+    if class_name.startswith("0x"):
+        r = run(["hyprctl", "clients", "-j"])
+        if r.returncode != 0:
+            return None
+        for c in json.loads(r.stdout):
+            if c.get("address") == class_name:
+                return c
+        return None
     r = run(["hyprctl", "clients", "-j"])
     if r.returncode != 0:
         return None
@@ -1072,9 +1092,13 @@ async def handle_read_window(args: dict):
     text = "\n".join(lines)
     if not any(v.strip() for v in data.values()):
         text += (
-            "\n(No text content found via AT-SPI. "
-            "This app may not expose accessibility data. "
-            "Use screenshot as fallback.)"
+            "\n(No text content found via AT-SPI. Recovery steps:\n"
+            "1. Check for a CLI wrapper: cli_registry {\"action\": \"check\", \"app\": \"<class>\"}\n"
+            "2. Try nav_query with a broader search term or different page target\n"
+            "3. Try nav_plan with a fallback chain: wait 500ms → scroll → re-read\n"
+            "4. The page may still be loading — wait 1-2s and retry read_window\n"
+            "5. Try read_window with higher depth (10-12) for deeply nested content\n"
+            "6. Screenshot ONLY for visual content like images or layout — never for text.)"
         )
 
     return [TextContent(type="text", text=text)]

@@ -212,6 +212,26 @@ costa-nav learn firefox "Vast.ai credit balance is in a [section] element in the
 costa-nav learn firefox "Gmail inbox loads lazily, retry after 1s if content is empty"
 ```
 
+## Navigator Agent
+
+A dedicated **navigator agent** handles complex navigation tasks autonomously. It follows the full decision tree (CLI → nav_query → nav_plan → read_window → screenshot) and includes recovery strategies for failed reads.
+
+### How to invoke
+```bash
+costa-agents run navigator "list all open Firefox tabs"
+costa-agents run navigator "check my Vast.ai credit balance"
+costa-agents run navigator "fill out the form on the current page with these values: ..."
+```
+
+The navigator agent has access to all navigation tools (nav_query, nav_plan, nav_routine, cli_registry, read_window, click_window, type_text, send_key, scroll_window) and enforces focus protection rules (headless monitor only for interactions).
+
+Use it when:
+- A navigation task requires multiple steps or retries
+- You want to delegate screen interaction to a specialist
+- The task involves fallback chains or site-specific patterns
+
+The agent definition is at `configs/costa/agents/navigator.yaml`.
+
 ## Routines
 
 Save proven plans as routines for one-word triggers:

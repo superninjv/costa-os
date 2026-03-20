@@ -53,41 +53,100 @@ class Task:
 
 
 class ResourceQueue:
-    """Thread-safe queue that enforces max concurrency per resource."""
+    """Cross-process queue that enforces max concurrency per resource.
+
+    Uses fcntl.flock on a shared lock file so that multiple costa-agents
+    processes (from different Claude Code sessions) never exceed the
+    concurrency limit simultaneously. Critical for SSH — two concurrent
+    SSH sessions to the same droplet will crash.
+    """
+    LOCK_DIR = Path("/tmp/costa-agent-locks")
+
     def __init__(self, name: str, max_concurrent: int = 1):
         self.name = name
         self.max_concurrent = max_concurrent
-        self._lock = threading.Lock()
-        self._active = 0
-        self._waiting: deque[threading.Event] = deque()
+        self.LOCK_DIR.mkdir(parents=True, exist_ok=True)
+        self._lock_path = self.LOCK_DIR / f"{name}.lock"
+        self._status_path = self.LOCK_DIR / f"{name}.status"
+        self._fd: Optional[int] = None
 
     def acquire(self, timeout: float = 300) -> bool:
         """Block until a slot is available. Returns False on timeout."""
-        event = None
-        with self._lock:
-            if self._active < self.max_concurrent:
-                self._active += 1
-                return True
-            event = threading.Event()
-            self._waiting.append(event)
+        import fcntl, errno
 
-        return event.wait(timeout=timeout)
+        fd = os.open(str(self._lock_path), os.O_CREAT | os.O_RDWR, 0o666)
+        deadline = time.time() + timeout
+
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                # Got the lock — write our PID for debugging
+                os.ftruncate(fd, 0)
+                os.lseek(fd, 0, os.SEEK_SET)
+                os.write(fd, f"{os.getpid()}\n".encode())
+                self._fd = fd
+                self._write_status("active")
+                return True
+            except OSError as e:
+                if e.errno not in (errno.EWOULDBLOCK, errno.EAGAIN):
+                    os.close(fd)
+                    raise
+                # Lock is held by another process — wait and retry
+                if time.time() >= deadline:
+                    os.close(fd)
+                    return False
+                self._write_status("waiting")
+                time.sleep(0.5)
 
     def release(self):
-        with self._lock:
-            self._active -= 1
-            if self._waiting and self._active < self.max_concurrent:
-                event = self._waiting.popleft()
-                self._active += 1
-                event.set()
+        import fcntl
+        if self._fd is not None:
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
+                os.close(self._fd)
+            except OSError:
+                pass
+            self._fd = None
+            self._write_status("idle")
+
+    def _write_status(self, state: str):
+        """Write queue state for external tools (waybar, status command)."""
+        try:
+            self._status_path.write_text(json.dumps({
+                "state": state,
+                "pid": os.getpid(),
+                "time": time.time(),
+            }))
+        except Exception:
+            pass
 
     @property
     def active_count(self) -> int:
-        return self._active
+        """Check if any process holds the lock."""
+        import fcntl, errno
+        try:
+            fd = os.open(str(self._lock_path), os.O_CREAT | os.O_RDWR, 0o666)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(fd, fcntl.LOCK_UN)
+                os.close(fd)
+                return 0  # nobody holds it
+            except OSError as e:
+                os.close(fd)
+                if e.errno in (errno.EWOULDBLOCK, errno.EAGAIN):
+                    return 1  # someone holds it
+                return 0
+        except Exception:
+            return 0
 
     @property
     def waiting_count(self) -> int:
-        return len(self._waiting)
+        """Approximate — count status files that say 'waiting'."""
+        try:
+            data = json.loads(self._status_path.read_text())
+            return 1 if data.get("state") == "waiting" else 0
+        except Exception:
+            return 0
 
 
 class AgentPool:
@@ -189,7 +248,7 @@ class AgentPool:
         if queue:
             task.status = "queued"
             self._save_status()
-            if not queue.acquire(timeout=600):
+            if not queue.acquire(timeout=600):  # 10 min — deployments can be slow
                 task.status = "failed"
                 task.result = f"Timed out waiting for {agent.queue} queue"
                 task.finished_at = time.time()

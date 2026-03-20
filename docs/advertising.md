@@ -325,7 +325,7 @@ GTK4/libadwaita central settings panel — a proper `.desktop` app accessible fr
 - **Input** — Touchscreen toggle (if detected), launches keybinds GUI
 - **AI Assistant** — Ollama model management (list/pull), Claude Plan login (Pro/Max, recommended) or API key entry for advanced users (Anthropic/OpenAI) with secure storage (`chmod 600`), voice assistant status
 - **Development** — GitHub CLI authentication, SSH key generation/viewing
-- **System** — Package updates (`yay -Syu`), chezmoi dotfiles sync, re-run first-boot to regenerate all configs
+- **System** — Costa OS version display with update check, `costa-update` (AI-assisted: pulls Costa layer via git, updates system packages, Claude reviews changes and fixes breakage), chezmoi dotfiles sync, re-run first-boot to regenerate all configs
 - **AI Help** — Every section has AI assistance — if something fails or you're unsure what a setting does, ask and get an instant explanation or fix
 - **Async status checks** — Every item shows live status (green/yellow/red) loaded in background threads: "Authenticated," "3 models," "Running," etc.
 
@@ -570,6 +570,7 @@ Specialized background agents that handle infrastructure tasks autonomously:
 | **builder** | ISO builds, test suites, compilation | local-heavy (serial) |
 | **deployer** | Push code to servers, restart services, healthchecks | remote (serial) |
 | **monitor** | Uptime checks, resource alerts, log watching | unlimited |
+| **navigator** | Screen reading, app interaction, UI automation (CLI → AT-SPI → nav_plan) | local (2 concurrent) |
 
 Resource queues enforce concurrency — the remote queue ensures only one agent SSHs at a time (multiple sessions crash it). Agents are dispatched via CLI (`costa-agents dispatch sysadmin "restart nginx"`) or by other Claude Code agents.
 
