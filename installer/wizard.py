@@ -373,14 +373,19 @@ def run_wizard() -> CostaConfig:
     print(f"  {C.DIM}You can skip any of these and add them later in ~/.config/costa/config.json{C.RESET}\n")
 
     # Claude API
-    print(f"  {C.FOAM}1. Anthropic Claude API{C.RESET}")
+    print(f"  {C.FOAM}1. Claude Code Authentication{C.RESET}")
     print(f"  {C.DIM}   Powers cloud AI features — code generation, research, web search.{C.RESET}")
-    print(f"  {C.DIM}   Get a key at: https://console.anthropic.com/keys{C.RESET}")
-    config.anthropic_api_key = prompt("   Anthropic API key (Enter to skip)")
+    print()
+    print(f"  {C.BOLD}   If you have a Claude Pro, Team, or Enterprise plan:{C.RESET}")
+    print(f"  {C.OLIVE}   → Skip this step.{C.RESET} {C.DIM}You'll log in with 'claude /login' after install.{C.RESET}")
+    print(f"  {C.DIM}   Plan usage is included in your subscription — no API key needed.{C.RESET}")
+    print()
+    print(f"  {C.DIM}   Only enter an API key if you use pay-per-use billing (console.anthropic.com/keys).{C.RESET}")
+    config.anthropic_api_key = prompt("   API key (Enter to skip — most users should skip)")
     if config.anthropic_api_key:
-        print(f"  {C.OLIVE}   ✓ Claude API configured{C.RESET}")
+        print(f"  {C.OLIVE}   ✓ API key configured{C.RESET}")
     else:
-        print(f"  {C.SAND}   Skipped — local AI will still work{C.RESET}")
+        print(f"  {C.OLIVE}   ✓ Skipped — you'll authenticate with 'claude /login' after install{C.RESET}")
 
     # GitHub
     print(f"\n  {C.FOAM}2. GitHub{C.RESET}")
@@ -454,7 +459,7 @@ def run_wizard() -> CostaConfig:
         print(f"  Face Auth:    {'✓ Howdy (IR camera)' if config.enable_face_auth else '✗ Disabled'}")
     if config.has_touchscreen:
         print(f"  Touchscreen:  {'✓ Touch + gestures' if config.enable_touchscreen else '✗ Disabled'}")
-    print(f"  Claude API:   {'✓ Configured' if config.anthropic_api_key else '✗ Not set'}")
+    print(f"  Claude:       {'✓ API key set' if config.anthropic_api_key else '○ Will use claude /login after install'}")
     print(f"  Vesktop:      {'✓ Install' if config.install_vesktop else '✗ Skipped'}")
     print(f"  GitHub:       {'✓ Setup after install' if config.setup_github else '✗ Skipped'}")
     ptt_display = f"{config.ptt_keybind[0]}+{config.ptt_keybind[1]}".replace("$mainMod", "SUPER")
