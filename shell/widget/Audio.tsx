@@ -11,10 +11,9 @@ function parseVolume(output: string): { level: number; muted: boolean } {
 }
 
 function volumeIcon(level: number, muted: boolean): string {
-  if (muted || level === 0) return "🔇"
-  if (level < 0.33) return "🔈"
-  if (level < 0.66) return "🔉"
-  return "🔊"
+  if (muted || level === 0) return "\uF026"
+  if (level < 0.33) return "\uF027"
+  return "\uF028"
 }
 
 const [getVolume, setVolume] = createState({ level: 0, muted: false })
@@ -40,20 +39,30 @@ export default function Audio() {
         scroll.set_flags(Gtk.EventControllerScrollFlags.VERTICAL)
         scroll.connect("scroll", (_: any, _dx: number, dy: number) => {
           if (dy < 0) {
-            execAsync("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+").catch(() => {})
+            execAsync("swayosd-client --output-volume 5").catch(() =>
+              execAsync("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+").catch(() => {}),
+            )
           } else {
-            execAsync("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-").catch(() => {})
+            execAsync("swayosd-client --output-volume -5").catch(() =>
+              execAsync("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-").catch(() => {}),
+            )
           }
-          pollVolume()
+          GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+            pollVolume()
+            return GLib.SOURCE_REMOVE
+          })
         })
         self.add_controller(scroll)
       }}
     >
       <button
+        class={getVolume.as((v) => (v.muted ? "audio-btn muted" : "audio-btn"))}
         onClicked={() => execAsync("pavucontrol").catch(() => {})}
-        tooltipText={getVolume.as(v => `${Math.round(v.level * 100)}%${v.muted ? " (muted)" : ""}`)}
+        tooltipText={getVolume.as(
+          (v) => `${Math.round(v.level * 100)}%${v.muted ? " (muted)" : ""}`,
+        )}
       >
-        <label label={getVolume.as(v => volumeIcon(v.level, v.muted))} />
+        <label label={getVolume.as((v) => volumeIcon(v.level, v.muted))} />
       </button>
     </box>
   )

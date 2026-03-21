@@ -1,5 +1,5 @@
 import app from "ags/gtk4/app"
-import { Astal, Gdk } from "ags/gtk4"
+import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createState } from "gnim"
 import GLib from "gi://GLib"
 
@@ -29,9 +29,10 @@ export default function ClaudeBar(gdkmonitor: Gdk.Monitor) {
       namespace="costa-claude-screen"
       application={app}
     >
-      <box class="claude-bar-panel" spacing={12}>
-        <label label="🤖 Claude Screen" class="claude-label" />
-        <label label={getClock.as(v => v)} class="claude-clock" />
+      <box class="claude-bar-panel" spacing={8} valign={Gtk.Align.CENTER}>
+        <label label={"\uF069"} class="claude-icon" />
+        <label label="Claude Screen" class="claude-label" />
+        <label label={getClock.as((v) => v)} class="claude-clock" />
       </box>
     </window>
   )

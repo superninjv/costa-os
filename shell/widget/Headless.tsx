@@ -13,7 +13,7 @@ export default function Headless() {
       visible={getMonitors.as(ms => ms.some((m) => m.get_name().startsWith("HEADLESS")))}
     >
       <label
-        label="🖥"
+        label={"\uF108"}
         class="headless-icon"
         tooltipText="Headless monitor active"
       />

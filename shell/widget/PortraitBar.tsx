@@ -16,22 +16,20 @@ function readFile(path: string): string {
   return ""
 }
 
-// GPU VRAM
 function getVram(): string {
   const used = readFile("/sys/class/drm/card1/device/mem_info_vram_used")
   const total = readFile("/sys/class/drm/card1/device/mem_info_vram_total")
-  if (!used || !total) return "VRAM: --"
+  if (!used || !total) return "--"
   const usedG = (parseInt(used) / 1073741824).toFixed(1)
   const totalG = (parseInt(total) / 1073741824).toFixed(1)
   return `${usedG}/${totalG}G`
 }
 
-// CPU usage
 let prevIdle = 0
 let prevTotal = 0
 function getCpu(): string {
   const stat = readFile("/proc/stat")
-  if (!stat) return "CPU: --"
+  if (!stat) return "--"
   const line = stat.split("\n")[0]
   const parts = line.split(/\s+/).slice(1).map(Number)
   const idle = parts[3]
@@ -40,27 +38,21 @@ function getCpu(): string {
   const diffTotal = total - prevTotal
   prevIdle = idle
   prevTotal = total
-  if (diffTotal === 0) return "CPU: 0%"
-  const usage = Math.round((1 - diffIdle / diffTotal) * 100)
-  return `CPU: ${usage}%`
+  if (diffTotal === 0) return "0%"
+  return `${Math.round((1 - diffIdle / diffTotal) * 100)}%`
 }
 
-// RAM
 function getRam(): string {
   const meminfo = readFile("/proc/meminfo")
-  if (!meminfo) return "RAM: --"
+  if (!meminfo) return "--"
   const lines = meminfo.split("\n")
   let total = 0
   let available = 0
   for (const line of lines) {
-    if (line.startsWith("MemTotal:"))
-      total = parseInt(line.split(/\s+/)[1])
-    if (line.startsWith("MemAvailable:"))
-      available = parseInt(line.split(/\s+/)[1])
+    if (line.startsWith("MemTotal:")) total = parseInt(line.split(/\s+/)[1])
+    if (line.startsWith("MemAvailable:")) available = parseInt(line.split(/\s+/)[1])
   }
-  const usedG = ((total - available) / 1048576).toFixed(1)
-  const totalG = (total / 1048576).toFixed(1)
-  return `${usedG}/${totalG}G`
+  return `${((total - available) / 1048576).toFixed(1)}G`
 }
 
 const [getVramStr, setVramStr] = createState(getVram())
@@ -70,11 +62,11 @@ const [getClock, setClock] = createState("")
 
 function updateClock() {
   const now = GLib.DateTime.new_now_local()
-  setClock(now?.format("%H:%M") ?? "")
+  setClock(now?.format("%I:%M") ?? "")
 }
-
 updateClock()
-GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+
+GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
   setVramStr(getVram())
   setCpuStr(getCpu())
   setRamStr(getRam())
@@ -82,27 +74,39 @@ GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
   return GLib.SOURCE_CONTINUE
 })
 
-const [getWorkspaces, setWorkspaces] = createState(hypr.get_workspaces())
-const [getFocused, setFocused] = createState(hypr.get_focused_workspace())
+function clearChildren(box: Gtk.Box) {
+  let child = box.get_first_child()
+  while (child) {
+    const next = child.get_next_sibling()
+    box.remove(child)
+    child = next
+  }
+}
 
-hypr.connect("notify::workspaces", () => setWorkspaces(hypr.get_workspaces()))
-hypr.connect("notify::focused-workspace", () => setFocused(hypr.get_focused_workspace()))
-
-function PortraitWorkspaces() {
-  const sorted = () =>
-    getWorkspaces()
-      .filter((ws) => ws.id > 0)
-      .sort((a, b) => a.id - b.id)
-
+function NumWorkspaces() {
   return (
-    <box class="portrait-workspaces" spacing={4}>
-      {sorted().map((ws) => (
-        <label
-          label={String(ws.id)}
-          class={getFocused.as(f => f?.id === ws.id ? "ws-num active" : "ws-num")}
-        />
-      ))}
-    </box>
+    <box
+      class="portrait-workspaces"
+      spacing={2}
+      $={(self: Gtk.Box) => {
+        const update = () => {
+          clearChildren(self)
+          const wss = hypr.get_workspaces().filter((ws) => ws.id > 0).sort((a, b) => a.id - b.id)
+          const focused = hypr.get_focused_workspace()
+          for (const ws of wss) {
+            const btn = new Gtk.Button({
+              cssClasses: ws.id === focused?.id ? ["ws-num", "active"] : ["ws-num"],
+            })
+            btn.connect("clicked", () => hypr.dispatch("workspace", String(ws.id)))
+            btn.set_child(new Gtk.Label({ label: String(ws.id) }))
+            self.append(btn)
+          }
+        }
+        hypr.connect("notify::workspaces", update)
+        hypr.connect("notify::focused-workspace", update)
+        update()
+      }}
+    />
   )
 }
 
@@ -120,16 +124,33 @@ export default function PortraitBar(gdkmonitor: Gdk.Monitor) {
       application={app}
     >
       <centerbox class="portrait-panel">
-        <box $type="start" spacing={12}>
-          <PortraitWorkspaces />
+        <box $type="start">
+          <NumWorkspaces />
         </box>
-        <box $type="center" spacing={16}>
-          <label label={getCpuStr.as(v => v)} class="stat" />
-          <label label={getRamStr.as(v => v)} class="stat" />
-          <label label={getVramStr.as(v => v)} class="stat" tooltipText="GPU VRAM" />
-        </box>
-        <box $type="end">
-          <label label={getClock.as(v => v)} class="portrait-clock" />
+        <box $type="center" />
+        <box $type="end" spacing={4}>
+          <button
+            class="stat-btn"
+            onClicked={() => execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh amdgpu_top amdgpu_top'").catch(() => {})}
+            tooltipText="GPU VRAM — click for amdgpu_top"
+          >
+            <label label={getVramStr.as((v) => v)} class="stat" />
+          </button>
+          <button
+            class="stat-btn"
+            onClicked={() => execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh btm btm'").catch(() => {})}
+            tooltipText="CPU — click for btm"
+          >
+            <label label={getCpuStr.as((v) => v)} class="stat" />
+          </button>
+          <button
+            class="stat-btn"
+            onClicked={() => execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh btm btm'").catch(() => {})}
+            tooltipText="RAM — click for btm"
+          >
+            <label label={getRamStr.as((v) => v)} class="stat" />
+          </button>
+          <label label={getClock.as((v) => v)} class="portrait-clock" />
         </box>
       </centerbox>
     </window>

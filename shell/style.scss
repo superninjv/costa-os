@@ -1,10 +1,11 @@
-// Costa OS Shell — Mediterranean coastal palette
+// Costa OS Shell — Floating Island
+// Sleek glassmorphic bar with Nerd Font icons
 
 $base: #1b1d2b;
 $surface: #252836;
 $text: #d4cfc4;
 $subtext: #b3b6c9;
-$dim: #8b8e9b;
+$dim: #6b7089;
 $accent: #7eb5b0;
 $sea: #5b94a8;
 $warn: #c9a96e;
@@ -12,47 +13,58 @@ $error: #b87272;
 $success: #8b9968;
 $lavender: #9884b8;
 
-$font: "JetBrains Mono Nerd Font", monospace;
+$font: "JetBrainsMono Nerd Font", monospace;
 $radius: 14px;
-$transition: 150ms ease;
+$transition: 120ms ease;
 
 // ========== Global ==========
 
 * {
   font-family: $font;
-  font-size: 14px;
-  color: $text;
+  font-size: 13px;
+  font-weight: 500;
+  color: $subtext;
 }
 
-// ========== Bar ==========
+// ========== Main Bar (DP-1) — Floating Island ==========
 
 window.Bar {
   background: transparent;
 
   .bar-panel {
-    background: rgba(27, 29, 43, 0.55);
+    background: rgba(27, 29, 43, 0.65);
     border-radius: 0 0 $radius $radius;
-    border-bottom: 1px solid rgba(126, 181, 176, 0.12);
-    padding: 4px 20px;
-    margin: 0 200px;
+    border: 1px solid rgba(126, 181, 176, 0.12);
+    border-top: none;
+    padding: 0 10px;
+    min-height: 30px;
   }
 
   .bar-left, .bar-right {
-    margin: 0 6px;
+    padding: 0;
+    margin: 0;
+  }
+
+  // Subtle separators between left/center/right groups
+  .bar-center {
+    border-left: 1px solid rgba(126, 181, 176, 0.08);
+    border-right: 1px solid rgba(126, 181, 176, 0.08);
+    padding: 0 8px;
+    margin: 4px 0;
   }
 
   button {
     background: transparent;
     border: none;
-    padding: 2px 8px;
-    border-radius: 8px;
-    min-height: 26px;
+    padding: 0 5px;
+    border-radius: 6px;
+    min-height: 22px;
     color: $dim;
     transition: $transition;
 
     &:hover {
       color: $text;
-      background: rgba(126, 181, 176, 0.1);
+      background: rgba(126, 181, 176, 0.08);
     }
   }
 
@@ -60,27 +72,27 @@ window.Bar {
     transition: $transition;
   }
 
-  // ── Workspaces (dots) ──
+  // ── Workspaces (icons) ──
   .workspaces {
-    .ws-dot {
-      min-width: 10px;
-      min-height: 10px;
-      padding: 4px 5px;
-      border-radius: 50%;
+    padding: 0 2px;
 
-      label {
-        font-size: 0px;
-        min-width: 7px;
-        min-height: 7px;
-        border-radius: 50%;
-        background: rgba(139, 142, 155, 0.5);
-        transition: $transition;
+    .ws-btn {
+      color: rgba(107, 112, 137, 0.45);
+      padding: 0 5px;
+      font-size: 11px;
+      min-width: 22px;
+      min-height: 22px;
+      border-radius: 6px;
+      transition: $transition;
+
+      &:hover {
+        color: $subtext;
+        background: rgba(126, 181, 176, 0.06);
       }
 
-      &.active label {
-        background: $accent;
-        min-width: 9px;
-        min-height: 9px;
+      &.active {
+        color: $accent;
+        background: rgba(126, 181, 176, 0.15);
       }
     }
   }
@@ -88,8 +100,8 @@ window.Bar {
   // ── Git ──
   .git-icon {
     color: $dim;
-    font-size: 15px;
-    padding: 0 6px;
+    font-size: 13px;
+    padding: 0 5px;
 
     &.clean { color: $success; }
     &.dirty { color: $warn; }
@@ -97,66 +109,32 @@ window.Bar {
 
   // ── Now Playing ──
   .now-playing-btn {
-    color: $accent;
+    color: $dim;
     font-size: 12px;
     font-style: italic;
+    font-weight: 400;
+    padding: 0 5px;
 
-    &:hover { color: $text; }
+    &:hover { color: $accent; }
   }
 
-  // ── Costa Wave ──
+  // ── Costa AI Wave (center) ──
   .costa-wave {
-    padding: 0 12px;
+    padding: 0 5px;
+    border-radius: 6px;
+
+    &:hover { background: rgba(126, 181, 176, 0.08); }
 
     .wave {
-      font-size: 18px;
-      transition: color 400ms ease;
+      font-size: 14px;
+      transition: color 300ms ease;
     }
-    .wave-1 { color: $sea; }
-    .wave-2 { color: $accent; }
-    .wave-3 { color: $lavender; }
-    .wave-running { color: $warn; }
-    .wave-done { color: $success; }
-    .wave-interactive { color: $accent; }
-  }
-
-  // ── Audio ──
-  .audio button {
-    font-size: 16px;
-    color: $dim;
-
-    &:hover { color: $text; }
-  }
-
-  // ── Battery ──
-  .battery {
-    font-size: 16px;
-    color: $dim;
-  }
-  .battery-low { color: $error; }
-
-  // ── PTT ──
-  .ptt {
-    font-size: 15px;
-    padding: 0 4px;
-
-    &.ptt-listening { color: $error; }
-    &.ptt-processing { color: $warn; }
-    &.ptt-idle label { color: $dim; }
-  }
-
-  // ── Headless ──
-  .headless-icon {
-    color: $accent;
-    font-size: 15px;
-    padding: 0 4px;
-  }
-
-  // ── Troubleshoot ──
-  .trouble-icon {
-    color: $warn;
-    font-size: 14px;
-    padding: 0 4px;
+    .wave-idle { color: $accent; }
+    .running { color: $accent; font-size: 12px; }
+    .scroll { color: $accent; font-size: 11px; font-style: italic; }
+    .timedout { color: $warn; font-size: 12px; }
+    .interactive { color: $error; font-size: 12px; }
+    .done { color: $success; font-size: 12px; }
   }
 
   // ── Clock ──
@@ -164,139 +142,229 @@ window.Bar {
     color: $text;
     font-weight: 600;
     font-size: 13px;
-    padding: 2px 8px;
+    padding: 0 6px;
     background: transparent;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
 
-    &:hover { color: $accent; }
+    &:hover {
+      color: $accent;
+      background: rgba(126, 181, 176, 0.08);
+    }
 
     popover {
-      background: $surface;
+      background: rgba(27, 29, 43, 0.92);
       color: $text;
-      border-radius: $radius;
-      border: 1px solid rgba(126, 181, 176, 0.15);
+      border-radius: 10px;
+      border: 1px solid rgba(126, 181, 176, 0.12);
       padding: 8px;
     }
+  }
+
+  // ── PTT ──
+  .ptt {
+    font-size: 13px;
+    color: $dim;
+    transition: $transition;
+    margin-top: 3px;
+    margin-left: 10px;
+  }
+  .ptt-ready { color: $success; }
+  .ptt-listening { color: $error; }
+  .ptt-processing { color: $accent; }
+
+  // ── Audio ──
+  .audio-btn {
+    font-size: 13px;
+    color: $dim;
+    margin-top: 3px;
+    margin-right: 12px;
+
+    &:hover { color: $text; }
+    &.muted { color: rgba(107, 112, 137, 0.25); }
+  }
+
+  // ── Headless ──
+  .headless-icon {
+    color: $accent;
+    font-size: 13px;
+    padding: 0 3px;
+  }
+
+  // ── Battery ──
+  .battery {
+    font-size: 13px;
+    color: $dim;
+
+    &:hover { color: $text; }
+  }
+  .battery-low { color: $error; }
+
+  // ── Troubleshoot ──
+  .trouble-icon {
+    color: $warn;
+    font-size: 13px;
+    padding: 0 3px;
   }
 
   // ── Claude ──
   .claude {
     color: $accent;
-    font-size: 17px;
+    font-size: 16px;
 
-    &:hover { color: $text; }
+    &:hover {
+      color: $text;
+      background: rgba(126, 181, 176, 0.12);
+    }
   }
 
   // ── Power ──
   .power {
     color: $dim;
-    font-size: 15px;
+    font-size: 12px;
 
-    &:hover { color: $error; }
+    &:hover {
+      color: $error;
+      background: rgba(184, 114, 114, 0.1);
+    }
   }
 }
 
-// ========== Portrait Bar ==========
+// ========== Portrait Bar (HDMI-A-1) — Full Width ==========
 
 window.PortraitBar {
   background: transparent;
 
   .portrait-panel {
     background: rgba(27, 29, 43, 0.85);
-    padding: 2px 8px;
+    border-bottom: 1px solid rgba(37, 40, 54, 0.5);
+    padding: 0 8px;
     min-height: 24px;
     margin: 30px 30px 0 30px;
-    border-radius: 0 0 8px 8px;
+  }
+
+  button {
+    background: transparent;
+    border: none;
+    padding: 0 4px;
+    min-height: 24px;
   }
 
   .portrait-workspaces {
     .ws-num {
       color: $dim;
       font-size: 12px;
-      padding: 0 4px;
+      font-weight: 400;
       transition: $transition;
 
-      &.active {
+      label { color: $dim; }
+
+      &.active label {
         color: $accent;
         font-weight: bold;
       }
     }
   }
 
+  .stat-btn {
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 0 2px;
+    transition: $transition;
+
+    &:hover { background: rgba(126, 181, 176, 0.08); }
+  }
+
   .stat {
-    color: $text;
+    color: $dim;
     font-size: 12px;
-    font-weight: 500;
-    padding: 0 6px;
+    font-weight: 400;
+    padding: 0 5px;
   }
 
   .portrait-clock {
     color: $subtext;
     font-size: 12px;
+    padding: 0 4px;
   }
 }
 
-// ========== Minimal Pill ==========
+// ========== Minimal Pill (HDMI-A-2) — Tiny Centered Pill ==========
 
 window.MinimalPill {
   background: transparent;
 
   .pill-panel {
-    background: rgba(27, 29, 43, 0.5);
+    background: rgba(27, 29, 43, 0.45);
     border-radius: 0 0 12px 12px;
-    padding: 4px 16px;
+    border: 1px solid rgba(126, 181, 176, 0.1);
+    border-top: none;
+    padding: 0 8px;
+    min-height: 22px;
+  }
+
+  button {
+    background: transparent;
+    border: none;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
   }
 
   .pill-workspaces {
     .ws-dot {
-      min-width: 6px;
-      min-height: 6px;
-      padding: 3px;
-      border-radius: 50%;
-      background: transparent;
-      border: none;
+      padding: 3px 4px;
+      min-width: 0;
+      min-height: 0;
 
       label {
         font-size: 0px;
         min-width: 5px;
         min-height: 5px;
         border-radius: 50%;
-        background: $dim;
+        background: rgba(107, 112, 137, 0.35);
+        transition: $transition;
       }
 
       &.active label {
         background: $accent;
-        min-width: 7px;
-        min-height: 7px;
+        min-width: 6px;
+        min-height: 6px;
       }
     }
   }
 
   .pill-clock {
     color: $dim;
-    font-size: 12px;
+    font-size: 11px;
+    padding: 0 4px;
   }
 }
 
-// ========== Claude Bar ==========
+// ========== Claude Bar (HEADLESS-2) ==========
 
 window.ClaudeBar {
   background: transparent;
 
   .claude-bar-panel {
     background: rgba(27, 29, 43, 0.5);
-    border-radius: 0 0 12px 12px;
-    padding: 4px 16px;
+    border-radius: 0 0 10px 10px;
+    padding: 3px 14px;
   }
 
-  .claude-label {
+  .claude-icon {
     color: $accent;
     font-size: 13px;
   }
 
+  .claude-label {
+    color: $accent;
+    font-size: 12px;
+  }
+
   .claude-clock {
     color: $dim;
-    font-size: 12px;
+    font-size: 11px;
   }
 }

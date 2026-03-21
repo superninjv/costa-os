@@ -61,7 +61,7 @@ export default function Troubleshoot() {
       visible={getIssues.as(i => i.count > 0)}
     >
       <label
-        label="⚠"
+        label={"\uF071"}
         class="trouble-icon"
         tooltipText={getIssues.as(i => i.details.join("\n"))}
       />

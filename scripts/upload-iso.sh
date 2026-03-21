@@ -79,8 +79,9 @@ s3cmd put "$ISO_FILE.sha256" "$BUCKET/$ISO_NAME.sha256" \
     --mime-type="text/plain"
 
 # Upload latest version marker
-echo "$VERSION" | s3cmd put - "$BUCKET/LATEST" --acl-public --mime-type="text/plain" 2>/dev/null || \
-    (echo "$VERSION" > /tmp/costa-latest && s3cmd put /tmp/costa-latest "$BUCKET/LATEST" --acl-public --mime-type="text/plain")
+echo "$VERSION" > /tmp/costa-latest
+s3cmd put /tmp/costa-latest "$BUCKET/LATEST" --acl-public --mime-type="text/plain"
+rm -f /tmp/costa-latest
 
 echo ""
 echo "→ Upload complete!"

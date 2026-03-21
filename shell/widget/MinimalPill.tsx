@@ -18,29 +18,42 @@ GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
   return GLib.SOURCE_CONTINUE
 })
 
-const [getWorkspaces, setWorkspaces] = createState(hypr.get_workspaces())
-const [getFocused, setFocused] = createState(hypr.get_focused_workspace())
+function clearChildren(box: Gtk.Box) {
+  let child = box.get_first_child()
+  while (child) {
+    const next = child.get_next_sibling()
+    box.remove(child)
+    child = next
+  }
+}
 
-hypr.connect("notify::workspaces", () => setWorkspaces(hypr.get_workspaces()))
-hypr.connect("notify::focused-workspace", () => setFocused(hypr.get_focused_workspace()))
-
-function PillWorkspaces() {
-  const sorted = () =>
-    getWorkspaces()
-      .filter((ws) => ws.id > 0)
-      .sort((a, b) => a.id - b.id)
-
+function DotWorkspaces() {
   return (
-    <box class="pill-workspaces" spacing={4}>
-      {sorted().map((ws) => (
-        <button
-          class={getFocused.as(f => f?.id === ws.id ? "ws-dot active" : "ws-dot")}
-          onClicked={() => hypr.dispatch("workspace", String(ws.id))}
-        >
-          <label label="" />
-        </button>
-      ))}
-    </box>
+    <box
+      class="pill-workspaces"
+      spacing={4}
+      $={(self: Gtk.Box) => {
+        const update = () => {
+          clearChildren(self)
+          const wss = hypr.get_workspaces().filter((ws) => ws.id > 0).sort((a, b) => a.id - b.id)
+          const focused = hypr.get_focused_workspace()
+          for (const ws of wss) {
+            const btn = new Gtk.Button({
+              cssClasses: ws.id === focused?.id ? ["ws-dot", "active"] : ["ws-dot"],
+              widthRequest: 12,
+              heightRequest: 12,
+              valign: Gtk.Align.CENTER,
+            })
+            btn.connect("clicked", () => hypr.dispatch("workspace", String(ws.id)))
+            btn.set_child(new Gtk.Label({ label: "" }))
+            self.append(btn)
+          }
+        }
+        hypr.connect("notify::workspaces", update)
+        hypr.connect("notify::focused-workspace", update)
+        update()
+      }}
+    />
   )
 }
 
@@ -57,9 +70,9 @@ export default function MinimalPill(gdkmonitor: Gdk.Monitor) {
       namespace="costa-minimal"
       application={app}
     >
-      <box class="pill-panel" spacing={12}>
-        <PillWorkspaces />
-        <label label={getClock.as(v => v)} class="pill-clock" />
+      <box class="pill-panel" spacing={16}>
+        <DotWorkspaces />
+        <label label={getClock.as((v) => v)} class="pill-clock" />
       </box>
     </window>
   )

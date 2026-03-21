@@ -10,12 +10,12 @@ import Headless from "./Headless"
 import PTT from "./PTT"
 import Audio from "./Audio"
 import BatteryWidget from "./BatteryWidget"
+import Troubleshoot from "./Troubleshoot"
 import Clock from "./Clock"
 import Claude from "./Claude"
 import Power from "./Power"
-import Troubleshoot from "./Troubleshoot"
 
-const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
+const { TOP } = Astal.WindowAnchor
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
   return (
@@ -25,7 +25,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       class="Bar"
       gdkmonitor={gdkmonitor}
       layer={Astal.Layer.OVERLAY}
-      anchor={TOP | LEFT | RIGHT}
+      anchor={TOP}
       exclusivity={Astal.Exclusivity.IGNORE}
       namespace="costa-bar"
       application={app}
@@ -42,8 +42,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
         transitionDuration={300}
       >
-        <centerbox class="bar-panel" halign={Gtk.Align.CENTER}>
-          <box $type="start" class="bar-left">
+        <centerbox class="bar-panel" widthRequest={1100}>
+          <box $type="start" class="bar-left" spacing={2}>
             <Workspaces />
             <Git />
             <NowPlaying />
@@ -51,7 +51,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           <box $type="center" class="bar-center">
             <CostaWave />
           </box>
-          <box $type="end" class="bar-right">
+          <box $type="end" class="bar-right" spacing={2}>
             <Headless />
             <PTT />
             <Audio />

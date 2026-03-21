@@ -9,7 +9,7 @@ export default function Power() {
       }
       tooltipText="Power Menu"
     >
-      <label label="⏻" />
+      <label label={"\uF011"} />
     </button>
   )
 }

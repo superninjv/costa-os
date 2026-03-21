@@ -451,6 +451,22 @@ def scenes_list(as_json, password):
         }, as_json)
 
 
+@scenes.command("switch")
+@click.argument("scene_name")
+@click.option("--json", "as_json", is_flag=True, default=True, help="Output as JSON")
+@click.option("--password", envvar="OBS_WEBSOCKET_PASSWORD", default=None)
+def scenes_switch(scene_name, as_json, password):
+    """Switch to a scene by name."""
+    conn = OBSConnection(password=password)
+    if not conn.connect():
+        _error("Cannot connect to OBS websocket", as_json)
+    try:
+        conn.request("SetCurrentProgramScene", {"sceneName": scene_name})
+        _output({"switched": scene_name}, as_json)
+    finally:
+        conn.close()
+
+
 @scenes.command("current")
 @click.option("--json", "as_json", is_flag=True, default=True, help="Output as JSON")
 @click.option("--password", envvar="OBS_WEBSOCKET_PASSWORD", default=None)
@@ -523,6 +539,55 @@ def sources_list(as_json, password):
 def recording():
     """Recording state."""
     pass
+
+
+@recording.command("start")
+@click.option("--json", "as_json", is_flag=True, default=True, help="Output as JSON")
+@click.option("--password", envvar="OBS_WEBSOCKET_PASSWORD", default=None)
+def recording_start(as_json, password):
+    """Start recording."""
+    conn = OBSConnection(password=password)
+    if not conn.connect():
+        _error("Cannot connect to OBS websocket", as_json)
+    try:
+        conn.request("StartRecord")
+        _output({"recording": True, "action": "started"}, as_json)
+    finally:
+        conn.close()
+
+
+@recording.command("stop")
+@click.option("--json", "as_json", is_flag=True, default=True, help="Output as JSON")
+@click.option("--password", envvar="OBS_WEBSOCKET_PASSWORD", default=None)
+def recording_stop(as_json, password):
+    """Stop recording and return output path."""
+    conn = OBSConnection(password=password)
+    if not conn.connect():
+        _error("Cannot connect to OBS websocket", as_json)
+    try:
+        resp = conn.request("StopRecord")
+        _output({
+            "recording": False,
+            "action": "stopped",
+            "outputPath": resp.get("outputPath", ""),
+        }, as_json)
+    finally:
+        conn.close()
+
+
+@recording.command("pause")
+@click.option("--json", "as_json", is_flag=True, default=True, help="Output as JSON")
+@click.option("--password", envvar="OBS_WEBSOCKET_PASSWORD", default=None)
+def recording_pause(as_json, password):
+    """Pause/resume recording."""
+    conn = OBSConnection(password=password)
+    if not conn.connect():
+        _error("Cannot connect to OBS websocket", as_json)
+    try:
+        conn.request("PauseRecord")
+        _output({"action": "toggled_pause"}, as_json)
+    finally:
+        conn.close()
 
 
 @recording.command("status")

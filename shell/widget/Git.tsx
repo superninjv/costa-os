@@ -73,7 +73,7 @@ export default function Git() {
     >
       <label
         class={getGitState.as(s => `git-icon ${s.dirty ? "dirty" : "clean"}`)}
-        label="⎇"
+        label={"\uE725"}
         tooltipText={getGitState.as(s => `${s.branch}${s.dirty ? " (dirty)" : ""}`)}
       />
     </box>

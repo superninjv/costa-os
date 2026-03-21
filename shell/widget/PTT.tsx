@@ -1,38 +1,38 @@
 import { createState } from "gnim"
+import { execAsync } from "ags/process"
 import GLib from "gi://GLib"
 
 function readPttStatus(): string {
   try {
     const [ok, contents] = GLib.file_get_contents("/tmp/ptt-status")
-    if (ok && contents) {
-      return new TextDecoder().decode(contents).trim()
-    }
-  } catch {
-    // file doesn't exist
-  }
-  return "idle"
+    if (ok && contents) return new TextDecoder().decode(contents).trim()
+  } catch {}
+  return "ready"
 }
 
-const [getPttStatus, setPttStatus] = createState(readPttStatus())
+const [getStatus, setStatus] = createState(readPttStatus())
 
 GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-  setPttStatus(readPttStatus())
+  setStatus(readPttStatus())
   return GLib.SOURCE_CONTINUE
 })
 
 export default function PTT() {
   return (
-    <box
-      class={getPttStatus.as(s => `ptt ptt-${s}`)}
-      tooltipText={getPttStatus.as(s => `PTT: ${s}`)}
-    >
-      <label label={getPttStatus.as(s => {
+    <button
+      class={getStatus.as((s) => `ptt ptt-${s}`)}
+      tooltipText={getStatus.as((s) => {
         switch (s) {
-          case "listening": return "🎙"
-          case "processing": return "⟳"
-          default: return "🎤"
+          case "listening": return "Listening..."
+          case "processing": return "Transcribing..."
+          default: return "Push-to-talk ready (Super+Alt+V)"
         }
-      })} />
-    </box>
+      })}
+      onClicked={() =>
+        execAsync("bash -c '~/.config/hypr/push-to-talk.sh'").catch(() => {})
+      }
+    >
+      <label label={"\uF130"} />
+    </button>
   )
 }
