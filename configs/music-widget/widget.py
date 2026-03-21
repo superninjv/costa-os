@@ -30,6 +30,7 @@ WIDGET_HEIGHT = 680
 ART_SIZE = 140
 CACHE_DIR = os.path.expanduser("~/.cache/costa-music-widget")
 PID_FILE = "/tmp/costa-music.pid"
+POSITION_FILE = os.path.expanduser("~/.config/music-widget/position.json")
 STRAWBERRY_DB = os.path.expanduser(
     "~/.local/share/strawberry/strawberry/strawberry.db")
 
@@ -71,6 +72,21 @@ window {
     background-color: @base;
     border: 1px solid @surface2;
     border-radius: 14px;
+}
+
+.drag-handle {
+    padding: 2px 0;
+    background: transparent;
+    border-radius: 14px 14px 0 0;
+}
+
+.drag-icon {
+    color: alpha(@dim, 0.4);
+    font-size: 12px;
+}
+
+.drag-handle:hover .drag-icon {
+    color: @foam;
 }
 
 .header-box {
@@ -429,13 +445,20 @@ class MusicWidget(Gtk.Window):
         self.current_quality = None
         self.queue_tracks = []
         self.active_tab = "queue"
+        self._drag_active = False
+        self._drag_start_x = 0
+        self._drag_start_y = 0
 
         self.connect("key-press-event", self.on_key)
 
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(self.main_box)
 
+        self.build_drag_handle()
         self.build_header()
+
+        # Restore saved position
+        self._restore_position()
         self.build_now_playing()
         self.build_controls()
         self.build_tabs()
@@ -447,6 +470,59 @@ class MusicWidget(Gtk.Window):
         GLib.timeout_add(5000, self.refresh_players)
 
         self.show_all()
+
+    # ── Drag Handle ──
+
+    def build_drag_handle(self):
+        handle = Gtk.EventBox()
+        handle.get_style_context().add_class("drag-handle")
+        handle.connect("button-press-event", self._on_drag_start)
+        handle.connect("button-release-event", self._on_drag_end)
+        handle.connect("motion-notify-event", self._on_drag_motion)
+        handle.set_events(Gdk.EventMask.BUTTON_PRESS_MASK |
+                         Gdk.EventMask.BUTTON_RELEASE_MASK |
+                         Gdk.EventMask.POINTER_MOTION_MASK)
+
+        icon = Gtk.Label(label="⠿")
+        icon.get_style_context().add_class("drag-icon")
+        handle.add(icon)
+        self.main_box.pack_start(handle, False, False, 0)
+
+    def _on_drag_start(self, widget, event):
+        if event.button == 1:
+            self._drag_active = True
+            self._drag_start_x = event.x_root
+            self._drag_start_y = event.y_root
+            win_x, win_y = self.get_position()
+            self._win_start_x = win_x
+            self._win_start_y = win_y
+
+    def _on_drag_end(self, widget, event):
+        if self._drag_active:
+            self._drag_active = False
+            self._save_position()
+
+    def _on_drag_motion(self, widget, event):
+        if self._drag_active:
+            dx = event.x_root - self._drag_start_x
+            dy = event.y_root - self._drag_start_y
+            self.move(int(self._win_start_x + dx), int(self._win_start_y + dy))
+
+    def _save_position(self):
+        x, y = self.get_position()
+        try:
+            with open(POSITION_FILE, "w") as f:
+                json.dump({"x": x, "y": y}, f)
+        except Exception:
+            pass
+
+    def _restore_position(self):
+        try:
+            with open(POSITION_FILE) as f:
+                pos = json.load(f)
+            self.move(pos["x"], pos["y"])
+        except Exception:
+            pass
 
     # ── Header ──
 

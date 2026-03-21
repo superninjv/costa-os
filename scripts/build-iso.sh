@@ -15,6 +15,9 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Always clean build cache to ensure fresh airootfs
+rm -rf "$WORK_DIR"
+
 # Read version
 VERSION=$(cat "$PROJECT_DIR/VERSION" 2>/dev/null | tr -d '[:space:]')
 if [ -z "$VERSION" ]; then

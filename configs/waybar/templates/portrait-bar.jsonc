@@ -1,0 +1,60 @@
+// Costa OS — Portrait Performance Bar
+// For narrow portrait monitors. System stats.
+// Placeholders: __OUTPUT__, __PERSISTENT_WORKSPACES__, __TIMEZONE__,
+//               __CPU_HWMON_PATH__, __GPU_HWMON_PATH__
+{
+  "name": "portrait-bar",
+  "output": "__OUTPUT__",
+  "layer": "top",
+  "gtk-layer-shell": false,
+  "position": "top",
+  "height": 24,
+  "margin-top": 0,
+  "margin-left": 0,
+  "margin-right": 0,
+
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": [],
+  "modules-right": [
+    "custom/gpu",
+    "cpu",
+    "memory",
+    "clock"
+  ],
+
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "on-click": "activate",
+    "sort-by-number": true,
+    "all-outputs": false,
+    "persistent-workspaces": "__PERSISTENT_WORKSPACES__"
+  },
+
+  "custom/gpu": {
+    "format": "{}",
+    "return-type": "json",
+    "exec": "~/.config/waybar/scripts/gpu-vram.sh",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "~/.config/waybar/scripts/toggle-app.sh amdgpu_top amdgpu_top"
+  },
+
+  "cpu": {
+    "format": "{usage}%",
+    "interval": 5,
+    "tooltip-format": "CPU: {usage}% — {avg_frequency} GHz",
+    "on-click": "~/.config/waybar/scripts/toggle-app.sh btm btm"
+  },
+
+  "memory": {
+    "format": "{used:0.1f}G",
+    "interval": 5,
+    "tooltip-format": "RAM: {used:0.1f}G / {total:0.1f}G ({percentage}%)",
+    "on-click": "~/.config/waybar/scripts/toggle-app.sh btm btm"
+  },
+
+  "clock": {
+    "format": "{:%I:%M}",
+    "timezone": "__TIMEZONE__"
+  }
+}

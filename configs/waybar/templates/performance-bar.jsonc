@@ -1,28 +1,25 @@
-// Costa OS — Performance Bar template
-// System monitoring: GPU, CPU, temps, memory, disk I/O.
-// Placed on a secondary monitor.
+// Costa OS — Performance Bar
+// System monitoring: GPU, CPU, temps, memory.
 // Placeholders: __OUTPUT__, __PERSISTENT_WORKSPACES__, __GPU_BUSY_PATH__,
-//               __CPU_HWMON_PATH__, __GPU_HWMON_PATH__
+//               __CPU_HWMON_PATH__, __GPU_HWMON_PATH__, __TIMEZONE__
 {
   "name": "performance-bar",
   "output": "__OUTPUT__",
   "layer": "top",
   "gtk-layer-shell": false,
   "position": "top",
-  "height": 32,
-  "margin-top": 4,
-  "margin-left": 12,
-  "margin-right": 12,
+  "height": 28,
+  "margin-top": 0,
+  "margin-left": 0,
+  "margin-right": 0,
 
   "modules-left": ["hyprland/workspaces"],
   "modules-center": [],
   "modules-right": [
-    "custom/gpu",
-    "custom/gpu-vram",
-    "custom/disk-io",
     "cpu",
     "temperature#cpu",
     "memory",
+    "custom/gpu",
     "temperature#gpu",
     "clock"
   ],
@@ -43,43 +40,27 @@
     "on-click": "~/.config/waybar/scripts/toggle-app.sh amdgpu_top amdgpu_top"
   },
 
-  "custom/gpu-vram": {
-    "format": "\udb80\udd5b {}",
-    "return-type": "json",
-    "exec": "~/.config/waybar/scripts/gpu-vram.sh",
-    "interval": 5,
-    "tooltip": true
-  },
-
-  "custom/disk-io": {
-    "format": "\udb80\udecb {}",
-    "return-type": "json",
-    "exec": "~/.config/waybar/scripts/disk-io.sh",
-    "interval": 3,
-    "tooltip": true
-  },
-
   "cpu": {
     "format": "\uf2db {usage}%",
     "interval": 5,
-    "tooltip-format": "CPU Usage: {usage}%\n{avg_frequency} GHz",
+    "tooltip-format": "CPU: {usage}% — {avg_frequency} GHz",
     "on-click": "~/.config/waybar/scripts/toggle-app.sh btm btm"
   },
 
   "temperature#cpu": {
     "hwmon-path-abs": "__CPU_HWMON_PATH__",
     "input-filename": "temp1_input",
-    "format": "\uf2c9 {temperatureC}\u00b0",
-    "format-critical": "\uf2c7 {temperatureC}\u00b0",
+    "format": "{temperatureC}\u00b0",
+    "format-critical": "{temperatureC}\u00b0",
     "critical-threshold": 90,
     "interval": 5,
-    "tooltip-format": "CPU Temperature: {temperatureC}°C"
+    "tooltip-format": "CPU: {temperatureC}°C"
   },
 
   "memory": {
     "format": "\uf538 {used:0.1f}G",
     "interval": 5,
-    "tooltip-format": "RAM: {used:0.1f}G / {total:0.1f}G ({percentage}%)\nSwap: {swapUsed:0.1f}G / {swapTotal:0.1f}G",
+    "tooltip-format": "RAM: {used:0.1f}G / {total:0.1f}G ({percentage}%)",
     "on-click": "~/.config/waybar/scripts/toggle-app.sh btm btm"
   },
 
@@ -90,11 +71,11 @@
     "format-critical": "\udb80\udea8 {temperatureC}\u00b0",
     "critical-threshold": 85,
     "interval": 5,
-    "tooltip-format": "GPU Temperature: {temperatureC}°C"
+    "tooltip-format": "GPU: {temperatureC}°C"
   },
 
   "clock": {
-    "format": "\uf017 {:%I:%M}",
+    "format": "{:%I:%M}",
     "format-alt": "{:%a %b %d}",
     "timezone": "__TIMEZONE__"
   }

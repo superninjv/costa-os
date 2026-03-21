@@ -1,6 +1,5 @@
-// Costa OS — Taskbar template
-// Bottom-of-screen taskbar showing all open windows.
-// Optional — placed on a secondary monitor.
+// Costa OS — Taskbar
+// Bottom bar showing open windows.
 // Placeholders: __OUTPUT__
 {
   "name": "taskbar",
@@ -8,15 +7,15 @@
   "layer": "top",
   "gtk-layer-shell": false,
   "position": "bottom",
-  "height": 40,
-  "margin-bottom": 4,
-  "margin-left": 12,
-  "margin-right": 12,
+  "height": 34,
+  "margin-bottom": 0,
+  "margin-left": 0,
+  "margin-right": 0,
 
   "modules-left": ["wlr/taskbar"],
 
   "wlr/taskbar": {
-    "format": "{icon}  {short_name}",
+    "format": "{icon}",
     "icon-size": 18,
     "tooltip-format": "{title}",
     "on-click": "activate",
