@@ -52,8 +52,9 @@ Full setup instructions, including the installer ISO, are at [synoros.io/costa-o
 
 - Arch Linux with Hyprland
 - Ollama (for local models)
-- Claude Code with an Anthropic account (Pro, Max, or API key)
 - Any GPU from the last ~10 years, including integrated graphics on Intel/AMD laptops (Vulkan support for voice transcription)
+
+  - Not Required, but intended: Claude Code with an Anthropic account (Pro, Max, or API key)
 
 ## No Telemetry
 
