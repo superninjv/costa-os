@@ -268,7 +268,11 @@ def run_wizard() -> CostaConfig:
 
     print(f"  {C.OLIVE}✓{C.RESET} CPU: {config.hardware.cpu_name} ({config.hardware.cpu_cores} cores)")
     print(f"  {C.OLIVE}✓{C.RESET} RAM: {config.hardware.ram_mb // 1024} GB")
-    print(f"  {C.OLIVE}✓{C.RESET} GPU: {config.hardware.gpu_name} ({config.hardware.gpu_vram_mb} MB VRAM)")
+    is_vm = "Virtual" in config.hardware.gpu_name or config.hardware.gpu_name in ("Unknown",)
+    if is_vm:
+        print(f"  {C.SAND}⚠{C.RESET} GPU: {config.hardware.gpu_name} {C.DIM}(VM detected — local AI models not available){C.RESET}")
+    else:
+        print(f"  {C.OLIVE}✓{C.RESET} GPU: {config.hardware.gpu_name} ({config.hardware.gpu_vram_mb} MB VRAM)")
     print(f"  {C.OLIVE}✓{C.RESET} Monitors: {len(config.monitors)}")
     for m in config.monitors:
         print(f"      {m.name}: {m.resolution}@{m.refresh_rate}Hz")

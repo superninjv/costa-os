@@ -32,6 +32,30 @@ else
     echo "  ✓ Claude Code CLI found"
 fi
 
+# ─── 1b. Authenticate Claude Code ────────────────────────────
+# Check if already authenticated (has API key in env or active session)
+if command -v claude &>/dev/null; then
+    echo ""
+    echo "  Claude Code needs authentication for AI features."
+    echo "  You have two options:"
+    echo ""
+    echo "    1. Anthropic Plan (recommended) — free with Pro/Team/Enterprise subscription"
+    echo "       Uses OAuth login, no API key needed."
+    echo ""
+    echo "    2. API Key — pay-per-use via console.anthropic.com"
+    echo "       Set ANTHROPIC_API_KEY in ~/.config/costa/env"
+    echo ""
+    echo -n "  Log in to Claude now? (Y/n): "
+    read -r LOGIN_CHOICE
+    if [ "${LOGIN_CHOICE:-y}" != "n" ] && [ "${LOGIN_CHOICE:-y}" != "N" ]; then
+        echo "  Launching Claude login (follow the browser prompts)..."
+        claude /login || echo "  ⚠ Login failed or skipped — you can run 'claude /login' later"
+    else
+        echo "  Skipped — run 'claude /login' anytime to authenticate"
+    fi
+    echo ""
+fi
+
 # ─── 2. Create ~/.claude/ directory ──────────────────────────
 mkdir -p "$CLAUDE_DIR"
 

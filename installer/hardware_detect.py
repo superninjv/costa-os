@@ -32,6 +32,12 @@ def detect_gpu() -> tuple[GpuVendor, str, int]:
             name = intel_match.group(1).strip()
             return GpuVendor.INTEL, name, 2048  # Approximate
 
+        # VM / Virtio / QEMU — treat as cloud-only, no real GPU
+        vm_match = re.search(r"VGA.*(Virtio|QEMU|VMware|VirtualBox|Bochs|Cirrus)", lspci, re.IGNORECASE)
+        if vm_match:
+            name = f"Virtual ({vm_match.group(1)})"
+            return GpuVendor.NONE, name, 0
+
     except Exception:
         pass
 

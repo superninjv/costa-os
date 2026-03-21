@@ -34,16 +34,24 @@
     "source": "shipped"
   },
   {
-    "window_class": "org.strawberrymusicplayer.strawberry",
+    "window_class": "strawberry",
     "entry_point": "cli-anything-strawberry",
     "package": "cli-anything-strawberry",
     "version": "0.1.0",
-    "capabilities": ["playback", "queue", "library", "search"],
+    "capabilities": ["playback", "playback_control", "queue", "library", "search"],
     "query_map": {
       "playing": "playback status --json",
       "song": "playback now-playing --json",
       "track": "playback now-playing --json",
       "music": "playback status --json",
+      "play": "playback play",
+      "pause": "playback pause",
+      "stop": "playback stop",
+      "next": "playback next",
+      "skip": "playback next",
+      "previous": "playback previous",
+      "back": "playback previous",
+      "volume": "playback volume",
       "queue": "queue list --json",
       "search": "library search --json --query",
       "library": "library stats --json"

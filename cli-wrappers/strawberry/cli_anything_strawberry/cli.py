@@ -184,6 +184,62 @@ def playback_now_playing(as_json):
     _output(data, as_json)
 
 
+@playback.command("play")
+def playback_play():
+    """Resume playback."""
+    _playerctl("play")
+    click.echo("Playing")
+
+
+@playback.command("pause")
+def playback_pause():
+    """Pause playback."""
+    _playerctl("pause")
+    click.echo("Paused")
+
+
+@playback.command("play-pause")
+def playback_play_pause():
+    """Toggle play/pause."""
+    _playerctl("play-pause")
+    status = _playerctl("status") or "unknown"
+    click.echo(status)
+
+
+@playback.command("next")
+def playback_next():
+    """Skip to next track."""
+    _playerctl("next")
+    click.echo("Next")
+
+
+@playback.command("previous")
+def playback_previous():
+    """Go to previous track."""
+    _playerctl("previous")
+    click.echo("Previous")
+
+
+@playback.command("stop")
+def playback_stop():
+    """Stop playback."""
+    _playerctl("stop")
+    click.echo("Stopped")
+
+
+@playback.command("volume")
+@click.argument("level", required=False, type=float)
+def playback_volume(level):
+    """Get or set volume (0.0 to 1.0)."""
+    if level is not None:
+        level = max(0.0, min(1.0, level))
+        _playerctl("volume", str(level))
+        click.echo(f"Volume: {level}")
+    else:
+        vol = _playerctl("volume")
+        click.echo(vol if vol else "unknown")
+
+
 # -- Queue -------------------------------------------------------------------
 
 @cli.group()
