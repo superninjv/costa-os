@@ -41,7 +41,7 @@
 6. [Customization](#6-customization)
    - [The Costa Theme](#the-costa-theme)
    - [Changing the Wallpaper](#changing-the-wallpaper)
-   - [Waybar Modules and Layout](#waybar-modules-and-layout)
+   - [Shell Bar Modules and Layout](#shell-bar-modules-and-layout)
    - [Adding Keybinds](#adding-keybinds)
    - [Window Rules](#window-rules-1)
    - [Changing Default Applications](#changing-default-applications)
@@ -124,7 +124,7 @@ Most Linux distributions hand you a desktop and leave you to figure out the rest
 
 - **Two tiers work together.** Claude Code handles complex tasks: code generation, multi-file edits, architecture, debugging. Local models on your GPU handle routine queries (system status, quick lookups, simple commands) with sub-second latency and zero internet dependency. Routing between them is automatic.
 
-- **The entire desktop is AI-aware.** Copy an error message and the clipboard service offers to debug it with AI. Take a screenshot and the AI reads and analyzes it. The voice assistant transcribes speech in 500 milliseconds. Waybar modules show AI status, usage metrics, and processing indicators.
+- **The entire desktop is AI-aware.** Copy an error message and the clipboard service offers to debug it with AI. Take a screenshot and the AI reads and analyzes it. The voice assistant transcribes speech in 500 milliseconds. Shell bar modules show AI status, usage metrics, and processing indicators.
 
 - **It is still Arch Linux.** Underneath the AI layer, this is a standard Arch installation. `pacman` works. `systemctl` works. You have full root access. Nothing is locked down, hidden, or "simplified" by removing functionality. The AI is an addition, not a restriction.
 
@@ -140,16 +140,16 @@ After installation and reboot, the system runs a first-boot wizard that:
 
 1. **Sets up Claude Code**: prompts you to authenticate with your Anthropic account (Claude Pro, Max, or API key). This is the first step because once Claude Code is working, it can help fix anything else that goes wrong during setup.
 2. Detects your GPU and installs the appropriate drivers (AMD, NVIDIA, or Intel)
-3. Detects your monitors and generates a multi-monitor Waybar configuration
+3. Detects your monitors and generates a multi-monitor AGS shell configuration
 4. Generates a hardware-aware `CLAUDE.md` so Claude Code knows your exact setup
 5. Detects optional hardware (IR camera for face auth, touchscreen for gestures)
 6. Pulls the best local AI model your GPU can handle from Ollama (for fast, offline queries)
 7. Builds Whisper.cpp with GPU acceleration for voice transcription
 8. Optionally sets up face authentication and touchscreen gestures
 
-This process takes a few minutes depending on your internet speed and GPU. Claude Code authentication happens first so that if any subsequent step fails, you can immediately ask Claude Code to diagnose and fix it. When setup finishes, you land on a fully configured desktop with the Costa theme, Waybar panels on every monitor, and both Claude Code and the local AI assistant ready to use.
+This process takes a few minutes depending on your internet speed and GPU. Claude Code authentication happens first so that if any subsequent step fails, you can immediately ask Claude Code to diagnose and fix it. When setup finishes, you land on a fully configured desktop with the Costa theme, shell bar panels on every monitor, and both Claude Code and the local AI assistant ready to use.
 
-<!-- screenshot: The Costa OS desktop after first boot, showing the Waybar panel at the top with the Costa AI widget, now-playing module, and system tray. The desktop shows the Costa default wallpaper with the Costa theme. -->
+<!-- screenshot: The Costa OS desktop after first boot, showing the AGS shell bar at the top with the Costa AI widget, now-playing module, and system tray. The desktop shows the Costa default wallpaper with the Costa theme. -->
 
 ### The Installer Wizard
 
@@ -183,7 +183,7 @@ After the first-boot wizard completes, here is what to do:
 
 5. **Move between workspaces.** Press `SUPER+1` through `SUPER+4` to switch between the four main workspaces on your primary monitor. If you have additional monitors, `SUPER+5` and `SUPER+6` switch to workspaces on those screens.
 
-6. **Open the settings hub.** Press `SUPER+I` or click the gear icon in Waybar. This is where you configure monitors, manage AI models, set up face auth, enter API keys, and more.
+6. **Open the settings hub.** Press `SUPER+I` or click the gear icon in the shell bar. This is where you configure monitors, manage AI models, set up face auth, enter API keys, and more.
 
 <!-- screenshot: A terminal showing the output of 'costa-ai "what GPU do I have"' with the AI response listing the detected GPU model, driver, and VRAM. -->
 
@@ -257,8 +257,8 @@ Costa OS follows standard Linux conventions for configuration. Here is where the
 |------|-----------------|
 | `~/.config/hypr/hyprland.conf` | Hyprland window manager configuration (keybinds, monitors, window rules) |
 | `~/.config/hypr/monitors.conf` | Auto-generated monitor layout (positions, resolutions, refresh rates) |
-| `~/.config/waybar/config` | Waybar panel layout (which modules appear, in what order) |
-| `~/.config/waybar/style.css` | Waybar panel styling (colors, sizes, fonts) |
+| `~/.config/ags/config.js` | AGS shell bar layout (which modules appear, in what order) |
+| `~/.config/ags/style.css` | AGS shell bar styling (colors, sizes, fonts) |
 | `~/.config/ghostty/config` | Terminal configuration (font, colors, opacity) |
 | `~/.config/rofi/config.rasi` | App launcher theme and behavior |
 | `~/.config/dunst/dunstrc` | Notification daemon configuration (position, colors, timeout) |
@@ -271,7 +271,7 @@ Costa OS follows standard Linux conventions for configuration. Here is where the
 | `~/.config/costa/costa.db` | SQLite database for query history, usage stats, and costs |
 | `~/.config/costa/gpu.conf` | Detected GPU information |
 
-You do not need to memorize these paths. The AI knows all of them, and you can always ask: `costa-ai "where is the waybar config"`.
+You do not need to memorize these paths. The AI knows all of them, and you can always ask: `costa-ai "where is the shell bar config"`.
 
 ---
 
@@ -302,13 +302,13 @@ Hold `SUPER+ALT+V` and speak your question or command naturally. Release when yo
 
 There is also a Type mode (`SUPER+ALT+B`) that transcribes your speech and types the resulting text directly into whatever window is focused, useful for dictation into text fields, documents, or chat apps.
 
-**3. Waybar Widget (Text Input)**
+**3. Shell Bar Widget (Text Input)**
 
-Left-click the Costa icon in the center of the Waybar panel to open a Rofi text input box. Type your question and press Enter. This is useful when you want to interact with the AI without opening a terminal or using your voice.
+Left-click the Costa icon in the center of the shell bar to open a Rofi text input box. Type your question and press Enter. This is useful when you want to interact with the AI without opening a terminal or using your voice.
 
 Right-click the Costa icon to see the full text of the last AI response.
 
-<!-- screenshot: The three interaction methods side by side: a terminal with costa-ai output, the Waybar Costa icon with a Rofi text input dropdown, and the Waybar showing a voice processing indicator. -->
+<!-- screenshot: The three interaction methods side by side: a terminal with costa-ai output, the shell bar Costa icon with a Rofi text input dropdown, and the shell bar showing a voice processing indicator. -->
 
 ### What It Can Do
 
@@ -417,7 +417,7 @@ costa-ai --preset fast "what time is it"        # bias toward speed, minimal con
 
 ### The Costa Widget
 
-The Costa widget in Waybar is the visual control center for the AI assistant. It sits in the center of the top bar on your primary monitor and provides at-a-glance status plus quick actions.
+The Costa widget in the shell bar is the visual control center for the AI assistant. It sits in the center of the top bar on your primary monitor and provides at-a-glance status plus quick actions.
 
 **Visual indicators:**
 
@@ -439,7 +439,7 @@ There is also a report button (the 󰚑 icon) that appears after a response, whi
 
 Local AI models are not perfect. When the AI gives you a wrong answer, you can report it, and the system will correct itself:
 
-1. Click the 󰚑 (report) icon in Waybar after receiving a bad answer.
+1. Click the 󰚑 (report) icon in the shell bar after receiving a bad answer.
 2. The failed query and response are sent to Claude Haiku.
 3. Claude identifies what went wrong, missing knowledge, wrong context, or hallucination.
 4. Claude generates a patch for the relevant knowledge file in `~/.config/costa/knowledge/`.
@@ -474,7 +474,7 @@ The voice assistant uses a push-to-talk model. You hold a key to record, and rel
 3. Silero VAD (Voice Activity Detection) automatically detects when you stop speaking. You do not need to release the key at the exact moment you stop talking, the system handles this.
 4. Whisper tiny.en transcribes your speech on the GPU in about 500 milliseconds.
 5. The transcribed text is sent to the AI router, which picks the best model and responds.
-6. The response appears as a scrolling notification in Waybar and as a Dunst notification popup.
+6. The response appears as a scrolling notification in the shell bar and as a Dunst notification popup.
 
 **Auto-submit control:**
 
@@ -577,9 +577,9 @@ By default, windows tile automatically, they split the available space evenly. T
 
 **Floating**: The window is detached from tiling and can be freely positioned and resized with the mouse. Toggle with `SUPER+SHIFT+F`. Some windows float by default (settings dialogs, popup windows, the music widget).
 
-**Fullscreen**: The window takes up the entire screen, covering the Waybar panel. Toggle with `SUPER+F`. There are actually three fullscreen modes:
+**Fullscreen**: The window takes up the entire screen, covering the shell bar. Toggle with `SUPER+F`. There are actually three fullscreen modes:
 - `SUPER+F`: true fullscreen (covers everything)
-- Maximize mode, fills the monitor but keeps gaps and Waybar visible
+- Maximize mode, fills the monitor but keeps gaps and shell bar visible
 
 To move or resize a floating window with the mouse, hold `SUPER` and drag with the left mouse button (move) or right mouse button (resize).
 
@@ -604,16 +604,16 @@ Costa OS auto-detects monitors during first boot and generates optimal configura
 
 1. Open the Settings Hub (`SUPER+I` or `costa-settings`)
 2. Go to Display and click "Detect Monitors"
-3. The system re-scans, updates `~/.config/hypr/monitors.conf`, and regenerates Waybar configs
+3. The system re-scans, updates `~/.config/hypr/monitors.conf`, and regenerates AGS shell configs
 
 Or from the terminal:
 
 ```bash
 hyprctl monitors                                           # see current monitor layout
-~/.config/costa/scripts/generate-waybar-config.sh          # regenerate Waybar for new monitors
+~/.config/costa/scripts/generate-ags-config.sh             # regenerate AGS shell for new monitors
 ```
 
-Each monitor gets an appropriate Waybar configuration automatically:
+Each monitor gets an appropriate AGS shell configuration automatically:
 - **Primary** (highest refresh rate, then resolution) gets the full-featured main bar with all modules
 - **First secondary** gets a performance monitoring bar (GPU, CPU, temperatures)
 - **Additional secondaries** get minimal bars (workspaces and clock)
@@ -754,9 +754,9 @@ Claude Code is not just installed on Costa OS, it is a first-class citizen with 
 claude                          # from any terminal
 ```
 
-Or left-click the 󰚩 icon in Waybar.
+Or left-click the 󰚩 icon in the shell bar.
 
-**Waybar controls for Claude Code:**
+**Shell bar controls for Claude Code:**
 
 | Mouse Action | What It Does |
 |-------------|-------------|
@@ -770,7 +770,7 @@ Or left-click the 󰚩 icon in Waybar.
 | Command | Description |
 |---------|-------------|
 | `/check-system` | Audit system health: services, disk, memory, GPU |
-| `/configure-waybar` | Modify Waybar configuration with guidance |
+| `/configure-shell` | Modify AGS shell configuration with guidance |
 | `/install` | Install and configure a package with AUR fallback |
 | `/theme` | Apply or modify Costa theme elements |
 | `/troubleshoot` | Diagnose and fix system issues |
@@ -783,7 +783,7 @@ Claude Code has 30+ tools available through the Costa OS MCP server (`costa-syst
 
 Claude Code operates on an invisible virtual headless monitor (HEADLESS-2, workspace 7, 1920x1080). It can open its own browser, navigate pages, fill forms, and research, all without interrupting your screen. This uses a proprietary MCP navigation system under development for screen reading, which is 112x cheaper in tokens than screenshot-based approaches.
 
-To see what Claude is doing on its virtual monitor, click the 󰍹 icon in Waybar. This toggles a live preview window that auto-refreshes every 2 seconds.
+To see what Claude is doing on its virtual monitor, click the 󰍹 icon in the shell bar. This toggles a live preview window that auto-refreshes every 2 seconds.
 
 **Knowledge base:**
 
@@ -858,7 +858,7 @@ These colors are defined in multiple places to ensure consistency:
 | Component | Where Colors Are Defined |
 |-----------|-------------------------|
 | Hyprland | Variables like `$sea`, `$foam`, `$terracotta` in `hyprland.conf` |
-| Waybar | `@define-color` rules in `~/.config/waybar/style.css` |
+| AGS shell | Color definitions in `~/.config/ags/style.css` |
 | Rofi | Color definitions in `~/.config/rofi/config.rasi` |
 | Ghostty | Palette entries in `~/.config/ghostty/config` |
 | GTK apps | CSS overrides in Costa's libadwaita apps |
@@ -903,9 +903,9 @@ Video and 2D scenes work well. Complex 3D scenes may crash on some GPUs.
 
 If you use a video wallpaper, it includes a smart pause feature: it automatically pauses the animation when windows cover more than 37.5% of the desktop, saving GPU resources.
 
-### Waybar Modules and Layout
+### Shell Bar Modules and Layout
 
-Waybar is the status bar at the top of each monitor. It contains 16+ modules that show system information and provide quick actions.
+The AGS shell bar is the status bar at the top of each monitor. It contains 16+ modules that show system information and provide quick actions.
 
 | Module | What It Does |
 |--------|-------------|
@@ -936,20 +936,20 @@ Waybar is the status bar at the top of each monitor. It contains 16+ modules tha
 | taskbar | Same as performance-bar | Window list |
 | claude-screen-bar | Headless monitor | Minimal bar for Claude's virtual display |
 
-**Regenerating Waybar config** (after adding/removing monitors):
+**Regenerating shell bar config** (after adding/removing monitors):
 
 ```bash
-~/.config/costa/scripts/generate-waybar-config.sh
-killall waybar; waybar &disown
+~/.config/costa/scripts/generate-ags-config.sh
+ags quit; ags run &disown
 ```
 
 **Customizing modules:**
 
-1. Edit template files in `configs/waybar/templates/` for structural changes
-2. Edit `~/.config/waybar/style.css` for visual changes
-3. Regenerate and restart Waybar
+1. Edit template files in `~/.config/ags/templates/` for structural changes
+2. Edit `~/.config/ags/style.css` for visual changes
+3. Regenerate and restart AGS shell
 
-Or just ask Claude Code: `costa-ai "add a CPU temperature module to waybar"`.
+Or just ask Claude Code: `costa-ai "add a CPU temperature module to the shell bar"`.
 
 ### Adding Keybinds
 
@@ -957,7 +957,7 @@ There are three ways to add or modify keybinds:
 
 **1. Graphical Keybind Configurator**
 
-Click the 󰌌 icon in Waybar, or run `costa-keybinds-gui`. This opens a GTK4 application with two tabs:
+Click the 󰌌 icon in the shell bar, or run `costa-keybinds-gui`. This opens a GTK4 application with two tabs:
 
 - **Keyboard**: All keybinds grouped by category (Applications, Window Management, Workspaces, Media, etc.), searchable, with edit/add/delete buttons
 - **Mouse**: Auto-discovers connected mice, shows button codes, includes a "Press to Detect" feature for identifying buttons
@@ -1049,7 +1049,7 @@ Costa OS includes a custom floating music widget that controls any MPRIS-compati
 
 **Opening the widget:**
 
-- Click the music icon (󰎆) or the now-playing text in Waybar
+- Click the music icon (󰎆) or the now-playing text in the shell bar
 - Or run: `costa-music-widget`
 
 The widget shows album art, track information, a progress bar with seek controls, playback buttons, and a quality badge showing the live audio format from PipeWire (for example, "24bit / 96kHz", highlighted in teal when the format is hi-res).
@@ -1077,7 +1077,7 @@ The widget has a tabbed interface:
 | Media Play/Pause key | Play/pause |
 | Media Next/Prev keys | Next/previous track |
 
-**Waybar now-playing controls:**
+**Shell bar now-playing controls:**
 
 | Mouse Action | What It Does |
 |-------------|-------------|
@@ -1106,7 +1106,7 @@ playerctl loop None             # disable repeat
 
 If no music player is running, you can start playback from the widget:
 
-1. Open the music widget (click 󰎆 in Waybar)
+1. Open the music widget (click 󰎆 in the shell bar)
 2. Click "Start Music"
 3. This launches Strawberry in the background and begins playback
 4. The Strawberry window stays hidden on a special workspace, the widget controls it
@@ -1597,7 +1597,7 @@ costa-ai "switch to para"                   # fuzzy matching works
 
 Or by voice: hold `SUPER+ALT+V` and say "switch to my-webapp."
 
-Or through Waybar: click the folder icon to open the project list, or scroll on it to cycle through recent projects.
+Or through the shell bar: click the folder icon to open the project list, or scroll on it to cycle through recent projects.
 
 **What happens when you switch:**
 
@@ -1857,7 +1857,7 @@ The Settings Hub is a central GTK4 application for configuring Costa OS. It cove
 
 **How to open:**
 
-- Click the gear icon (󰒓) in Waybar
+- Click the gear icon (󰒓) in the shell bar
 - Press `SUPER+I`
 - Run `costa-settings` from a terminal
 - Say "open settings" to the voice assistant
@@ -1866,7 +1866,7 @@ The Settings Hub is a central GTK4 application for configuring Costa OS. It cove
 
 | Section | What You Can Configure |
 |---------|----------------------|
-| **Display** | Monitor layout, Waybar regeneration, wallpaper picker |
+| **Display** | Monitor layout, shell bar regeneration, wallpaper picker |
 | **Security** | Face authentication enrollment and testing |
 | **Input** | Touchscreen toggle, keybinds GUI launcher |
 | **AI Assistant** | Ollama model management, API key entry, voice status, tier selection |
@@ -1900,7 +1900,7 @@ costa-nav is a proprietary MCP navigation system under development that lets Cla
 | 2 | `costa-nav plan '{json}'` | Conditional plans with actions |
 | 3 | `costa-nav routine <name>` | Saved plans triggered by name |
 
-**Claude's virtual monitor:** Claude operates on an invisible headless display (HEADLESS-2, workspace 7). It can open its own browser, navigate pages, and interact with GUIs without touching your screen. Toggle a live preview by clicking the 󰍹 icon in Waybar.
+**Claude's virtual monitor:** Claude operates on an invisible headless display (HEADLESS-2, workspace 7). It can open its own browser, navigate pages, and interact with GUIs without touching your screen. Toggle a live preview by clicking the 󰍹 icon in the shell bar.
 
 **Self-learning:** The system accumulates site-specific knowledge as it runs, stored in `~/.config/costa/nav-sites/`. Element locations, page behavior, and what worked are remembered for future use.
 
@@ -2001,9 +2001,9 @@ hyprctl dispatch movetoworkspace 1,class:appname              # move to visible 
 cp /usr/share/costa/configs/hyprland.conf ~/.config/hypr/hyprland.conf
 hyprctl reload
 
-# Reset Waybar
-~/.config/costa/scripts/generate-waybar-config.sh
-killall waybar; waybar &disown
+# Reset AGS shell
+~/.config/costa/scripts/generate-ags-config.sh
+ags quit; ags run &disown
 
 # Reset Dunst
 cp /usr/share/costa/configs/dunstrc ~/.config/dunst/dunstrc

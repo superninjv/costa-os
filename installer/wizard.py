@@ -393,16 +393,8 @@ def run_wizard() -> CostaConfig:
     print(f"  {C.DIM}   gh auth login (run after setup){C.RESET}")
     config.setup_github = prompt_bool("   Set up GitHub authentication after install?", default=True)
 
-    # Discord
-    print(f"\n  {C.FOAM}3. Discord{C.RESET}")
-    print(f"  {C.DIM}   Vesktop — Discord client with native Wayland support.{C.RESET}")
-    print(f"  {C.DIM}   Global push-to-talk, screen sharing with audio, Vencord plugins.{C.RESET}")
-    config.install_vesktop = prompt_bool("   Install Vesktop?", default=True)
-    if config.install_vesktop:
-        print(f"  {C.OLIVE}   ✓ Vesktop will be installed{C.RESET}")
-
     # OpenAI (optional, for compatible tools)
-    print(f"\n  {C.FOAM}4. OpenAI API (optional){C.RESET}")
+    print(f"\n  {C.FOAM}3. OpenAI API (optional){C.RESET}")
     print(f"  {C.DIM}   Some tools support OpenAI-compatible APIs. Not required for Costa AI.{C.RESET}")
     config.openai_api_key = prompt("   OpenAI API key (Enter to skip)")
 
@@ -460,15 +452,13 @@ def run_wizard() -> CostaConfig:
     if config.has_touchscreen:
         print(f"  Touchscreen:  {'✓ Touch + gestures' if config.enable_touchscreen else '✗ Disabled'}")
     print(f"  Claude:       {'✓ API key set' if config.anthropic_api_key else '○ Will use claude /login after install'}")
-    print(f"  Vesktop:      {'✓ Install' if config.install_vesktop else '✗ Skipped'}")
     print(f"  GitHub:       {'✓ Setup after install' if config.setup_github else '✗ Skipped'}")
     ptt_display = f"{config.ptt_keybind[0]}+{config.ptt_keybind[1]}".replace("$mainMod", "SUPER")
     print(f"  Voice PTT:    {ptt_display}")
     print(f"  Packages:     base" +
           (" + dev" if config.install_dev_tools else "") +
           (" + creative" if config.install_creative else "") +
-          (" + gaming" if config.install_gaming else "") +
-          (" + vesktop" if config.install_vesktop else ""))
+          (" + gaming" if config.install_gaming else ""))
     print()
 
     errors = config.validate()
@@ -504,7 +494,7 @@ def save_config(config: CostaConfig):
         "anthropic_api_key": config.anthropic_api_key,
         "openai_api_key": config.openai_api_key,
         "setup_github": config.setup_github,
-        "install_vesktop": config.install_vesktop,
+
         "ptt_keybind": list(config.ptt_keybind),
         "gpu_vendor": config.hardware.gpu_vendor.value,
         "gpu_name": config.hardware.gpu_name,

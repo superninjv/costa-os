@@ -26,6 +26,9 @@ from typing import Any
 WORKFLOW_DIR = Path.home() / ".config" / "costa" / "workflows"
 SYSTEMD_USER_DIR = Path.home() / ".config" / "systemd" / "user"
 LOG_DB = Path.home() / ".local" / "share" / "costa" / "workflow-log.db"
+SESSION_LOG_DIR = Path.home() / ".local" / "share" / "costa" / "claude-sessions"
+SESSION_STATUS = Path("/tmp/costa-session-status.json")
+MAX_BUDGET_CAP = 50.0  # Hard cap — YAML cannot exceed this
 
 INTERPOLATION_RE = re.compile(r"\{\{steps\.(\w+)\.output\}\}")
 
@@ -47,6 +50,13 @@ class WorkflowStep:
     condition: str = ""
     duration: float = 0.0
     depends_on: list[str] = field(default_factory=list)
+    # claude-code step fields
+    workdir: str = ""
+    budget: float = 0.0
+    allowed_tools: str = ""
+    permission_mode: str = ""
+    timeout: float = 0.0
+    prompt_file: str = ""
 
 
 @dataclass
@@ -93,6 +103,12 @@ class Workflow:
                 condition=condition,
                 duration=float(s.get("duration", 0)),
                 depends_on=s.get("depends_on", []),
+                workdir=s.get("workdir", ""),
+                budget=float(s.get("budget", 0)),
+                allowed_tools=s.get("allowed_tools", ""),
+                permission_mode=s.get("permission_mode", ""),
+                timeout=float(s.get("timeout", 0)),
+                prompt_file=s.get("prompt_file", ""),
             ))
 
         return cls(
@@ -187,6 +203,110 @@ def _exec_shell(step: WorkflowStep, outputs: dict[str, str]) -> str:
         return output
     except subprocess.TimeoutExpired:
         return "[shell step timed out after 60s]"
+
+
+def _exec_claude_code(step: WorkflowStep, outputs: dict[str, str]) -> str:
+    """Execute an autonomous Claude Code session via the CLI's headless mode.
+
+    Runs `claude -p` with budget limits, tool restrictions, and session logging.
+    Output is saved to ~/.local/share/costa/claude-sessions/.
+    """
+    SESSION_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Resolve prompt — from prompt_file or inline query
+    query = _interpolate(step.query, outputs)
+    if step.prompt_file:
+        prompt_path = Path(_interpolate(step.prompt_file, outputs)).expanduser()
+        if prompt_path.exists():
+            query = prompt_path.read_text()
+
+    if not query:
+        return "[claude-code: no prompt provided]"
+
+    # Build command
+    cmd = ["claude", "-p", "--output-format", "json"]
+
+    if step.model:
+        cmd.extend(["--model", step.model])
+
+    budget = min(step.budget or 5.0, MAX_BUDGET_CAP)
+    cmd.extend(["--max-budget-usd", str(budget)])
+
+    if step.allowed_tools:
+        cmd.extend(["--allowedTools", step.allowed_tools])
+
+    mode = step.permission_mode or "acceptEdits"
+    cmd.extend(["--permission-mode", mode])
+
+    cmd.append(query)
+
+    # Working directory
+    workdir = None
+    if step.workdir:
+        workdir = str(Path(_interpolate(step.workdir, outputs)).expanduser())
+
+    # Session logging
+    session_name = f"session-{time.strftime('%Y%m%d-%H%M%S')}"
+    log_file = SESSION_LOG_DIR / f"{session_name}.json"
+
+    # Write status for bar integration
+    status = {
+        "session": session_name,
+        "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "workdir": workdir or "",
+        "budget": budget,
+        "model": step.model or "default",
+        "status": "running",
+    }
+    try:
+        SESSION_STATUS.write_text(json.dumps(status))
+    except Exception:
+        pass
+
+    # Run Claude Code
+    timeout = step.timeout or 14400  # 4 hours default
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=workdir,
+        )
+        output = proc.stdout
+        stderr = proc.stderr
+
+        # Save full output to session log
+        log_data = {
+            **status,
+            "status": "completed" if proc.returncode == 0 else "failed",
+            "exit_code": proc.returncode,
+            "output": output[:50000],  # Cap at 50KB for log
+            "stderr": stderr[:5000] if stderr else "",
+            "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        log_file.write_text(json.dumps(log_data, indent=2))
+
+        # Parse JSON output for workflow interpolation
+        try:
+            result = json.loads(output)
+            # Extract the text result from Claude's JSON output
+            workflow_output = result.get("result", output[:10000])
+        except (json.JSONDecodeError, AttributeError):
+            workflow_output = output[:10000]
+
+    except subprocess.TimeoutExpired:
+        workflow_output = f"[claude-code session timed out after {timeout}s]"
+        log_data = {**status, "status": "timeout", "finished": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        log_file.write_text(json.dumps(log_data, indent=2))
+
+    # Clear running status
+    try:
+        SESSION_STATUS.write_text(json.dumps({"status": "idle"}))
+    except Exception:
+        pass
+
+    return workflow_output
 
 
 def _exec_notify(step: WorkflowStep, outputs: dict[str, str]) -> str:
@@ -316,6 +436,9 @@ def execute_workflow(name: str) -> dict[str, Any]:
 
             elif step.action == "shell":
                 outputs[step.id] = _exec_shell(step, outputs)
+
+            elif step.action == "claude-code":
+                outputs[step.id] = _exec_claude_code(step, outputs)
 
             elif step.action == "notify":
                 outputs[step.id] = _exec_notify(step, outputs)

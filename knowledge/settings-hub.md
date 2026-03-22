@@ -7,7 +7,7 @@ tags: [settings, configuration, display, security, ai, ollama, chezmoi, github, 
 # Costa Settings Hub
 
 ## How to Open Settings Hub
-- Click the gear icon (󰒓) in waybar
+- Click the gear icon (󰒓) in the shell bar
 - Or run from terminal: `costa-settings`
 - Or voice command: "open settings"
 - Keyboard shortcut: `SUPER+I`
@@ -33,11 +33,10 @@ The Settings Hub scans connected monitors and shows a visual layout editor. Drag
 - Per-monitor wallpapers supported — click a monitor in the layout to set individually
 - CLI: edit `~/.config/hypr/wallpaper.sh` and restart it: `killall mpvpaper; bash ~/.config/hypr/wallpaper.sh &disown`
 
-### How do I generate waybar config for new monitors?
-- Settings Hub → Display → Waybar → "Regenerate Config"
-- This reads your current monitor layout and writes `~/.config/waybar/config.jsonc`
-- Applies waybar to all detected monitors automatically
-- Restart waybar after: `killall waybar; waybar &disown`
+### How do I apply the shell bar to new monitors?
+- The AGS shell auto-detects connected monitors and adapts automatically
+- No manual config regeneration needed — monitors are detected via Hyprland events
+- Restart the shell bar if needed: `ags quit; ags run -d ~/.config/ags`
 
 ## Security Settings
 

@@ -156,7 +156,6 @@ class CostaConfig:
     # Services & API keys
     openai_api_key: str = ""
     setup_github: bool = True
-    install_vesktop: bool = True
 
     # Keybinds
     ptt_keybind: tuple = ("$mainMod ALT", "V")

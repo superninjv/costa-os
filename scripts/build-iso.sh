@@ -61,11 +61,11 @@ fi
 rm -f "$COSTA_SHARE"/ai-router/*.db "$COSTA_SHARE"/**/*.db 2>/dev/null || true
 rm -f "$COSTA_SHARE"/ai-router/costa-conversation.json 2>/dev/null || true
 
-# Scripts (wallpaper, ollama-manager, waybar generator, etc.)
+# Scripts (wallpaper, ollama-manager, etc.)
 mkdir -p "$COSTA_SHARE/scripts"
 cp "$PROJECT_DIR"/scripts/wallpaper.sh "$COSTA_SHARE/scripts/"
 cp "$PROJECT_DIR"/scripts/ollama-manager.sh "$COSTA_SHARE/scripts/"
-cp "$PROJECT_DIR"/scripts/generate-waybar-config.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
+
 cp "$PROJECT_DIR"/scripts/headless-preview.py "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-memory-flush.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
@@ -114,6 +114,15 @@ if [ -f "$PROJECT_DIR/configs/music-widget/widget.py" ]; then
     cp "$PROJECT_DIR/configs/music-widget/widget.py" "$COSTA_SHARE/music-widget/"
 fi
 
+# AGS shell (desktop bar)
+if [ -d "$PROJECT_DIR/shell" ]; then
+    mkdir -p "$COSTA_SHARE/shell"
+    cp -a "$PROJECT_DIR/shell/." "$COSTA_SHARE/shell/"
+    # Remove node_modules — will be installed on first boot
+    rm -rf "$COSTA_SHARE/shell/node_modules" 2>/dev/null || true
+    echo "  Included AGS shell"
+fi
+
 # MCP server
 if [ -d "$PROJECT_DIR/mcp-server" ]; then
     mkdir -p "$COSTA_SHARE/mcp-server"
@@ -153,12 +162,6 @@ if [ -d "$PROJECT_DIR/cli-wrappers" ]; then
 
     # Gaming tier
     for app in steam; do
-        [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
-            cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
-    done
-
-    # Social/communication tier
-    for app in vesktop; do
         [ -d "$PROJECT_DIR/cli-wrappers/$app" ] && \
             cp -r "$PROJECT_DIR/cli-wrappers/$app" "$COSTA_SHARE/cli-wrappers/"
     done

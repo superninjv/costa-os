@@ -47,7 +47,7 @@ tags: [file, find, search, locate, open, copy, move, delete, rename, fd, ripgrep
 ## Project-Specific Paths
 - User projects: `~/projects/`
 - Config files: `~/.config/`
-- Costa OS configs: `~/.config/costa/`, `~/.config/hypr/`, `~/.config/waybar/`
+- Costa OS configs: `~/.config/costa/`, `~/.config/hypr/`, `~/.config/ags/`
 - Screenshots: `~/Pictures/Screenshots/`
 - Downloads: `~/Downloads/`
 

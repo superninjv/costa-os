@@ -85,6 +85,32 @@ The router: gathers live system context → queries local Ollama → detects "I 
 ## Obsidian Vault (`~/notes/`)
 Persistent knowledge store. Read/write directly with native tools (Read, Write, Edit, Grep, Glob) — no MCP server needed.
 
+## Costa Flow (Workflow Engine)
+
+YAML-defined automation in `~/.config/costa/workflows/`. Step types: `shell`, `costa-ai`, `claude-code`, `notify`, `condition`, `wait`.
+
+```bash
+costa-flow run <name>           # Execute workflow now
+costa-flow install <name>       # Create systemd timer for scheduled runs
+costa-flow uninstall <name>     # Remove timer
+costa-flow list                 # Show all workflows
+costa-flow log <name>           # View recent runs
+```
+
+### Autonomous Claude Code sessions
+```bash
+# Quick one-off (runs claude -p headless with budget cap + logging)
+costa-session --workdir ~/projects/foo --budget 10 "task description"
+costa-session --prompt-file ~/tasks/big-job.md --budget 25 --model opus
+costa-session log                    # List recent sessions
+
+# Or as a workflow step (action: claude-code) for scheduled/sequenced work
+# See configs/costa/workflows/autonomous-session.yaml for template
+```
+
+Session logs: `~/.local/share/costa/claude-sessions/`
+Status file: `/tmp/costa-session-status.json` (for bar integration)
+
 ## System Agents — USE THESE
 
 **Read `configs/costa/agents/*.yaml` before doing server ops, deploys, builds, or code reviews.** 7 agents (deployer, sysadmin, architect, builder, janitor, monitor, navigator) handle these tasks. Invoke via `costa-agents run <name> "instruction"` or the MCP `system_command` tool.
@@ -111,7 +137,7 @@ Three layers must stay in sync:
 - New keybind → update `knowledge/keybinds.md` + `knowledge/costa-os.md`
 - New package dep → add to `packages/base.txt` and/or `iso/packages.x86_64`
 - New config location → update `knowledge/costa-setup.md`
-- New Waybar module → update `knowledge/customization.md` + `docs/advertising.md` module table
+- New AGS shell widget → update `knowledge/customization.md` + `docs/advertising.md` widget table
 - Hardware-dependent feature → update `docs/system-requirements.md` + `docs/hardware-compatibility.md`
 - Removed feature → remove from ALL referencing files (check manifest)
 

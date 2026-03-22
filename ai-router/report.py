@@ -1,6 +1,6 @@
 """Report to Claude — feedback loop for correcting local LLM answers.
 
-When the local model gives a bad answer, the user clicks the waybar "report" button.
+When the local model gives a bad answer, the user clicks the shell bar "report" button.
 This script sends the failed query + response to Claude, which:
 1. Identifies what went wrong
 2. Generates the correct answer

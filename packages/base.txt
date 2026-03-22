@@ -37,11 +37,15 @@ zsh-autosuggestions
 zsh-syntax-highlighting
 starship
 
-# Bar & Notifications
-waybar
+# Shell & Notifications
+aylurs-gtk-shell  # AUR — AGS v3 desktop shell
+nwg-dock-hyprland  # macOS-style auto-hiding dock
+gtk4-layer-shell
 dunst
 rofi-wayland
 libnotify
+dart-sass
+typescript
 
 # Wallpaper & Screenshots
 mpvpaper  # AUR

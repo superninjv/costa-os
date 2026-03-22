@@ -21,7 +21,7 @@ Hold the key while speaking. Release when done.
 3. Silero VAD detects when you stop speaking (auto-stop)
 4. Whisper transcribes your speech on GPU
 5. Query routes to the best model (local or cloud)
-6. Response appears in waybar notification area
+6. Response appears in the shell bar notification area
 
 ## Auto-Submit Control
 
@@ -32,12 +32,12 @@ Commands auto-execute by default. To prevent this:
 ## Text Input Alternative
 
 Don't want to talk? Use text input:
-- **Left-click** the Costa icon (center waybar) → type in the rofi text box
+- **Left-click** the Costa icon (center of the shell bar) → type in the rofi text box
 - Press Enter to submit
 
 ## Viewing Responses
 
-- Responses scroll across waybar after processing
+- Responses scroll across the shell bar after processing
 - **Right-click** the Costa icon to see the full last output
 - Longer responses open in a notification popup (dunst)
 

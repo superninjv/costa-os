@@ -1,7 +1,7 @@
 ---
 l0: "Costa OS system overview: architecture, keybinds, config locations, window management, workflows, usage tracking, troubleshooting"
 l1_sections: ["Architecture", "Key Commands", "Config Locations", "Reloading Configs", "Default Keybinds", "Window Management", "Security", "IMPORTANT — This is Linux", "Costa Apps (GTK4/libadwaita)", "Music", "Troubleshooting", "Gotchas & Pitfalls"]
-tags: [overview, getting-started, architecture, keybinds, config, window-management, troubleshooting, wayland, hyprland, pacman, workflow, costa-flow, usage, budget]
+tags: [overview, getting-started, architecture, keybinds, config, window-management, troubleshooting, wayland, hyprland, pacman, workflow, costa-flow, usage, budget, ags, shell-bar]
 ---
 # Costa OS — System Guide
 
@@ -32,15 +32,15 @@ The AI is the primary interface — users interact via voice, text, or tradition
 - `costa-flow run morning-briefing` — run a workflow
 - `costa-flow list` — list available workflows
 - `costa-flow enable system-health` — activate workflow on timer
-- `costa-settings` — open the settings hub (also in rofi or waybar ⚙ icon)
-- `costa-keybinds-gui` — open the keybinds/mouse configurator (also in rofi or waybar 󰌌 icon)
+- `costa-settings` — open the settings hub (also in rofi or shell bar ⚙ icon)
+- `costa-keybinds-gui` — open the keybinds/mouse configurator (also in rofi or shell bar 󰌌 icon)
 - `costa-keybinds list` — show all keyboard shortcuts (CLI)
 - `costa-keybinds mouse` — show mouse button mappings (CLI)
 
 ## Config Locations
 - Hyprland: ~/.config/hypr/hyprland.conf
 - Monitor overrides: ~/.config/hypr/monitors.conf (auto-generated)
-- Waybar: ~/.config/waybar/config and style.css
+- AGS shell: ~/.config/ags/
 - Ghostty terminal: ~/.config/ghostty/config
 - Rofi launcher: ~/.config/rofi/config.rasi
 - Dunst notifications: ~/.config/dunst/dunstrc
@@ -54,7 +54,7 @@ The AI is the primary interface — users interact via voice, text, or tradition
 
 ## Reloading Configs
 - Hyprland: `hyprctl reload` (no restart needed)
-- Waybar: `killall waybar; waybar &disown`
+- AGS shell: `ags quit; ags run -d ~/.config/ags`
 - Dunst: `killall dunst; dunst &disown`
 - Rofi: no reload needed (reads config on each launch)
 
@@ -112,7 +112,7 @@ This is Arch Linux with Hyprland (Wayland). NEVER give Windows or macOS advice.
 All Costa apps are pinned to the primary monitor and float centered.
 
 ## Music
-- Click the now-playing text in waybar to open the music widget
+- Click the now-playing text in the shell bar to open the music widget
 - The widget can cold-start Strawberry and begin playback without opening the Strawberry window
 - Search tab searches the Strawberry SQLite database — no need to open Strawberry's GUI
 - Quality badge shows live stream format from PipeWire (e.g. "24bit / 96kHz")
@@ -127,7 +127,7 @@ All Costa apps are pinned to the primary monitor and float centered.
 - Model not loaded: check `/tmp/ollama-smart-model` and `ollama ps`
 - App won't close: `hyprctl dispatch closewindow address:ADDR` or `kill PID`
 - Hide app but keep running: move to special workspace (see Window Management above)
-- Vesktop/Discord: must run with `--ozone-platform=x11` for global keybinds
+- Electron apps may need `--ozone-platform=wayland` or `=x11` flags for full functionality
 
 ## Gotchas & Pitfalls
 - Hyprland `exec` doesn't support inline env vars (e.g. `VAR=val command`) — wrap in `bash -c`
@@ -136,4 +136,4 @@ All Costa apps are pinned to the primary monitor and float centered.
 - PipeWire filter chains can silently intercept the default source — test recording after audio config changes
 - NVMe device names can swap between boots — fstab uses UUIDs, never /dev/nvmeXnY
 - Firefox in terminal spams Gdk-WARNING lines — these are harmless, ignore them
-- Electron apps (Vesktop, VS Code, etc.) may need `--ozone-platform=wayland` or `=x11` flags
+- Electron apps (VS Code, etc.) may need `--ozone-platform=wayland` or `=x1` flags

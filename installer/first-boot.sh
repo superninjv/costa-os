@@ -14,7 +14,7 @@ exec > >(tee -a "$FIRST_BOOT_LOG") 2>&1
 
 COSTA_DIR="$HOME/.config/costa"
 HYPR_DIR="$HOME/.config/hypr"
-WAYBAR_DIR="$HOME/.config/waybar"
+AGS_DIR="$HOME/.config/ags"
 
 echo "╔══════════════════════════════════════╗"
 echo "║      Costa OS — First Boot Setup     ║"
@@ -468,7 +468,7 @@ detect_gpu() {
         echo "  No discrete GPU detected: $GPU_NAME"
     fi
 
-    # Save GPU config for waybar scripts and ollama-manager
+    # Save GPU config for shell widgets and ollama-manager
     mkdir -p "$COSTA_DIR"
     cat > "$COSTA_DIR/gpu.conf" << EOF
 GPU_VENDOR=$GPU_VENDOR
@@ -649,7 +649,7 @@ setup_claude_code() {
 }
 
 # ─── Ensure directories exist ─────────────────────────────────
-mkdir -p "$COSTA_DIR" "$COSTA_DIR/knowledge" "$COSTA_DIR/agents" "$COSTA_DIR/workflows" "$COSTA_DIR/projects" "$HYPR_DIR" "$WAYBAR_DIR"
+mkdir -p "$COSTA_DIR" "$COSTA_DIR/knowledge" "$COSTA_DIR/agents" "$COSTA_DIR/workflows" "$COSTA_DIR/projects" "$HYPR_DIR" "$AGS_DIR"
 mkdir -p ~/Pictures/Screenshots
 
 # ─── Set up Obsidian vault (Claude's persistent knowledge) ────
@@ -1116,7 +1116,7 @@ TOUCHEOF
 
         # Add squeekboard autostart if not present
         if ! grep -q "squeekboard" "$HYPR_DIR/hyprland.conf" 2>/dev/null; then
-            sed -i '/^exec-once.*waybar/a exec-once = squeekboard' "$HYPR_DIR/hyprland.conf"
+            sed -i '/^exec-once.*ags/a exec-once = squeekboard' "$HYPR_DIR/hyprland.conf"
         fi
 
         # Install hyprgrass (touch gesture plugin) via AUR

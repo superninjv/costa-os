@@ -5,7 +5,7 @@ import { revealBar, hideBar } from "../lib/state"
 
 export default function Notch(gdkmonitor: Gdk.Monitor) {
   const win = new Gtk.Window()
-  win.set_default_size(200, 3)
+  win.set_default_size(800, 4)
 
   Gtk4LayerShell.init_for_window(win)
   Gtk4LayerShell.set_layer(win, Gtk4LayerShell.Layer.OVERLAY)
@@ -27,7 +27,7 @@ export default function Notch(gdkmonitor: Gdk.Monitor) {
 
   const motion = new Gtk.EventControllerMotion()
   motion.connect("enter", () => revealBar())
-  motion.connect("leave", () => hideBar(400))
+  motion.connect("leave", () => hideBar(1200))
   trigger.add_controller(motion)
 
   box.append(trigger)
@@ -40,13 +40,13 @@ export default function Notch(gdkmonitor: Gdk.Monitor) {
     provider.load_from_string(`
       .Notch { background: transparent; }
       .notch-trigger {
-        min-width: 200px;
-        min-height: 3px;
-        background-color: rgba(126, 181, 176, 0.25);
-        border-radius: 0px 0px 6px 6px;
+        min-width: 800px;
+        min-height: 4px;
+        background-color: rgba(126, 181, 176, 0.15);
+        border-radius: 0px 0px 4px 4px;
       }
       .notch-trigger:hover {
-        background-color: rgba(126, 181, 176, 0.5);
+        background-color: rgba(126, 181, 176, 0.35);
         min-height: 5px;
       }
     `)

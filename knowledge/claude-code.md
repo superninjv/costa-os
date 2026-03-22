@@ -1,6 +1,6 @@
 ---
 l0: "Claude Code integration: launching, custom commands, MCP tools, virtual monitor, configuration"
-l1_sections: ["Launching Claude Code", "Waybar Controls", "Custom Commands", "MCP Server Tools", "Virtual Monitor", "Knowledge Base", "Configuration"]
+l1_sections: ["Launching Claude Code", "Shell Bar Controls", "Custom Commands", "MCP Server Tools", "Virtual Monitor", "Knowledge Base", "Configuration"]
 tags: [claude, claude-code, mcp, commands, tools, coding, development]
 ---
 # Claude Code in Costa OS
@@ -11,18 +11,17 @@ tags: [claude, claude-code, mcp, commands, tools, coding, development]
 # From terminal
 claude
 
-# From waybar
+# From the AGS shell bar
 # Left-click the 󰚩 icon
 ```
 
-## Waybar Controls
+## Shell Bar Controls
 
 | Action | What It Does |
 |--------|-------------|
 | Left-click 󰚩 | Launch Claude Code |
 | Right-click 󰚩 | Model picker (switch between Sonnet/Opus) |
-| Scroll on 󰚩 | Cycle through project contexts |
-| Middle-click 󰚩 | Dangerous mode (skips permission prompts — use carefully) |
+| Hover on notch | Reveal full bar with all widgets |
 
 ## Custom Commands
 
@@ -31,7 +30,7 @@ Type these inside a Claude Code session:
 | Command | What It Does |
 |---------|-------------|
 | `/check-system` | Audit system health, services, disk, memory |
-| `/configure-waybar` | Modify waybar config with guidance |
+| `/configure-shell` | Modify AGS shell config with guidance |
 | `/install` | Install and configure a package properly |
 | `/theme` | Apply or modify Costa theme elements |
 | `/troubleshoot` | Diagnose and fix system issues |
@@ -79,7 +78,7 @@ Claude should check the vault at conversation start for relevant context, and wr
 ## Knowledge Base
 
 21 knowledge files are injected as MCP resources, giving Claude Code deep knowledge about:
-- System configuration (Hyprland, Waybar, PipeWire, etc.)
+- System configuration (Hyprland, AGS shell, PipeWire, etc.)
 - Costa OS features (voice, AI routing, workflows, etc.)
 - Admin tasks (Arch Linux, networking, security, etc.)
 

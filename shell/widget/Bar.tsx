@@ -33,7 +33,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         setBarWindow(self)
         const motion = new Gtk.EventControllerMotion()
         motion.connect("enter", () => revealBar())
-        motion.connect("leave", () => hideBar(400))
+        motion.connect("leave", () => hideBar(1200))
         self.add_controller(motion)
       }}
     >

@@ -1,6 +1,6 @@
 ---
-l0: "Music control: waybar widget, player switching, queue management, search, playlists, keyboard shortcuts, playerctl"
-l1_sections: ["Music Widget", "Cold Start", "Playback Controls", "Queue Management", "Search", "Playlists", "Player Switching", "Hide Player Window", "Keyboard Controls", "Waybar Integration", "Volume Control", "Switch Audio Output"]
+l0: "Music control: shell bar widget, player switching, queue management, search, playlists, keyboard shortcuts, playerctl"
+l1_sections: ["Music Widget", "Cold Start", "Playback Controls", "Queue Management", "Search", "Playlists", "Player Switching", "Hide Player Window", "Keyboard Controls", "Shell Bar Integration", "Volume Control", "Switch Audio Output"]
 tags: [music, play, pause, skip, volume, mute, playerctl, spotify, strawberry, widget, mpris, audio-output, queue, search, playlist, seek]
 ---
 
@@ -9,8 +9,8 @@ tags: [music, play, pause, skip, volume, mute, playerctl, spotify, strawberry, w
 ## Music Widget
 
 ### How do I open the music widget?
-- Click the music icon (󰎆) in waybar
-- Or click the now-playing text in waybar
+- Click the music icon (󰎆) in the shell bar
+- Or click the now-playing text in the shell bar
 - Or run: `costa-music-widget`
 
 The widget shows album art, track info, progress bar, and playback controls.
@@ -18,7 +18,7 @@ The widget shows album art, track info, progress bar, and playback controls.
 ## Cold Start
 
 ### How do I start playing music when nothing is running?
-1. Open the music widget (click 󰎆 in waybar)
+1. Open the music widget (click 󰎆 in the shell bar)
 2. Click "Start Music" — this launches Strawberry and begins playback
 3. If Strawberry has no library configured, it opens the library setup dialog
 
@@ -33,16 +33,16 @@ The widget shows album art, track info, progress bar, and playback controls.
 ### How do I play/pause?
 - Music widget: click the play/pause button (center)
 - Keyboard: media play/pause key, or `playerctl play-pause`
-- Waybar: middle-click the now-playing text
+- Shell bar: middle-click the now-playing text
 
 ### How do I skip to next/previous track?
 - Music widget: click the forward/back buttons
 - Keyboard: media next/prev keys, or `playerctl next` / `playerctl previous`
-- Waybar: right-click the now-playing text (next track)
+- Shell bar: right-click the now-playing text (next track)
 
 ### How do I seek within a track?
 - Music widget: click anywhere on the progress bar to jump
-- Waybar: scroll up/down on the now-playing text (±5 seconds)
+- Shell bar: scroll up/down on the now-playing text (±5 seconds)
 - CLI: `playerctl position 10+` (forward 10s), `playerctl position 10-` (back 10s)
 - Jump to position: `playerctl position 30` (30 seconds in)
 
@@ -125,17 +125,17 @@ These work globally regardless of focused window:
 | `playerctl next` | Next track (CLI) |
 | `playerctl previous` | Previous track (CLI) |
 
-## Waybar Integration
+## Shell Bar Integration
 
-### What do the waybar music controls do?
-The now-playing text in waybar responds to mouse actions:
+### What do the shell bar music controls do?
+The now-playing text in the shell bar responds to mouse actions:
 - **Left-click** — opens the music widget
 - **Middle-click** — play/pause
 - **Right-click** — next track
 - **Scroll up** — seek forward 5 seconds
 - **Scroll down** — seek backward 5 seconds
 
-### What does the waybar display show?
+### What does the shell bar display show?
 - Artist — Track Name (scrolling if too long)
 - Play/pause icon changes based on state
 - Empty/hidden when no player is active

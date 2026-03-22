@@ -71,14 +71,14 @@ This manifest maps every code component to every file that documents or ships kn
 ### Headless Preview (`scripts/headless-preview.py`)
 - `knowledge/customization.md` — headless monitor preview section
 - `knowledge/costa-nav.md` — dedicated monitor section
-- `docs/advertising.md` — waybar modules table, Claude Code section
+- `docs/advertising.md` — shell bar modules table, Claude Code section
 
-### Waybar Templates (`configs/waybar/templates/`)
+### AGS Shell Templates (`configs/ags/templates/`)
 - `knowledge/customization.md` — template list, placeholder docs
-- `docs/advertising.md` — waybar modules table, template system section
+- `docs/advertising.md` — shell bar modules table, template system section
 - `docs/hardware-compatibility.md` — bar assignment table
 
-### Waybar Generator (`scripts/generate-waybar-config.sh`)
+### AGS Shell Generator (`scripts/generate-ags-config.sh`)
 - `knowledge/customization.md` — template regeneration
 - `docs/hardware-compatibility.md` — monitor detection logic
 
@@ -153,9 +153,9 @@ This manifest maps every code component to every file that documents or ships kn
 - `knowledge/ai-router.md` — request queue section
 - `docs/advertising.md` — queue daemon
 
-### Waybar AI Widget (`configs/waybar/templates/main-bar.jsonc`)
+### AGS Shell AI Widget (`shell/app.tsx`)
 - `knowledge/customization.md` — costa-ai module (replaces voice-claude)
-- `docs/advertising.md` — waybar modules table (costa-ai replaces voice-claude)
+- `docs/advertising.md` — shell bar modules table (costa-ai replaces voice-claude)
 
 ### Knowledge Loader (`ai-router/knowledge.py`)
 - `knowledge/ai-router.md` — knowledge system section, tiered loading docs
@@ -168,7 +168,7 @@ This manifest maps every code component to every file that documents or ships kn
 ### Report to Claude (`ai-router/report.py`)
 - `knowledge/ai-router.md` — report to Claude section
 - `docs/advertising.md` — self-improving knowledge section
-- `configs/waybar/templates/main-bar.jsonc` — ai-report module
+- `shell/app.tsx` — ai-report module
 
 ### Claude Code Commands (`configs/claude/commands/`)
 - `configs/claude/CLAUDE.md` — custom commands section
@@ -265,7 +265,7 @@ This manifest maps every code component to every file that documents or ships kn
 6. If new package dependency: add to `packages/base.txt` and/or `iso/packages.x86_64`
 7. If new keybind: update `knowledge/keybinds.md` and `knowledge/costa-os.md`
 8. If new config location: update `knowledge/costa-setup.md`
-9. If new Waybar module: update `knowledge/customization.md` and `docs/advertising.md` module table
+9. If new AGS shell module: update `knowledge/customization.md` and `docs/advertising.md` module table
 
 ## Removing a Feature Checklist
 

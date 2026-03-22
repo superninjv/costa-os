@@ -68,7 +68,7 @@ Move a window there: `SUPER+SHIFT+<number>`
 | Path | Contents |
 |------|----------|
 | `~/.config/hypr/hyprland.conf` | Hyprland config (keybinds, monitors, rules) |
-| `~/.config/waybar/` | Waybar panels (config.jsonc, style.css) |
+| `~/.config/ags/` | AGS shell bar (TypeScript config) |
 | `~/.config/costa/` | Costa AI config, knowledge bases, workflows |
 | `~/.config/rofi/` | App launcher theme and power menu |
 | `~/.config/dunst/dunstrc` | Notification daemon config |
@@ -83,6 +83,6 @@ costa-ai "how do I change my wallpaper"
 
 Or use voice: hold `SUPER+ALT+V`, speak your question, release.
 
-Or click the Costa icon (center of waybar) and type your question.
+Or click the Costa icon (center of the shell bar) and type your question.
 
 The AI has full knowledge of your system config, installed packages, and running services.

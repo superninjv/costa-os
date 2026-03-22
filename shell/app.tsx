@@ -19,29 +19,46 @@ function getMonitorType(connector: string): "primary" | "secondary" | "portrait"
   return "primary"
 }
 
+function setupMonitor(gdkMon: Gdk.Monitor) {
+  const connector = gdkMon.get_connector() ?? "unknown"
+  const type = getMonitorType(connector)
+  print(`[costa-shell] ${connector} → ${type}`)
+
+  switch (type) {
+    case "primary":
+      Notch(gdkMon)
+      Bar(gdkMon)
+      break
+    case "secondary":
+      MinimalPill(gdkMon)
+      break
+    case "portrait":
+      PortraitBar(gdkMon)
+      break
+    case "headless":
+      ClaudeBar(gdkMon)
+      break
+  }
+}
+
 app.start({
   css: style,
   main() {
+    // Set up monitors already present
     for (const gdkMon of app.get_monitors()) {
-      const connector = gdkMon.get_connector() ?? "unknown"
-      const type = getMonitorType(connector)
-      print(`[costa-shell] ${connector} → ${type}`)
+      setupMonitor(gdkMon)
+    }
 
-      switch (type) {
-        case "primary":
-          Notch(gdkMon)
-          Bar(gdkMon)
-          break
-        case "secondary":
-          MinimalPill(gdkMon)
-          break
-        case "portrait":
-          PortraitBar(gdkMon)
-          break
-        case "headless":
-          ClaudeBar(gdkMon)
-          break
-      }
+    // Handle monitors that come online later (e.g. HDMI-A-2 slow EDID)
+    const display = Gdk.Display.get_default()
+    if (display) {
+      const monitorList = display.get_monitors() as import("gi://Gio").ListModel
+      monitorList.connect("items-changed", (_list: any, position: number, removed: number, added: number) => {
+        for (let i = 0; i < added; i++) {
+          const gdkMon = monitorList.get_item(position + i) as Gdk.Monitor
+          if (gdkMon) setupMonitor(gdkMon)
+        }
+      })
     }
   },
 })

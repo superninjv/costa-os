@@ -128,7 +128,7 @@ Switch workspaces between reads:
 Claude has a dedicated **virtual headless monitor** (HEADLESS-2, workspace 7, 1920x1080).
 This is invisible — it takes zero physical screen space. Created at boot via `hyprctl output create headless`.
 
-The user can see what's on the headless monitor by clicking the 󰍹 icon in waybar, which toggles a live preview window (auto-refreshes every 2s via `grim -o HEADLESS-X`).
+The user can see what's on the headless monitor by clicking the 󰍹 icon in the shell bar, which toggles a live preview window (auto-refreshes every 2s via `grim -o HEADLESS-X`).
 
 ### Rules
 - **NEVER** click, type, or send keys to windows on the user's active workspace

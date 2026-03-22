@@ -128,7 +128,7 @@ def _handle_meta(query: str) -> dict | None:
     if re.search(r"weather", q):
         try:
             weather_out = subprocess.run(
-                [str(Path.home() / ".config/waybar/scripts/weather.sh")],
+                [str(Path.home() / ".config/costa/scripts/weather.sh")],
                 capture_output=True, text=True, timeout=10,
             ).stdout.strip()
             import json as _json
@@ -566,13 +566,13 @@ SAFE_COMMAND_PATTERNS = [
     r"^wpctl\s+(set-volume|set-mute|get-volume)",
     r"^pactl\s+(set-default|get-default|set-sink-volume|set-source-volume)",
     r"^hyprctl\s+(dispatch|reload|switchxkblayout|monitors|clients|activewindow)",
-    r"^killall\s+(waybar|dunst)$",
+    r"^killall\s+(ags|dunst)$",
     r"^notify-send\b",
     r"^playerctl\b",
     r"^brightnessctl\b",
-    r"^systemctl\s+(--user\s+)?(restart|start|stop)\s+(pipewire|wireplumber|waybar)",
+    r"^systemctl\s+(--user\s+)?(restart|start|stop)\s+(pipewire|wireplumber)",
     r"^systemctl\s+(--failed|list-timers|status)\b",
-    r"^waybar\b",
+    r"^ags\b",
     # Read-only system queries — safe to auto-run
     r"^git\s+(status|branch|log|diff|remote)\b",
     r"^docker\s+(ps|images|stats|logs)\b",
@@ -627,7 +627,7 @@ def extract_command(response: str) -> str | None:
         if any(c in cmd for c in ["(", ")", "{", "}", "|", "/", "=", "-"]) or \
            " " not in cmd or \
            cmd.startswith(("wpctl", "pactl", "hyprctl", "killall", "systemctl",
-                          "playerctl", "notify", "brightnessctl", "waybar",
+                          "playerctl", "notify", "brightnessctl", "ags",
                           "pkill", "docker", "git")):
             return cmd
     return None

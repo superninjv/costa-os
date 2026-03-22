@@ -10,7 +10,7 @@ Costa OS is **the easiest Linux distribution ever made.** If something isn't wor
 
 Under the hood, it's an AI-native distribution built on Arch Linux + Hyprland where **the AI is the operating system interface**. Voice, typing, and gestures feed into an intelligent routing layer that uses local models (3B, 7B, 14B, or 32B depending on your GPU) for speed and privacy, automatically escalating to Claude when it needs more power. The user never thinks about which model to use — the system just works.
 
-Every component — from the window manager to the clipboard to the music player — is wired into the AI layer. Claude Code runs as a first-class citizen with its own virtual monitor, system-level MCP tools, and a dedicated Waybar launcher. The result is a desktop where you talk to your computer and it actually understands your system. No typical Linux setup is required — the ISO handles everything, and if you ever want to change something afterward, you just ask.
+Every component — from the window manager to the clipboard to the music player — is wired into the AI layer. Claude Code runs as a first-class citizen with its own virtual monitor, system-level MCP tools, and a dedicated shell bar launcher. The result is a desktop where you talk to your computer and it actually understands your system. No typical Linux setup is required — the ISO handles everything, and if you ever want to change something afterward, you just ask.
 
 ---
 
@@ -26,7 +26,7 @@ Every other OS treats the developer as a human operating a machine. Costa OS tre
 
 **Your AI has its own workspace.** Claude Code operates on an invisible virtual monitor — opening browsers, reading documentation, filling forms, running research — without ever interrupting your screen. It reads applications through the accessibility tree at 112x fewer tokens than screenshots. A 10-step automation task that costs $1.38 with screenshot-based agents costs $0.01 here.
 
-**Voice, text, keyboard, mouse — every input modality feeds the same brain.** Push-to-talk transcribes in 500ms via GPU-accelerated Whisper. The clipboard auto-classifies what you copy and offers contextual actions. Screenshots get instant AI analysis and OCR. Keybinds, Waybar modules, rofi menus, and the settings hub are all entry points into the same intelligence layer.
+**Voice, text, keyboard, mouse — every input modality feeds the same brain.** Push-to-talk transcribes in 500ms via GPU-accelerated Whisper. The clipboard auto-classifies what you copy and offers contextual actions. Screenshots get instant AI analysis and OCR. Keybinds, shell bar modules, rofi menus, and the settings hub are all entry points into the same intelligence layer.
 
 **Development tools are first-class, not afterthoughts.** pyenv, nvm, SDKMAN, Rust toolchain, Docker, k8s, lazygit, zellij — pre-configured and ready. Claude Code ships with custom commands for review, test, refactor, explain, and debug. MCP servers give it direct access to your databases and filesystems. Git is configured with delta for beautiful diffs. Every language server, every linter, every formatter — ask for it and it's installed and configured in seconds.
 
@@ -93,23 +93,23 @@ Costa OS treats Claude Code as the **ultimate customization engine** — not a b
 
 This is what makes Costa OS the easiest Linux distro ever: you never need to learn where configs live, what format they use, or how to restart services. Just describe what you want.
 
-- **Full System Access** — Claude Code can edit Hyprland configs, install packages via pacman/yay, modify Waybar modules, change themes, create systemd services, write scripts, configure development environments — anything you can do in a terminal, described in plain English
+- **Full System Access** — Claude Code can edit Hyprland configs, install packages via pacman/yay, modify AGS shell modules, change themes, create systemd services, write scripts, configure development environments — anything you can do in a terminal, described in plain English
 - **MCP Server** — Gives Claude system eyes and hands via AT-SPI screen reading, typing, clicking, scrolling, window management, and system commands
-- **Virtual Headless Monitor** — Invisible display (zero screen space) where Claude can open browsers, navigate pages, and research independently. Live preview available via Waybar 󰍹 icon (click to toggle a floating window showing what Claude sees)
+- **Virtual Headless Monitor** — Invisible display (zero screen space) where Claude can open browsers, navigate pages, and research independently. Live preview available via shell bar 󰍹 icon (click to toggle a floating window showing what Claude sees)
 - **CLAUDE.md Template** — First-boot generates a hardware-aware CLAUDE.md with detected GPU, monitors, audio devices, installed packages, and project paths. Claude Code reads this on every session, so it always knows your exact hardware and setup
-- **Waybar Launcher** — Dedicated module with multi-action support:
+- **Shell Bar Launcher** — Dedicated module with multi-action support:
   - Left click: launch Claude Code
   - Middle click: dangerous mode (auto-approve)
   - Right click: model picker
   - Scroll: cycle projects
-- **Usage Tracking** — Waybar module showing Claude usage (Plan quota or API spend and token counts)
+- **Usage Tracking** — Shell bar module showing Claude usage (Plan quota or API spend and token counts)
 - **Knowledge Bases as MCP Resources** — 21 topic-specific knowledge files available as MCP resources (`costa://knowledge/<topic>`). Claude Code reads them on demand when relevant — audio questions pull pipewire-audio.md, package questions pull arch-admin.md, etc.
 - **Obsidian Vault as Persistent Memory** — Every Costa OS install includes an Obsidian vault at `~/notes/` connected to Claude via MCP. Claude reads and writes notes to remember your preferences, track project context, store references, and maintain behavioral corrections across conversations. The vault is organized by purpose: `projects/`, `feedback/`, `reference/`, `daily/`, `architecture/`. You can browse and edit notes in Obsidian or any editor — Claude keeps them up to date automatically.
 - **Daily Session Notes** — Each Claude Code session auto-creates a daily note (`~/notes/daily/YYYY-MM-DD.md`). Claude appends session progress, decisions, and discoveries throughout the day. Today's and yesterday's notes load at session start, giving Claude continuous context across conversations.
 - **Memory Flush Before Compaction** — When Claude Code's context window fills up and compacts, a hook automatically triggers Claude to save important session context to daily notes before it's lost. No more "I don't have context about what we were doing" after long sessions.
 - **Vault Search (FTS5)** — Full-text search across all notes and indexed documents via the `vault_search` MCP tool. BM25-ranked results with file paths and relevance scores. The vault is auto-indexed hourly via a systemd timer.
 - **Multi-Channel Presence** — Costa AI is accessible from Telegram (`/ai <query>`) and Discord, not just the terminal. Same AI, same memory, same knowledge base — different interface. Configure API tokens in `~/.config/costa/env`.
-- **Custom Slash Commands** — Pre-built commands for common tasks: `/check-system` (health check), `/install <pkg>` (smart install with AUR fallback), `/theme` (modify Costa palette), `/configure-waybar` (add/edit modules), `/troubleshoot` (diagnose issues)
+- **Custom Slash Commands** — Pre-built commands for common tasks: `/check-system` (health check), `/install <pkg>` (smart install with AUR fallback), `/theme` (modify Costa palette), `/configure-shell` (add/edit modules), `/troubleshoot` (diagnose issues)
 - **Auto-Configuration** — First boot generates hardware-aware CLAUDE.md, configures MCP server, Obsidian vault, memory hooks, and RAG indexing. Re-run anytime via `costa-settings`
 
 ---
@@ -170,7 +170,7 @@ Three tiers of command execution:
 
 ### Self-Improving Knowledge (Report to Claude)
 
-When the local model gives a wrong answer, click the 󰚑 button in Waybar. This triggers an automated feedback loop:
+When the local model gives a wrong answer, click the 󰚑 button in the shell bar. This triggers an automated feedback loop:
 1. The failed query + response is sent to Claude Haiku
 2. Claude identifies what went wrong — missing knowledge, wrong file matched, or hallucination
 3. Claude generates a JSON patch for the relevant knowledge file
@@ -198,7 +198,7 @@ Every query is logged to a local SQLite database with model used, latency, token
 Long-running queries can be cancelled instantly:
 
 - `costa-ai --stop` — sends SIGTERM to the running costa-ai process via PID file (`/tmp/costa-ai.pid`)
-- Waybar stop button — click the stop icon on the costa-ai widget during processing
+- Shell bar stop button — click the stop icon on the costa-ai widget during processing
 - Clean teardown — model inference and API calls are interrupted gracefully
 
 ### Claude Tool Use (30+ Structured Tools)
@@ -260,8 +260,8 @@ A Unix socket priority queue daemon handles concurrent requests:
 - **0.5s Transcription** — Whisper tiny.en with Vulkan GPU acceleration
 - **DeepFilterNet + Silero VAD** — Noise floor crushed from 0.2 to 0.004 RMS, automatic speech-end detection. Works in noisy rooms
 - **Auto-Submit** — Just talk and release. Say "draft" or "hold" to prevent submission
-- **Waybar Integration** — Spinner while processing, scrolling response text, click for full details
-- **Text Input Fallback** — Click the Waybar voice icon for rofi text input, right-click to view last output
+- **Shell Bar Integration** — Spinner while processing, scrolling response text, click for full details
+- **Text Input Fallback** — Click the shell bar voice icon for rofi text input, right-click to view last output
 
 ---
 
@@ -285,7 +285,7 @@ A Unix socket priority queue daemon handles concurrent requests:
 
 ## Music Widget
 
-GTK3 floating MPRIS controller, launched by clicking now-playing in Waybar:
+GTK3 floating MPRIS controller, launched by clicking now-playing in the shell bar:
 
 - **Album art** (140px) with progress bar and seek controls
 - **Audio quality badge** — Live stream format from PipeWire (e.g. "24bit / 96kHz"), teal highlight for hi-res (>16bit or >48kHz)
@@ -318,9 +318,9 @@ GTK4/libadwaita app for managing all Hyprland keyboard and mouse bindings:
 
 ## Settings Hub
 
-GTK4/libadwaita central settings panel — a proper `.desktop` app accessible from rofi, Waybar (⚙ icon), or CLI (`costa-settings`). Built-in AI assistance: if a setting fails to apply or you're confused about an option, the local AI and Claude help troubleshoot right there in the panel.
+GTK4/libadwaita central settings panel — a proper `.desktop` app accessible from rofi, the shell bar (⚙ icon), or CLI (`costa-settings`). Built-in AI assistance: if a setting fails to apply or you're confused about an option, the local AI and Claude help troubleshoot right there in the panel.
 
-- **Display** — Monitor detection and layout, Waybar config generation, wallpaper picker (images + video)
+- **Display** — Monitor detection and layout, shell bar config generation, wallpaper picker (images + video)
 - **Security** — Face enrollment and testing (if IR camera detected)
 - **Input** — Touchscreen toggle (if detected), launches keybinds GUI
 - **AI Assistant** — Ollama model management (list/pull), Claude Plan login (Pro/Max, recommended) or API key entry for advanced users (Anthropic/OpenAI) with secure storage (`chmod 600`), voice assistant status
@@ -339,7 +339,7 @@ Voice-activated project context switching: "costa-ai switch to my-project" and t
 - **Fuzzy matching** — Match by name, partial name, or keywords. "switch to music tabs" finds the right project
 - **Full workspace setup** — Switches workspace, launches editor + terminal + browser in configured layout positions, sets environment variables, runs setup commands (e.g., `docker compose up`)
 - **Smart positioning** — Apps placed in master/stack layout based on configured positions (left, right, top-right, etc.)
-- **Waybar module** — One-click project switcher with rofi selection
+- **Shell bar module** — One-click project switcher with rofi selection
 
 ---
 
@@ -402,17 +402,6 @@ Full touch input for laptops and 2-in-1 devices — detected automatically, enab
 
 ---
 
-## Vesktop (Discord)
-
-Native Wayland Discord client, optionally installed during first-boot:
-
-- **Global push-to-talk** — Works across all windows (not possible with browser Discord on Wayland)
-- **Screen sharing with audio** — Full PipeWire integration for screen + audio capture
-- **Vencord plugins** — Extended Discord functionality
-- **Native Wayland** — No XWayland overhead or scaling artifacts
-
----
-
 ## Smart Command Suggestions
 
 Predicts what you want to type next:
@@ -427,61 +416,55 @@ Predicts what you want to type next:
 
 ## SSH Quick-Connect
 
-Waybar module for one-click SSH connections:
+Shell bar module for one-click SSH connections:
 
-- **Waybar integration** — SSH icon in the bar, click to open connection menu
+- **Shell bar integration** — SSH icon in the bar, click to open connection menu
 - **Saved hosts** — Pull from `~/.ssh/config` for instant connection
 
 ---
 
-## Waybar: 16+ Custom Modules
+## AGS Shell: Hover-Reveal Glassmorphic Desktop Shell
 
-The bar is not decoration — it's the control surface for the entire AI layer.
+The desktop shell is built from scratch in AGS v3 (Aylur's GTK Shell) using TypeScript/TSX with reactive state management. It is not a stock bar. It is a purpose-built control surface for the entire AI layer, designed to stay out of your way until you need it.
 
-| Module                    | What It Does                                                              |
+### Hidden by Default
+
+The bar does not sit on screen permanently. A subtle notch trigger (800px wide, 4px tall) sits at the top center of the primary monitor. Hover it, and the full bar slides down with a 300ms animation. Move your cursor away, and it waits 1.2 seconds before retracting, so you can glance at the clock or click a module without the bar snapping shut on you.
+
+### Glassmorphic SCSS Theme
+
+The bar renders with a frosted glass effect: blurred background, subtle transparency, and the full Costa Mediterranean palette as accent colors. Sea blue for active states, foam teal for highlights, terracotta for warnings, sand gold for labels. Dark navy base with warm white text. Every widget follows the same visual language.
+
+### Widgets
+
+| Widget                    | What It Does                                                              |
 | ------------------------- | ------------------------------------------------------------------------- |
-| **now-playing**           | Current track + artist, click to open music widget                        |
-| **PTT button**            | Voice assistant status, click for text input, right-click for last output |
-| **costa-ai**              | GTK4 dropdown: active model, processing status, usage stats, stop button  |
-| **Claude Code launcher**  | Click=launch, middle=dangerous mode, right=model picker, scroll=project   |
-| **Headless preview**      | Click to toggle live preview of Claude's virtual monitor                  |
-| **Claude usage**          | API spend and token count tracker                                         |
-| **Docker status**         | Running container count, click for details                                |
-| **Pomodoro timer**        | Focus timer with notification alerts                                      |
-| **Weather**               | Current conditions from wttr.in                                           |
-| **Git status**            | Branch + dirty state for current project                                  |
-| **SSH quick-connect**     | One-click server connections                                              |
-| **Troubleshooter**        | Run system checks, auto-fix common issues, notify results                 |
-| **System updates**        | Available package update count                                            |
-| **Network speed**         | Live upload/download rates                                                |
-| **Project switcher**      | Click to switch project context via rofi                                  |
-| **Keybinds configurator** | Launch keybinds GUI                                                       |
-| **Settings**              | Launch settings hub                                                       |
-| **Power menu**            | Rofi-based logout/reboot/shutdown                                         |
+| **Workspaces**            | Clickable workspace indicators with active/occupied state                 |
+| **Git status**            | Branch + dirty state for the current project                              |
+| **Now playing**           | Current track + artist, click to open the music widget                    |
+| **Audio**                 | Volume slider and output device control                                   |
+| **PTT voice status**      | Voice assistant state indicator with processing feedback                  |
+| **Clock**                 | Time and date, center-anchored                                            |
+| **Power**                 | Session controls (logout, reboot, shutdown)                               |
 
 ---
 
-## Waybar Template System
+## Monitor-Aware Bar Routing
 
-5 bar types, auto-generated per monitor layout:
+Each monitor gets a purpose-built bar variant. The shell reads connected monitors from Hyprland and assigns the right layout automatically.
 
-| Template              | Purpose           | Modules                                  |
-| --------------------- | ----------------- | ---------------------------------------- |
-| **main-bar**          | Primary monitor   | All 15+ modules — full control surface   |
-| **performance-bar**   | Secondary monitor | GPU, CPU, RAM, disk monitoring           |
-| **minimal-bar**       | Tertiary monitors | Workspaces + clock only                  |
-| **taskbar**           | Window list       | Paired with performance bar              |
-| **claude-screen-bar** | Headless monitor  | Minimal bar for Claude's virtual display |
+| Monitor Type          | Bar Variant                    | What You See                                                    |
+| --------------------- | ------------------------------ | --------------------------------------------------------------- |
+| **Primary**           | Notch trigger + full bar       | Hidden by default. Hover the notch to reveal all widgets        |
+| **Secondary**         | Minimal pill                   | Compact floating pill showing clock and workspace dot indicators |
+| **Portrait**          | Compact performance bar        | Vertical-friendly layout with CPU, GPU, RAM, and temperature    |
+| **Headless (Claude)** | Claude workspace bar           | Minimal bar for Claude's virtual monitor                        |
 
-**Auto-detection logic** (`generate-waybar-config.sh`):
+No config generation scripts. No template stitching. The TypeScript source handles monitor detection at runtime via Hyprland IPC events. Plug in a new display and the correct bar appears. Unplug it and the bar is gone.
 
-- 1 monitor → main bar only
-- 2 monitors → main on primary, performance on secondary
-- 3+ monitors → main on primary, performance on first secondary, minimal on remaining
-- Headless `HEADLESS-1` → claude screen bar (if present)
-- Taskbar goes on same monitor as performance bar
+### macOS-Style Dock
 
-Hardware paths, timezone, and workspace assignments are substituted via placeholders (`__OUTPUT__`, `__PERSISTENT_WORKSPACES__`).
+nwg-dock-hyprland provides an auto-hiding application dock at the bottom of the primary monitor. Pin your favorite apps, see running windows, and launch with a click. The dock hides when not in use, matching the bar's stay-out-of-the-way philosophy.
 
 ---
 
@@ -498,7 +481,7 @@ Hardware paths, timezone, and workspace assignments are substituted via placehol
   - Olive: `#8b9968`
   - Rose: `#b87272`
   - Text: `#d4cfc4`
-- **Everywhere** — Hyprland, Waybar, GTK (adw-gtk3-dark), Qt (Fusion dark), Ghostty, Rofi, Dunst, music widget, keybinds GUI, settings hub
+- **Everywhere** — Hyprland, AGS shell, GTK (adw-gtk3-dark), Qt (Fusion dark), Ghostty, Rofi, Dunst, music widget, keybinds GUI, settings hub
 - **Font** — JetBrains Mono Nerd Font for everything
 - **Icons** — Papirus-Dark + Bibata-Modern-Ice cursor
 - **Live Wallpaper** — mpvpaper with galaxy video, auto-pauses when windows cover 37.5%+ of the desktop
@@ -546,13 +529,12 @@ GTK4 setup wizard with full Costa color palette (runs after first reboot):
 7. **Touchscreen** — If touchscreen detected, enable touch input, on-screen keyboard, and gestures
 8. **Claude Plan login or API keys** — Sign in with Claude Pro/Max plan (recommended, far cheaper than API for most users) or enter API keys for programmatic access. OpenAI key optional. All stored securely
 9. **GitHub authentication** — Optional gh CLI setup
-10. **Vesktop (Discord)** — Optional install with Wayland + push-to-talk
-11. **Voice keybinds** — Choose PTT binding (SUPER+ALT+V default, SUPER+ALT+Space, or custom)
-12. **Package categories** — Base, developer tools, creative apps, gaming
-13. **Audio device selection** — Microphone and speaker from detected devices
-14. **Summary + confirm** — Full config review before applying
+10. **Voice keybinds** — Choose PTT binding (SUPER+ALT+V default, SUPER+ALT+Space, or custom)
+11. **Package categories** — Base, developer tools, creative apps, gaming
+12. **Audio device selection** — Microphone and speaker from detected devices
+13. **Summary + confirm** — Full config review before applying
 
-Then `first-boot.sh` runs: hardware detection, monitor config generation, Waybar assembly from templates, AI system prompt generation, Claude Code knowledge file installation, and config deployment.
+Then `first-boot.sh` runs: hardware detection, monitor config generation, AGS shell deployment, AI system prompt generation, Claude Code knowledge file installation, nwg-dock setup, and config deployment.
 
 **Time from bare metal to fully AI-native desktop: ~15 minutes.**
 
@@ -638,19 +620,19 @@ User Input (voice / text / gesture / workflow trigger)
 | Screen automation | Screenshots ($1.38/task)         | AT-SPI text reading ($0.01/task)                                               |
 | AI workspace      | Shares your screen               | Invisible virtual monitor                                                      |
 | Clipboard         | Passive text buffer              | Auto-classifies content, offers contextual AI actions                          |
-| Music control     | Open Spotify, find the window    | Click Waybar, search library, switch players/playlists, see live audio quality |
+| Music control     | Open Spotify, find the window    | Click shell bar, search library, switch players/playlists, see live audio quality |
 | Keybind config    | Edit hyprland.conf by hand       | Visual GUI with recorder, conflict detection, mouse support                    |
 | Settings          | Scattered config files           | Central hub with live status indicators                                        |
 | Project context   | cd + manual setup                | "switch to my-project" → workspace, editor, terminal, env vars                 |
 | Screenshot        | Save to file                     | Select region → AI analysis + OCR → clipboard                                  |
 | Install software  | Search repos, resolve deps, edit configs | "Install Blender and set it up for GPU rendering"                          |
-| Customize anything | Edit 15+ config files by hand   | "Make the bar transparent and add a CPU monitor"                               |
+| Customize anything | Edit 15+ config files by hand   | "Add a CPU monitor to the shell bar" or just describe it in plain English      |
 | Face unlock       | Separate app, manual config      | Auto-detected IR camera, one toggle in wizard, `sudo howdy add`                |
 | Touchscreen       | Manual driver config             | Auto-detected, on-screen keyboard + gestures configured automatically          |
-| Monitor bars      | Same bar everywhere              | 5 bar types auto-assigned per monitor role                                     |
+| Monitor bars      | Same bar everywhere              | Hover-reveal glassmorphic bar on primary, minimal pills on secondary, auto-routed per monitor |
 | Automation        | Cron jobs, manual scripts        | YAML workflows with AI decision nodes, systemd timers, `costa-flow run`       |
 | Usage tracking    | None                             | SQLite query log with cost tracking, budget limits, usage analytics            |
-| Cancel AI query   | Close the terminal               | `costa-ai --stop` or click stop button in Waybar widget                        |
+| Cancel AI query   | Close the terminal               | `costa-ai --stop` or click stop button in shell bar widget                     |
 | Search your docs  | grep                             | `costa-ai --index ~/docs` then ask questions — RAG-powered retrieval           |
 
 ---

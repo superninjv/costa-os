@@ -17,7 +17,7 @@ costa-ai "what services are using the most memory"
 SUPER+ALT+V    # Claude mode — AI processes and responds
 SUPER+ALT+B    # Type mode — transcribes and types into focused window
 
-# Waybar widget
+# Shell bar
 # Left-click the Costa icon → text input box
 # Right-click → view last response
 ```
@@ -63,7 +63,7 @@ This uses your query history and feedback to improve local vs cloud routing accu
 
 If an answer was wrong or routed to the wrong model:
 
-- Click the report button in the waybar response widget
+- Click the report button in the shell bar response widget
 - Or from CLI:
 ```sh
 costa-ai-report

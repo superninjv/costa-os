@@ -30,5 +30,5 @@ system_prompt: |
   - Check for Costa OS documentation sync requirements (see CLAUDE.md)
 
   You have deep knowledge of:
-  - Costa OS architecture (ai-router, installer, configs, waybar)
+  - Costa OS architecture (ai-router, installer, configs, AGS shell)
   - Linux systems (Arch, Hyprland, PipeWire, systemd)

@@ -8,7 +8,7 @@
 | Ollama LLM inference | ROCm HIP SDK | CUDA toolkit | CPU-only (slow) |
 | Whisper STT | Vulkan (whisper.cpp) | CUDA (whisper.cpp) | CPU fallback (~5x slower) |
 | VRAM Manager | sysfs (`mem_info_vram_*`) | nvidia-smi | Not applicable |
-| GPU monitoring (Waybar) | amdgpu hwmon | nvidia-smi polling | Not applicable |
+| GPU monitoring (shell bar) | amdgpu hwmon | nvidia-smi polling | Not applicable |
 | DeepFilterNet (noise) | CPU (LADSPA plugin) | CPU (LADSPA plugin) | CPU (LADSPA plugin) |
 
 ### Tested Hardware
@@ -34,12 +34,12 @@
 
 ## Monitor Support
 - **Any number of monitors** supported via Hyprland
-- Auto-detection on first boot + Waybar template generation
+- Auto-detection on first boot + AGS shell template generation
 - Tested: 1-monitor, 2-monitor, 3-monitor + headless configurations
 - Portrait rotation supported (transform in hyprland.conf)
 - Virtual headless monitors for AI navigation
 
-### Waybar Bar Assignment
+### Shell Bar Assignment
 | Monitors | Primary | 1st Secondary | Additional | Headless |
 |----------|---------|---------------|------------|----------|
 | 1 | Main bar (all workspaces) | — | — | — |
@@ -56,7 +56,7 @@
 - **Touchpad**: natural scroll, tap-to-click, disable-while-typing
 - **Gestures**: 3-finger workspace swipe
 - **Lid close**: auto-suspend
-- **Battery**: Waybar battery module (auto-detected)
+- **Battery**: Shell bar battery module (auto-detected)
 - **Brightness**: `brightnessctl` keybinds (XF86MonBrightness keys)
 - **Power management**: `power-profiles-daemon` (auto-enabled on laptops)
 - **IR Camera (Face Auth)**: Auto-detected via `v4l2-ctl`. Enables howdy for face unlock at login, sudo, and screen lock. Enrollment via `sudo howdy add` or Settings → Security

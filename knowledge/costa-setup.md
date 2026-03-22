@@ -1,7 +1,7 @@
 ---
-l0: "Configuration locations, Obsidian vault, Costa theme colors, settings app, wallpaper, multi-monitor waybar setup"
-l1_sections: ["Config Locations", "Obsidian Vault", "Costa OS Settings App", "Re-running Setup", "Adding API Keys After Install", "Costa Theme Colors", "Waybar", "Ghostty Terminal", "Rofi Launcher", "Dunst Notifications", "Wallpaper", "Multi-Monitor"]
-tags: [config, setup, theme, colors, settings, api-keys, waybar, wallpaper, ghostty, rofi, dunst, obsidian, notes]
+l0: "Configuration locations, Obsidian vault, Costa theme colors, settings app, wallpaper, multi-monitor AGS shell setup"
+l1_sections: ["Config Locations", "Obsidian Vault", "Costa OS Settings App", "Re-running Setup", "Adding API Keys After Install", "Costa Theme Colors", "AGS Shell", "Ghostty Terminal", "Rofi Launcher", "Dunst Notifications", "Wallpaper", "Multi-Monitor"]
+tags: [config, setup, theme, colors, settings, api-keys, ags, shell, wallpaper, ghostty, rofi, dunst, obsidian, notes]
 ---
 # Costa OS Setup & Configuration
 
@@ -14,7 +14,7 @@ tags: [config, setup, theme, colors, settings, api-keys, waybar, wallpaper, ghos
 - Obsidian vault: ~/notes/ (Claude's persistent memory, connected via MCP)
 - Hyprland: ~/.config/hypr/hyprland.conf
 - Monitor overrides: ~/.config/hypr/monitors.conf
-- Waybar: ~/.config/waybar/config and style.css
+- AGS shell: ~/.config/ags/ (TypeScript/TSX + SCSS)
 - Ghostty: ~/.config/ghostty/config
 - Rofi: ~/.config/rofi/config.rasi
 - Dunst: ~/.config/dunst/dunstrc
@@ -42,13 +42,13 @@ Claude's persistent memory lives at `~/notes/`. Connected to Claude Code via the
 ## Costa OS Settings App
 Open from any of these:
 - Rofi/app launcher: search "Costa OS Settings"
-- Waybar: click the ⚙ gear icon (next to power button)
+- AGS shell: right-click the settings icon in the bar
 - Terminal: `costa-settings`
 
 The settings app provides buttons for:
 - Face authentication enrollment and testing (if IR camera detected)
 - Touchscreen configuration (if touchscreen detected)
-- Monitor detection and waybar regeneration
+- Monitor detection and shell bar regeneration
 - Wallpaper picker (images + video)
 - Keybinds GUI launcher
 - Ollama model management (list/pull)
@@ -109,10 +109,10 @@ The "Costa" palette is a Mediterranean coastal dark theme:
 - Lavender (purple): #9884b8
 - Rose (error/urgent): #b87272
 
-## Waybar
-Restart: `killall waybar; waybar &disown`
-Config: ~/.config/waybar/config (JSON — modules and layout)
-Style: ~/.config/waybar/style.css (CSS — colors and sizing)
+## AGS Shell (Desktop Bar)
+Restart: `ags quit; ags run -d ~/.config/ags`
+Config: ~/.config/ags/ (TypeScript/TSX components + SCSS styling)
+The AGS shell replaces Waybar with a reactive, hover-reveal desktop bar built on GTK4.
 
 ## Ghostty Terminal
 Config: ~/.config/ghostty/config
@@ -136,10 +136,5 @@ Change via `costa-settings` → Display → Wallpaper, or edit ~/.config/costa/s
 All floating panels, notifications, and settings dialogs are pinned to the primary monitor
 via Hyprland window rules (using the primary monitor name). They never pop up on the wrong screen.
 
-Waybar configs are auto-generated per monitor layout:
-```bash
-# Regenerate after changing monitors
-costa-settings   # click "Waybar Layout" under Display
-# Or from terminal:
-~/.config/costa/scripts/generate-waybar-config.sh
-```
+The AGS shell detects monitors dynamically — no manual regeneration needed.
+Monitors that come online late (HDMI EDID handshake) get their widgets created automatically.

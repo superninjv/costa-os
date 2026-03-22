@@ -111,22 +111,6 @@
     "source": "shipped"
   },
   {
-    "window_class": "vesktop",
-    "entry_point": "cli-anything-vesktop",
-    "package": "cli-anything-vesktop",
-    "version": "0.1.0",
-    "capabilities": ["status", "channel", "voice", "settings"],
-    "query_map": {
-      "status": "status --json",
-      "channel": "channel current --json",
-      "server": "channel current --json",
-      "voice": "voice status --json",
-      "settings": "settings get --json"
-    },
-    "installed": false,
-    "source": "shipped"
-  },
-  {
     "window_class": "steam",
     "entry_point": "cli-anything-steam",
     "package": "cli-anything-steam",

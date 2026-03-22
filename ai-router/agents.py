@@ -110,7 +110,7 @@ class ResourceQueue:
             self._write_status("idle")
 
     def _write_status(self, state: str):
-        """Write queue state for external tools (waybar, status command)."""
+        """Write queue state for external tools (shell bar, status command)."""
         try:
             self._status_path.write_text(json.dumps({
                 "state": state,
@@ -496,7 +496,7 @@ Execute this task now. Be concise in your response. End with a one-line summary.
             f.write(f"Result: {task.result[:500]}\n")
 
     def _save_status(self):
-        """Write current agent/queue status to JSON for waybar."""
+        """Write current agent/queue status to JSON for shell bar."""
         try:
             status = {
                 "agents": {},

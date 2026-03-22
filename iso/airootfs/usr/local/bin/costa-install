@@ -487,7 +487,7 @@ PACSTRAP_FLAGS="-K"
 
 PACSTRAP_PACKAGES=(base linux linux-firmware base-devel
     networkmanager grub efibootmgr
-    hyprland ghostty zsh waybar dunst rofi-wayland ydotool
+    hyprland ghostty zsh gtk4-layer-shell dart-sass typescript dunst rofi-wayland ydotool
     pipewire pipewire-alsa pipewire-pulse wireplumber
     firefox thunar gvfs git git-delta lazygit zellij docker docker-compose
     nodejs npm
@@ -642,7 +642,7 @@ arch-chroot /mnt ln -sf /usr/share/costa-os/installer/costa-settings /usr/local/
 
 # Copy default configs to user skeleton
 SKEL="$USER_HOME"
-mkdir -p "$SKEL/.config/hypr" "$SKEL/.config/waybar/scripts" "$SKEL/.config/waybar/templates" \
+mkdir -p "$SKEL/.config/hypr" "$SKEL/.config/ags" \
          "$SKEL/.config/ghostty" "$SKEL/.config/rofi" "$SKEL/.config/dunst" \
          "$SKEL/.config/costa/knowledge" "$SKEL/.config/costa/scripts" \
          "$SKEL/.local/bin" "$SKEL/.local/share/applications" \
@@ -653,28 +653,7 @@ cp /usr/share/costa-os/configs/dunst/dunstrc "$SKEL/.config/dunst/" 2>/dev/null 
 cp /usr/share/costa-os/configs/ghostty/config "$SKEL/.config/ghostty/" 2>/dev/null || true
 cp /usr/share/costa-os/configs/rofi/config.rasi "$SKEL/.config/rofi/" 2>/dev/null || true
 
-# Waybar — copy style, templates, and generate a working config
-cp /usr/share/costa-os/configs/waybar/style.css "$SKEL/.config/waybar/" 2>/dev/null || true
-cp /usr/share/costa-os/configs/waybar/templates/*.jsonc "$SKEL/.config/waybar/templates/" 2>/dev/null || true
-
-# Copy waybar scripts
-if [ -d /usr/share/costa-os/configs/waybar/scripts ]; then
-    cp /usr/share/costa-os/configs/waybar/scripts/*.sh "$SKEL/.config/waybar/scripts/" 2>/dev/null || true
-    # Voice status scripts go in waybar root (referenced without scripts/ prefix)
-    for f in voice-claude-status.sh voice-claude-viewer.sh ptt-status.sh; do
-        [ -f "$SKEL/.config/waybar/scripts/$f" ] && cp "$SKEL/.config/waybar/scripts/$f" "$SKEL/.config/waybar/"
-    done
-    chmod +x "$SKEL/.config/waybar/scripts/"*.sh "$SKEL/.config/waybar/"*.sh 2>/dev/null || true
-fi
-
-# Generate a working single-bar config from template (first-boot will regenerate per-monitor)
-if [ -f /usr/share/costa-os/configs/waybar/templates/main-bar.jsonc ]; then
-    sed -e 's/"output": "__OUTPUT__",//' \
-        -e 's/"persistent-workspaces": "__PERSISTENT_WORKSPACES__"/"persistent-workspaces": {"1":[],"2":[],"3":[],"4":[]}/' \
-        -e 's/"timezone": "__TIMEZONE__",/"timezone": "",/' \
-        /usr/share/costa-os/configs/waybar/templates/main-bar.jsonc \
-        > "$SKEL/.config/waybar/config"
-fi
+# AGS shell is copied below (after knowledge base)
 
 # Copy knowledge base
 cp /usr/share/costa-os/knowledge/*.md "$SKEL/.config/costa/knowledge/" 2>/dev/null || true
@@ -683,9 +662,7 @@ cp /usr/share/costa-os/knowledge/*.md "$SKEL/.config/costa/knowledge/" 2>/dev/nu
 mkdir -p "$SKEL/.config/costa/agents"
 cp /usr/share/costa-os/configs/costa/agents/*.yaml "$SKEL/.config/costa/agents/" 2>/dev/null || true
 
-# Waybar generator script
-cp /usr/share/costa-os/scripts/generate-waybar-config.sh "$SKEL/.config/costa/scripts/" 2>/dev/null || true
-chmod +x "$SKEL/.config/costa/scripts/generate-waybar-config.sh" 2>/dev/null || true
+# (Waybar generator removed — AGS shell handles bar config natively)
 
 # Copy all shipped wallpapers
 mkdir -p "$SKEL/Pictures/Wallpapers"
@@ -756,7 +733,7 @@ chmod +x "$SKEL/.config/hypr/first-boot.sh"
 # Add first-boot trigger to hyprland.conf
 echo "" >> "$SKEL/.config/hypr/hyprland.conf"
 echo "# First-boot setup (removes itself after running)" >> "$SKEL/.config/hypr/hyprland.conf"
-echo 'exec-once = bash -c "if [ ! -f ~/.config/costa/config.json ]; then FB=~/.config/hypr/first-boot.sh; if command -v ghostty &>/dev/null; then ghostty -e \$FB; elif command -v foot &>/dev/null; then foot \$FB; elif command -v kitty &>/dev/null; then kitty \$FB; else alacritty -e \$FB; fi; fi"' >> "$SKEL/.config/hypr/hyprland.conf"
+echo 'exec-once = bash -c "if [ ! -f ~/.config/costa/config.json ]; then bash ~/.config/hypr/first-boot.sh & fi"' >> "$SKEL/.config/hypr/hyprland.conf"
 
 # Fix ownership
 arch-chroot /mnt chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"

@@ -35,7 +35,7 @@
 | Local LLM (Ollama) | ROCm | CUDA | CPU-only |
 | Whisper (STT) | Vulkan GPU | CUDA GPU | CPU fallback |
 | VRAM Manager | sysfs monitoring | nvidia-smi | N/A |
-| GPU Waybar modules | amdgpu hwmon | nvidia-smi | N/A |
+| GPU shell bar modules | amdgpu hwmon | nvidia-smi | N/A |
 
 ### GPU Driver Installation
 GPU drivers are NOT included in the ISO — they're installed by `first-boot.sh` based on detected hardware:
@@ -78,7 +78,7 @@ All dependencies are installed automatically. For reference:
 
 ### Core
 - Arch Linux (base, base-devel, linux, linux-firmware)
-- Hyprland (compositor), Waybar (bar), Ghostty (terminal)
+- Hyprland (compositor), AGS shell (bar), Ghostty (terminal)
 - PipeWire + WirePlumber (audio)
 - Python 3.12+ (AI router, settings, keybinds GUI)
 - GTK4 + libadwaita (GUI apps)
@@ -91,7 +91,6 @@ All dependencies are installed automatically. For reference:
 
 ### Optional
 - Docker + docker-compose (dev tools)
-- Vesktop (Discord with Wayland support)
 - Creative suite: GIMP, Inkscape, Krita, REAPER, OBS Studio
 - Howdy (AUR) — face authentication (requires IR camera)
 - squeekboard — on-screen keyboard (requires touchscreen)

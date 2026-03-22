@@ -8,7 +8,7 @@ tags: [keybind, shortcut, hotkey, bind, mouse, button, remap, gui, configurator,
 
 ## Keybind Configurator GUI
 Open the graphical keybind & mouse configurator:
-- Click the 󰌌 icon in waybar (left-click toggles open/close)
+- Click the 󰌌 icon in the shell bar (left-click toggles open/close)
 - Or run: `costa-keybinds-gui`
 
 The GUI has two tabs:

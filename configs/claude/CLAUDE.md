@@ -15,7 +15,7 @@ When the user says "install firefox", run the install. When they say "my audio i
 - **Use `system_command`** for package installs, service management, and config changes — don't print shell commands for the user to copy-paste.
 - **NEVER use `screenshot` for reading app content.** Use CLI wrappers first, then `read_window` (AT-SPI) as fallback. `screenshot` is only for visual layout verification (themes, pixel alignment, rendering bugs).
 - **Check `hyprctl configerrors`** after every Hyprland config edit. If there are errors, fix them before moving on.
-- **Restart services after config changes**: Waybar (`killall waybar; waybar &disown`), Dunst (`killall dunst; dunst &disown`), Hyprland (`hyprctl reload`).
+- **Restart services after config changes**: AGS shell (`ags quit; ags run &disown`), Dunst (`killall dunst; dunst &disown`), Hyprland (`hyprctl reload`).
 - **Read knowledge files before answering** — they contain Costa OS-specific information that overrides generic Linux knowledge. The local Ollama model uses these same files, so they are the single source of truth.
 
 ## NEVER Do This
@@ -39,7 +39,7 @@ When the user asks about any of these topics, **read the corresponding knowledge
 | Audio issues | `costa://knowledge/pipewire-audio` | Volume, mic, speaker, crackling, audio device problems |
 | Window management | `costa://knowledge/hyprland` | hyprctl, workspaces, monitors, window rules, floating, tiling |
 | Keybinds | `costa://knowledge/keybinds` | Keyboard shortcuts, mouse buttons, bind syntax, remapping |
-| Theme/Customization | `costa://knowledge/customization` | Colors, wallpaper, waybar modules, fonts, window decorations |
+| Theme/Customization | `costa://knowledge/customization` | Colors, wallpaper, shell bar modules, fonts, window decorations |
 | Config locations | `costa://knowledge/costa-setup` | Where configs live, settings app, API keys, theme colors |
 | Voice assistant | `costa://knowledge/voice-assistant` | PTT, whisper, speech recognition, model routing |
 | AI router | `costa://knowledge/ai-router` | How costa-ai routes queries, VRAM management, model tiers |
@@ -119,8 +119,8 @@ hyprctl configerrors              # Check for config errors (do this after every
 hyprctl clients                   # List all windows
 hyprctl monitors                  # List monitors and workspaces
 
-# Waybar
-killall waybar; waybar &disown    # Restart after config changes
+# AGS Shell
+ags quit; ags run &disown         # Restart after config changes
 
 # Dunst
 killall dunst; dunst &disown      # Restart after config changes

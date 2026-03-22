@@ -19,7 +19,7 @@ Costa OS supports Windows Hello-style face unlock using **Howdy** — a Linux fa
 
 ### How do I set up face authentication?
 **Option 1: Settings Hub**
-1. Open Settings Hub (click gear icon in waybar, or run `costa-settings`)
+1. Open Settings Hub (click gear icon in the shell bar, or run `costa-settings`)
 2. Go to Security → Face Authentication
 3. Click "Enroll Face"
 4. Position your face in front of the IR camera

@@ -1,7 +1,7 @@
 ---
 l0: "Project management: switch projects, configure workspaces, auto-launch apps, project configs"
-l1_sections: ["Switching Projects", "Project Config Format", "Creating a Project Config", "Waybar Project Switcher", "Fuzzy Matching"]
-tags: [project, workspace, switch, config, management, apps, layout]
+l1_sections: ["Switching Projects", "Project Config Format", "Creating a Project Config", "Shell Bar Project Switcher", "Fuzzy Matching"]
+tags: [project, workspace, switch, config, management, apps, layout, shell-bar]
 ---
 # Costa OS Project Management
 
@@ -62,11 +62,11 @@ $EDITOR ~/.config/costa/projects/myproject.yaml
 costa-ai "create a project config for ~/projects/myapp with VS Code and a terminal"
 ```
 
-## Waybar Project Switcher
+## Shell Bar Project Switcher
 
-- **Left-click** the folder icon in waybar → opens project list
+- **Left-click** the folder icon in the shell bar → opens project list
 - **Scroll** on the folder icon → cycle through recent projects
-- Active project name shows in waybar
+- Active project name shows in the shell bar
 
 ## Fuzzy Matching
 

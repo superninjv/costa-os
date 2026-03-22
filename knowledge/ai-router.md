@@ -35,7 +35,7 @@ costa-ai --preset code                       # routing preset (code/research/fas
 
 ## Routing Patterns
 - **Window management**: "move firefox to workspace 2", "tile editor and terminal side by side"
-- **File search**: "find the waybar config", "where's the router script"
+- **File search**: "find the AGS config", "where's the router script"
 - **Project switch**: "switch to my-app", "open the website project"
 - **Local model**: general questions, system queries, package info
 - **Claude Haiku + web**: news, scores, trending, real-time data
@@ -80,7 +80,7 @@ Tiered system prompts in `~/.config/costa/system-prompts/`:
 - `system-ai-14b.md` — ~80 lines, full prompt + Costa features + 5 examples
 
 ## Report to Claude (Feedback Loop)
-When the local model gives a wrong answer, click the 󰚑 icon in waybar to report it.
+When the local model gives a wrong answer, click the 󰚑 icon in the shell bar to report it.
 This sends the query + response to Claude Haiku, which:
 1. Identifies the correct answer
 2. Generates a patch for the relevant knowledge file
@@ -138,7 +138,7 @@ All queries are logged to `~/.config/costa/costa.db`:
 ## Cancel Mechanism
 Long-running queries can be stopped:
 - `costa-ai --stop` — sends SIGTERM via PID file at `/tmp/costa-ai.pid`
-- Waybar costa-ai widget has a stop button during processing
+- Shell bar costa-ai widget has a stop button during processing
 - Clean teardown of model inference and API calls
 
 ## Customization

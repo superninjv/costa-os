@@ -6,15 +6,16 @@ A Linux distribution built on Arch Linux and Hyprland. Claude Code ships with fu
 
 ## What This Repo Contains
 
-This is the open-source intelligence layer that powers Costa OS. It includes the query router, knowledge base, MCP server, voice assistant pipeline, Waybar configs, and system agents. You can use these components on any existing Arch Linux + Hyprland setup, or download the full OS from [synoros.io/costa-os](https://synoros.io/costa-os).
+This is the open-source intelligence layer that powers Costa OS. It includes the query router, knowledge base, MCP server, voice assistant pipeline, AGS desktop shell, and system agents. You can use these components on any existing Arch Linux + Hyprland setup, or download the full OS from [synoros.io/costa-os](https://synoros.io/costa-os).
 
 ```
 ai-router/          Query router, ML classifier, auto-escalation, agents, tools
-configs/            Waybar templates, Hyprland defaults, Ghostty, Rofi, Dunst (Costa theme)
+configs/            Hyprland defaults, Ghostty, Rofi, Dunst (Costa theme)
 knowledge/          30+ topic-specific files injected into the local model at query time
 mcp-server/         Claude Code MCP server with 30+ system tools
 voice-assistant/    Push-to-talk pipeline: DeepFilterNet + Silero VAD + Whisper
-scripts/            Waybar generator, VRAM manager, wallpaper, theme tools
+scripts/            VRAM manager, wallpaper, theme tools
+shell/              AGS v3 desktop shell (hover-reveal bar, widgets)
 branding/           Wallpapers and logo
 docs/               User guide, terms, privacy policy, hardware compatibility
 packages/           Package lists by category
