@@ -541,12 +541,12 @@ detect_touchscreen() {
     HAS_TOUCHSCREEN=false
     TOUCHSCREEN_NAME=""
 
-    if ! command -v libinput &>/dev/null; then
+    if ! command -v libinput &>/dev/null && ! [ -x /usr/bin/libinput ]; then
         echo "  libinput not found, skipping touchscreen detection"
         return
     fi
 
-    TOUCH_DEV=$(libinput list-devices 2>/dev/null | awk '
+    TOUCH_DEV=$( (sudo -n libinput list-devices 2>/dev/null || libinput list-devices 2>/dev/null) | awk '
         /Device:/ { name=$0; sub(/.*Device: */, "", name) }
         /Capabilities:.*touch/ { print name; exit }
     ')
@@ -556,7 +556,7 @@ detect_touchscreen() {
         TOUCHSCREEN_NAME="$TOUCH_DEV"
         echo "  Touchscreen found: $TOUCHSCREEN_NAME"
         echo "HAS_TOUCHSCREEN=true" >> "$COSTA_DIR/gpu.conf"
-        echo "TOUCHSCREEN_NAME=$TOUCHSCREEN_NAME" >> "$COSTA_DIR/gpu.conf"
+        echo "TOUCHSCREEN_NAME=\"$TOUCHSCREEN_NAME\"" >> "$COSTA_DIR/gpu.conf"
     else
         echo "  No touchscreen detected"
     fi
@@ -1254,8 +1254,8 @@ if [ -f "$COSTA_DIR/config.json" ]; then
     SETUP_GH=$(jq -r '.setup_github // false' "$COSTA_DIR/config.json")
     if [ "$SETUP_GH" = "true" ] && command -v gh &>/dev/null; then
         echo "→ GitHub authentication..."
-        echo "  Running: gh auth login"
-        gh auth login || true
+        echo "  Run 'gh auth login' when you're ready to authenticate with GitHub."
+        echo "  (Skipping interactive login during first-boot to avoid blocking)"
     fi
 fi
 
