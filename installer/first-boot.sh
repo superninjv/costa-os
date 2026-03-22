@@ -6,6 +6,12 @@
 # NOTE: do NOT use set -e here — detection functions may fail in VMs
 # and we must always reach setup_claude_code() at the end
 
+# Log everything to file AND terminal so we can debug crashes
+FIRST_BOOT_LOG="/tmp/costa-first-boot.log"
+exec > >(tee -a "$FIRST_BOOT_LOG") 2>&1
+
+# No ERR trap — individual failures are handled inline, script must always complete
+
 COSTA_DIR="$HOME/.config/costa"
 HYPR_DIR="$HOME/.config/hypr"
 WAYBAR_DIR="$HOME/.config/waybar"
@@ -50,8 +56,8 @@ wifi_setup() {
     if ! nmcli radio wifi 2>/dev/null | grep -q "enabled"; then
         echo "  ⚠ No WiFi adapter found."
         echo "  Connect an ethernet cable and press Enter to retry,"
-        echo "  or type 'skip' to continue offline."
-        read -r answer
+        echo "  or type 'skip' to continue offline. (auto-skip in 30s)"
+        read -r -t 30 answer || answer="skip"
         if [ "$answer" = "skip" ]; then
             echo "  Continuing offline."
             echo ""
@@ -246,6 +252,131 @@ wifi_setup() {
 
 wifi_setup
 
+# ─── Early Claude Code install + login ────────────────────────
+# P0: The user MUST get a Claude login prompt ASAP after first boot.
+# Install the CLI and launch login terminal NOW, before hardware detection
+# and the wizard. Full MCP/commands config happens later in setup_claude_code().
+early_claude_login() {
+    echo "→ Installing Claude Code CLI (for login prompt)..."
+
+    if command -v claude &>/dev/null; then
+        echo "  ✓ Claude Code already installed"
+    elif ! check_internet; then
+        echo "  ⚠ No internet — Claude Code install deferred to later"
+        return
+    elif command -v npm &>/dev/null; then
+        # Try global install with sudo (non-interactive)
+        if sudo -n npm install -g @anthropic-ai/claude-code 2>/dev/null; then
+            echo "  ✓ Claude Code installed globally"
+        else
+            # sudo requires password — install to user prefix instead
+            echo "  Installing to user prefix (~/.local)..."
+            mkdir -p "$HOME/.local/lib/npm"
+            npm config set prefix "$HOME/.local"
+            npm install -g @anthropic-ai/claude-code 2>&1 | tail -3
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
+    else
+        echo "  ⚠ npm not found — Claude Code install deferred to later"
+        return
+    fi
+
+    if ! command -v claude &>/dev/null; then
+        echo "  ⚠ Claude Code not available after install attempt"
+        return
+    fi
+
+    # Ensure Firefox is default browser for OAuth
+    if command -v firefox &>/dev/null; then
+        xdg-settings set default-web-browser firefox.desktop 2>/dev/null || true
+    fi
+
+    # Create the login script
+    local CLAUDE_LOGIN="$HOME/.config/costa/scripts/claude-login.sh"
+    mkdir -p "$(dirname "$CLAUDE_LOGIN")"
+    cat > "$CLAUDE_LOGIN" << 'LOGINEOF'
+#!/bin/bash
+# Ensure user-local npm bin is in PATH (claude may be installed there)
+export PATH="$HOME/.local/bin:$PATH"
+clear
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║           Claude Code — First-Time Login            ║"
+echo "╠══════════════════════════════════════════════════════╣"
+echo "║                                                     ║"
+echo "║  Claude Code needs authentication for AI features.  ║"
+echo "║                                                     ║"
+echo "║  Options:                                           ║"
+echo "║    1. Anthropic Plan (recommended)                  ║"
+echo "║       Free with Pro/Team/Enterprise subscription.   ║"
+echo "║       Uses browser-based OAuth login.               ║"
+echo "║                                                     ║"
+echo "║    2. API Key (pay-per-use)                         ║"
+echo "║       Set ANTHROPIC_API_KEY in ~/.config/costa/env  ║"
+echo "║                                                     ║"
+echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+echo -n "Log in now? (Y/n): "
+read -r choice
+if [ "${choice:-y}" != "n" ] && [ "${choice:-y}" != "N" ]; then
+    echo ""
+    echo "Starting Claude Code — complete the browser login, then type /exit"
+    echo ""
+    claude --no-update-check
+fi
+# Remove the autostart trigger after first run
+rm -f ~/.config/hypr/costa-claude-login.conf
+echo ""
+echo "You can always log in later by running: claude"
+echo "Press Enter to close..."
+read
+LOGINEOF
+    chmod +x "$CLAUDE_LOGIN"
+
+    # Find a working terminal emulator (ghostty preferred, with fallbacks)
+    local TERM_CMD=""
+    for term in ghostty foot kitty alacritty; do
+        if command -v "$term" &>/dev/null; then
+            TERM_CMD="$term"
+            break
+        fi
+    done
+
+    if [ -z "$TERM_CMD" ]; then
+        echo "  ⚠ No terminal emulator found for login prompt"
+        return
+    fi
+
+    # Build the terminal exec command (each terminal has different -e syntax)
+    local EXEC_CMD=""
+    case "$TERM_CMD" in
+        ghostty)    EXEC_CMD="ghostty -e $CLAUDE_LOGIN" ;;
+        foot)       EXEC_CMD="foot $CLAUDE_LOGIN" ;;
+        kitty)      EXEC_CMD="kitty $CLAUDE_LOGIN" ;;
+        alacritty)  EXEC_CMD="alacritty -e $CLAUDE_LOGIN" ;;
+    esac
+
+    # Launch login terminal if Hyprland is running
+    if command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null 2>&1; then
+        echo "  → Launching Claude Code login terminal ($TERM_CMD)..."
+        hyprctl dispatch exec "$EXEC_CMD" 2>/dev/null || true
+        # Mark that we already launched — setup-claude-code.sh will skip the launch
+        touch /tmp/costa-claude-login-launched
+    else
+        # Hyprland not running (shouldn't happen since first-boot runs from exec-once)
+        # Create autostart as fallback
+        local CLAUDE_AUTOSTART="$HOME/.config/hypr/costa-claude-login.conf"
+        echo "exec-once = $EXEC_CMD" > "$CLAUDE_AUTOSTART"
+        if ! grep -q "costa-claude-login.conf" "$HOME/.config/hypr/hyprland.conf" 2>/dev/null; then
+            echo "" >> "$HOME/.config/hypr/hyprland.conf"
+            echo "# Claude Code first-login (auto-removes after use)" >> "$HOME/.config/hypr/hyprland.conf"
+            echo "source = ~/.config/hypr/costa-claude-login.conf" >> "$HOME/.config/hypr/hyprland.conf"
+        fi
+        echo "  ✓ Claude login will prompt on next Hyprland session"
+    fi
+}
+
+early_claude_login
+
 # ─── Detect monitors ─────────────────────────────────────────
 detect_monitors() {
     echo "→ Detecting monitors..."
@@ -328,6 +459,13 @@ detect_gpu() {
         GPU_NAME=$(lspci | grep -i "VGA\|3D" | grep -i Intel | head -1 | sed 's/.*: //')
         echo "  Intel GPU: $GPU_NAME"
         VRAM_GB=0
+    else
+        # VM or unknown GPU (Virtio, QEMU, VMware, etc.)
+        GPU_VENDOR=""
+        GPU_NAME=$(lspci | grep -i "VGA\|3D" | head -1 | sed 's/.*: //' || echo "Unknown")
+        GPU_NAME="${GPU_NAME:-Unknown (VM)}"
+        VRAM_GB=0
+        echo "  No discrete GPU detected: $GPU_NAME"
     fi
 
     # Save GPU config for waybar scripts and ollama-manager
@@ -403,6 +541,11 @@ detect_touchscreen() {
     HAS_TOUCHSCREEN=false
     TOUCHSCREEN_NAME=""
 
+    if ! command -v libinput &>/dev/null; then
+        echo "  libinput not found, skipping touchscreen detection"
+        return
+    fi
+
     TOUCH_DEV=$(libinput list-devices 2>/dev/null | awk '
         /Device:/ { name=$0; sub(/.*Device: */, "", name) }
         /Capabilities:.*touch/ { print name; exit }
@@ -467,26 +610,36 @@ apply_timezone() {
     else
         TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
     fi
-    echo "→ Timezone: $TZ"
+    echo "→ Setting timezone: $TZ"
+    sudo timedatectl set-timezone "$TZ" 2>/dev/null || \
+        sudo ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime 2>/dev/null || true
 }
 
 # ─── Install and set up Claude Code ──────────────────────────
 setup_claude_code() {
-    echo "→ Installing and configuring Claude Code..."
+    echo "→ Configuring Claude Code (MCP server, commands, CLAUDE.md)..."
 
-    # Install Claude Code if not present
+    # CLI should already be installed by early_claude_login().
+    # If not (e.g., early install failed), try again.
     if ! command -v claude &>/dev/null; then
+        echo "  Claude Code CLI not found — retrying install..."
         if command -v npm &>/dev/null; then
-            echo "  Installing Claude Code..."
-            npm install -g @anthropic-ai/claude-code 2>&1 | tail -3
+            if sudo -n npm install -g @anthropic-ai/claude-code 2>/dev/null; then
+                echo "  ✓ Claude Code installed globally"
+            else
+                mkdir -p "$HOME/.local/lib/npm"
+                npm config set prefix "$HOME/.local"
+                npm install -g @anthropic-ai/claude-code 2>&1 | tail -3
+                export PATH="$HOME/.local/bin:$PATH"
+            fi
         else
             echo "  ⚠ npm not found — cannot install Claude Code"
-            echo "    Install manually: sudo pacman -S nodejs npm && npm install -g @anthropic-ai/claude-code"
             return
         fi
     fi
 
-    # Run the full setup (MCP server, commands, CLAUDE.md)
+    # Run the full setup (MCP server, commands, CLAUDE.md, hooks)
+    # Login terminal was already launched by early_claude_login() — setup script will skip it
     SETUP_SCRIPT="/usr/share/costa-os/scripts/setup-claude-code.sh"
     if [ -f "$SETUP_SCRIPT" ]; then
         bash "$SETUP_SCRIPT"
@@ -617,7 +770,6 @@ detect_cpu_temp
 detect_ir_camera
 detect_touchscreen
 generate_system_prompt
-apply_timezone
 
 # ─── Run installer wizard if config doesn't exist ─────────────
 if [ ! -f "$COSTA_DIR/config.json" ]; then
@@ -625,6 +777,9 @@ if [ ! -f "$COSTA_DIR/config.json" ]; then
     echo "→ Launching Costa OS setup wizard..."
     python3 /usr/share/costa-os/installer/wizard.py
 fi
+
+# Apply timezone AFTER wizard (so config.json exists with user's choice)
+apply_timezone
 
 # ─── Set up Claude Code system knowledge ─────────────────────
 setup_claude_code
@@ -692,9 +847,14 @@ if [ -d "$COSTA_SHARE/cli-wrappers" ]; then
                 mpv)        command -v mpv &>/dev/null || continue ;;
                 strawberry) command -v strawberry &>/dev/null || continue ;;
                 steam)      command -v steam &>/dev/null || continue ;;
-                vesktop)    command -v vesktop &>/dev/null || continue ;;
+
             esac
-            pip install --user -e "$wrapper_dir" 2>&1 | tail -1 || true
+            # Use uv if available (fast), fall back to pip with --break-system-packages
+            if command -v uv &>/dev/null; then
+                uv pip install --system --break-system-packages -e "$wrapper_dir" 2>&1 | tail -1 || true
+            else
+                pip install --user --break-system-packages -e "$wrapper_dir" 2>&1 | tail -1 || true
+            fi
             INSTALLED_COUNT=$((INSTALLED_COUNT + 1))
         fi
     done
@@ -713,12 +873,15 @@ refresh_registry()
 " 2>/dev/null || true
 fi
 
-# ─── Install AUR packages ────────────────────────────────────
+# ─── Install AUR packages (fallback — primary install is in costa-install) ──
 if command -v yay &>/dev/null; then
     echo "→ Checking for AUR packages..."
     AUR_PKGS=()
 
-    # Read AUR packages from config.json if the field exists
+    # Core AUR packages — only install if not already present
+    command -v ags &>/dev/null || AUR_PKGS+=(aylurs-gtk-shell libastal-hyprland-git libastal-mpris-git libastal-battery-git)
+
+    # Read additional AUR packages from config.json if the field exists
     if [ -f "$COSTA_DIR/config.json" ]; then
         while read pkg; do
             [ -n "$pkg" ] && AUR_PKGS+=("$pkg")
@@ -735,12 +898,22 @@ if command -v yay &>/dev/null; then
 
     if [ ${#AUR_PKGS[@]} -gt 0 ]; then
         echo "  Installing AUR packages: ${AUR_PKGS[*]}"
-        yay -S --noconfirm "${AUR_PKGS[@]}" 2>&1 | tail -3 || true
+        yay -S --noconfirm --answerdiff=None --answerclean=None --removemake "${AUR_PKGS[@]}" 2>&1 | tail -3 || true
     else
         echo "  No AUR packages to install"
     fi
 else
     echo "→ yay not installed, skipping AUR packages"
+fi
+
+# ─── Link AGS shell dependencies if needed ───────────────────
+if [ -f "$HOME/.config/ags/package.json" ] && [ ! -L "$HOME/.config/ags/node_modules/ags" ]; then
+    echo "→ Linking AGS shell dependencies..."
+    mkdir -p "$HOME/.config/ags/node_modules"
+    ln -sf /usr/share/ags/js "$HOME/.config/ags/node_modules/ags" 2>/dev/null || true
+    [ -d /usr/share/ags/js/node_modules/gnim ] && \
+        ln -sf /usr/share/ags/js/node_modules/gnim "$HOME/.config/ags/node_modules/gnim" 2>/dev/null || true
+    echo "  ✓ AGS modules linked"
 fi
 
 # ─── Install optional package tiers ──────────────────────────
@@ -775,7 +948,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
             fi
             if [ ${#AUR_DEV_PKGS[@]} -gt 0 ] && command -v yay &>/dev/null; then
                 echo "  AUR: ${AUR_DEV_PKGS[*]}"
-                yay -S --noconfirm "${AUR_DEV_PKGS[@]}" 2>&1 | tail -3 || true
+                yay -S --noconfirm --answerdiff=None --answerclean=None --removemake "${AUR_DEV_PKGS[@]}" 2>&1 | tail -3 || true
             fi
         fi
 
@@ -864,7 +1037,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
     if [ "$ENABLE_FACE" = "true" ] && [ -n "$IR_CAMERA" ]; then
         echo "→ Setting up face authentication (howdy)..."
         if command -v yay &>/dev/null; then
-            yay -S --noconfirm howdy 2>&1 | tail -3 || true
+            yay -S --noconfirm --answerdiff=None --answerclean=None --removemake howdy 2>&1 | tail -3 || true
 
             # Configure howdy to use detected IR camera
             HOWDY_CONF="/lib/security/howdy/config.ini"
@@ -950,7 +1123,7 @@ TOUCHEOF
         if command -v yay &>/dev/null; then
             if ! yay -Qi hyprgrass &>/dev/null 2>&1; then
                 echo "  Installing hyprgrass (touch gestures)..."
-                yay -S --noconfirm hyprgrass 2>&1 | tail -3 || true
+                yay -S --noconfirm --answerdiff=None --answerclean=None --removemake hyprgrass 2>&1 | tail -3 || true
             fi
         fi
 
@@ -963,7 +1136,11 @@ if [ -f "$COSTA_DIR/config.json" ]; then
     AI_TIER=$(jq -r '.ai_tier // "CLOUD_ONLY"' "$COSTA_DIR/config.json")
     if [ "$AI_TIER" = "VOICE_AND_LLM" ] || [ "$AI_TIER" = "FULL_WORKSTATION" ]; then
         echo "→ Setting up voice assistant dependencies..."
-        pip install --user torch numpy torchaudio 2>&1 | tail -1 || true
+        if command -v uv &>/dev/null; then
+            uv pip install --system --break-system-packages torch numpy torchaudio 2>&1 | tail -1 || true
+        else
+            pip install --user --break-system-packages torch numpy torchaudio 2>&1 | tail -1 || true
+        fi
         # whisper.cpp must be built from source — documented in voice-assistant/README.md
         echo "  Note: whisper.cpp requires manual build — see ~/.config/costa/voice-assistant/README.md"
     fi
@@ -1063,21 +1240,6 @@ JSEOF
     fi
 fi
 
-# ─── Install Vesktop if selected ──────────────────────────────
-if [ -f "$COSTA_DIR/config.json" ]; then
-    INSTALL_VESKTOP=$(jq -r '.install_vesktop // false' "$COSTA_DIR/config.json")
-    if [ "$INSTALL_VESKTOP" = "true" ]; then
-        if ! command -v vesktop &>/dev/null; then
-            echo "→ Installing Vesktop (Discord)..."
-            if command -v yay &>/dev/null; then
-                yay -S --noconfirm vesktop-bin 2>&1 | tail -3
-            else
-                echo "  Install manually: yay -S vesktop-bin"
-            fi
-        fi
-    fi
-fi
-
 # ─── Laptop power management ─────────────────────────────────
 if ls /sys/class/power_supply/BAT* &>/dev/null; then
     echo "→ Laptop detected — enabling power management..."
@@ -1102,7 +1264,10 @@ echo "╔═══════════════════════�
 echo "║   Costa OS setup complete!           ║"
 echo "║                                      ║"
 echo "║   Voice AI:    SUPER+ALT+V           ║"
-echo "║   Discord PTT: SUPER+ALT+D           ║"
 echo "║   Keybinds:    costa-keybinds         ║"
 echo "║   Ask AI:      costa-ai \"question\"    ║"
 echo "╚══════════════════════════════════════╝"
+echo ""
+echo "Log saved to $FIRST_BOOT_LOG"
+echo "Press Enter to close..."
+read

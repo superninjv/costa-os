@@ -3,7 +3,7 @@
 # Sets up Claude Code with Costa OS MCP server, commands, hardware-aware CLAUDE.md,
 # and project scoping headers. Idempotent — safe to run multiple times.
 
-set -euo pipefail
+set -o pipefail
 
 COSTA_DIR="$HOME/.config/costa"
 COSTA_SHARE="/usr/share/costa-os"
@@ -15,45 +15,124 @@ echo "→ Setting up Claude Code with Costa OS integration..."
 if ! command -v claude &>/dev/null; then
     echo "  Claude Code CLI not found — installing..."
     if command -v npm &>/dev/null; then
-        npm install -g @anthropic-ai/claude-code 2>&1 | tail -3
+        # Try global install with sudo (non-interactive; -n fails fast if password needed)
+        if sudo -n npm install -g @anthropic-ai/claude-code 2>/dev/null; then
+            echo "  ✓ Claude Code installed globally"
+        else
+            echo "  sudo not available, installing to user prefix..."
+            mkdir -p "$HOME/.local/lib/npm"
+            npm config set prefix "$HOME/.local"
+            npm install -g @anthropic-ai/claude-code 2>&1 | tail -3
+            export PATH="$HOME/.local/bin:$PATH"
+        fi
         if command -v claude &>/dev/null; then
             echo "  ✓ Claude Code installed"
         else
             echo "  ✗ Claude Code installation failed"
             echo "    Try manually: npm install -g @anthropic-ai/claude-code"
-            exit 1
         fi
     else
         echo "  ✗ npm not found — install nodejs and npm first"
         echo "    sudo pacman -S nodejs npm && npm install -g @anthropic-ai/claude-code"
-        exit 1
     fi
 else
     echo "  ✓ Claude Code CLI found"
 fi
 
-# ─── 1b. Authenticate Claude Code ────────────────────────────
-# Check if already authenticated (has API key in env or active session)
+# ─── 1b. Schedule Claude Code authentication ─────────────────
+# Claude login needs a proper TTY (not piped through tee/logging).
+# Instead of trying to auth here, create a login launcher that runs
+# in its own terminal on next login.
 if command -v claude &>/dev/null; then
-    echo ""
-    echo "  Claude Code needs authentication for AI features."
-    echo "  You have two options:"
-    echo ""
-    echo "    1. Anthropic Plan (recommended) — free with Pro/Team/Enterprise subscription"
-    echo "       Uses OAuth login, no API key needed."
-    echo ""
-    echo "    2. API Key — pay-per-use via console.anthropic.com"
-    echo "       Set ANTHROPIC_API_KEY in ~/.config/costa/env"
-    echo ""
-    echo -n "  Log in to Claude now? (Y/n): "
-    read -r LOGIN_CHOICE
-    if [ "${LOGIN_CHOICE:-y}" != "n" ] && [ "${LOGIN_CHOICE:-y}" != "N" ]; then
-        echo "  Launching Claude login (follow the browser prompts)..."
-        claude /login || echo "  ⚠ Login failed or skipped — you can run 'claude /login' later"
-    else
-        echo "  Skipped — run 'claude /login' anytime to authenticate"
+    # Ensure Firefox is set as default browser for OAuth to work
+    if command -v firefox &>/dev/null; then
+        xdg-settings set default-web-browser firefox.desktop 2>/dev/null || true
     fi
+
+    # Create a one-shot login script that launches in its own terminal
+    CLAUDE_LOGIN="$HOME/.config/costa/scripts/claude-login.sh"
+    mkdir -p "$(dirname "$CLAUDE_LOGIN")"
+    cat > "$CLAUDE_LOGIN" << 'LOGINEOF'
+#!/bin/bash
+# Ensure user-local npm bin is in PATH (claude may be installed there)
+export PATH="$HOME/.local/bin:$PATH"
+clear
+echo "╔══════════════════════════════════════════════════════╗"
+echo "║           Claude Code — First-Time Login            ║"
+echo "╠══════════════════════════════════════════════════════╣"
+echo "║                                                     ║"
+echo "║  Claude Code needs authentication for AI features.  ║"
+echo "║                                                     ║"
+echo "║  Options:                                           ║"
+echo "║    1. Anthropic Plan (recommended)                  ║"
+echo "║       Free with Pro/Team/Enterprise subscription.   ║"
+echo "║       Uses browser-based OAuth login.               ║"
+echo "║                                                     ║"
+echo "║    2. API Key (pay-per-use)                         ║"
+echo "║       Set ANTHROPIC_API_KEY in ~/.config/costa/env  ║"
+echo "║                                                     ║"
+echo "╚══════════════════════════════════════════════════════╝"
+echo ""
+echo -n "Log in now? (Y/n): "
+read -r choice
+if [ "${choice:-y}" != "n" ] && [ "${choice:-y}" != "N" ]; then
     echo ""
+    echo "Starting Claude Code — complete the browser login, then type /exit"
+    echo ""
+    claude --no-update-check
+fi
+# Remove the autostart trigger after first run (whether they logged in or not)
+rm -f ~/.config/hypr/costa-claude-login.conf
+echo ""
+echo "You can always log in later by running: claude"
+echo "Press Enter to close..."
+read
+LOGINEOF
+    chmod +x "$CLAUDE_LOGIN"
+
+    # Find a working terminal emulator
+    TERM_CMD=""
+    for term in ghostty foot kitty alacritty; do
+        if command -v "$term" &>/dev/null; then
+            TERM_CMD="$term"
+            break
+        fi
+    done
+    TERM_CMD="${TERM_CMD:-ghostty}"  # default to ghostty
+
+    # Build exec command based on terminal
+    case "$TERM_CMD" in
+        ghostty)    TERM_EXEC="ghostty -e $CLAUDE_LOGIN" ;;
+        foot)       TERM_EXEC="foot $CLAUDE_LOGIN" ;;
+        kitty)      TERM_EXEC="kitty $CLAUDE_LOGIN" ;;
+        alacritty)  TERM_EXEC="alacritty -e $CLAUDE_LOGIN" ;;
+    esac
+
+    # Add a one-shot autostart to hyprland.conf (separate file, sourced once)
+    # This is a fallback for next boot in case the immediate launch below doesn't work
+    CLAUDE_AUTOSTART="$HOME/.config/hypr/costa-claude-login.conf"
+    echo "exec-once = $TERM_EXEC" > "$CLAUDE_AUTOSTART"
+
+    # Source it from hyprland.conf if not already present
+    if ! grep -q "costa-claude-login.conf" "$HOME/.config/hypr/hyprland.conf" 2>/dev/null; then
+        echo "" >> "$HOME/.config/hypr/hyprland.conf"
+        echo "# Claude Code first-login (auto-removes after use)" >> "$HOME/.config/hypr/hyprland.conf"
+        echo "source = ~/.config/hypr/costa-claude-login.conf" >> "$HOME/.config/hypr/hyprland.conf"
+    fi
+
+    # If early_claude_login() already launched the terminal (first-boot flow),
+    # skip the immediate launch — the autostart is still a fallback for next boot
+    if [ -f /tmp/costa-claude-login-launched ]; then
+        echo "  ✓ Claude login terminal already launched (early boot)"
+        rm -f /tmp/costa-claude-login-launched
+    elif command -v hyprctl &>/dev/null && hyprctl monitors &>/dev/null 2>&1; then
+        echo "  → Launching Claude Code login terminal..."
+        hyprctl dispatch exec "$TERM_EXEC" 2>/dev/null || true
+        # Remove the autostart since we just launched it
+        rm -f "$CLAUDE_AUTOSTART"
+    else
+        echo "  ✓ Claude login will prompt on next Hyprland session"
+    fi
 fi
 
 # ─── 2. Create ~/.claude/ directory ──────────────────────────
