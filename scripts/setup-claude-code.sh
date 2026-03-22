@@ -91,14 +91,21 @@ LOGINEOF
     chmod +x "$CLAUDE_LOGIN"
 
     # Find a working terminal emulator
+    # Skip ghostty in VMs — it requires GPU acceleration and crashes on QXL/virtio-vga
+    local IN_VM=""
+    if systemd-detect-virt -q 2>/dev/null || grep -qi "hypervisor\|qemu\|kvm\|virtualbox\|vmware" /proc/cpuinfo 2>/dev/null; then
+        IN_VM="1"
+    fi
+
     TERM_CMD=""
     for term in ghostty foot kitty alacritty; do
+        [ "$IN_VM" = "1" ] && [ "$term" = "ghostty" ] && continue
         if command -v "$term" &>/dev/null; then
             TERM_CMD="$term"
             break
         fi
     done
-    TERM_CMD="${TERM_CMD:-ghostty}"  # default to ghostty
+    TERM_CMD="${TERM_CMD:-ghostty}"  # default to ghostty (real hardware)
 
     # Build exec command based on terminal
     case "$TERM_CMD" in

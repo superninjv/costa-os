@@ -47,8 +47,12 @@ def banner():
 
 def prompt(question: str, default: str = "") -> str:
     suffix = f" [{default}]" if default else ""
-    answer = input(f"  {C.FOAM}›{C.RESET} {question}{C.DIM}{suffix}{C.RESET}: ").strip()
-    return answer or default
+    try:
+        answer = input(f"  {C.FOAM}›{C.RESET} {question}{C.DIM}{suffix}{C.RESET}: ").strip()
+        return answer or default
+    except EOFError:
+        print(f"  {C.DIM}(no TTY, using default: {default}){C.RESET}")
+        return default
 
 
 def prompt_choice(question: str, options: list[tuple[str, str]], default: int = 0) -> int:
@@ -57,7 +61,11 @@ def prompt_choice(question: str, options: list[tuple[str, str]], default: int = 
         marker = f"{C.SEA}●{C.RESET}" if i == default else f"{C.DIM}○{C.RESET}"
         print(f"    {marker} {C.BOLD}{i + 1}{C.RESET}. {label} {C.DIM}— {desc}{C.RESET}")
     while True:
-        choice = input(f"    {C.DIM}Enter choice [{ default + 1}]: {C.RESET}").strip()
+        try:
+            choice = input(f"    {C.DIM}Enter choice [{ default + 1}]: {C.RESET}").strip()
+        except EOFError:
+            print(f"    {C.DIM}(no TTY, using default: {default + 1}){C.RESET}")
+            return default
         if not choice:
             return default
         try:
@@ -71,7 +79,11 @@ def prompt_choice(question: str, options: list[tuple[str, str]], default: int = 
 
 def prompt_bool(question: str, default: bool = True) -> bool:
     suffix = "Y/n" if default else "y/N"
-    answer = input(f"  {C.FOAM}›{C.RESET} {question} [{suffix}]: ").strip().lower()
+    try:
+        answer = input(f"  {C.FOAM}›{C.RESET} {question} [{suffix}]: ").strip().lower()
+    except EOFError:
+        print(f"  {C.DIM}(no TTY, using default: {'yes' if default else 'no'}){C.RESET}")
+        return default
     if not answer:
         return default
     return answer in ("y", "yes")
@@ -114,7 +126,10 @@ def wifi_setup():
             print(f"  {C.SAND}⚠{C.RESET}  No WiFi adapter found.")
             print(f"  {C.DIM}   Connect an ethernet cable and press Enter to retry,{C.RESET}")
             print(f"  {C.DIM}   or type 'skip' to continue without internet.{C.RESET}")
-            answer = input(f"  {C.FOAM}›{C.RESET} ").strip().lower()
+            try:
+                answer = input(f"  {C.FOAM}›{C.RESET} ").strip().lower()
+            except EOFError:
+                answer = "skip"
             if answer == "skip":
                 print(f"  {C.SAND}   Continuing offline — some features won't be available.{C.RESET}\n")
                 return
@@ -179,7 +194,10 @@ def wifi_setup():
             print(f"    {C.BOLD}{i + 1:2d}{C.RESET}. {lock} {net['ssid']:<32s} {C.DIM}{bar_str} {net['signal']}%  {net['security']}{C.RESET}")
 
         print(f"\n    {C.DIM} r = rescan  s = skip  q = quit{C.RESET}")
-        choice = input(f"\n  {C.FOAM}›{C.RESET} Network number: ").strip().lower()
+        try:
+            choice = input(f"\n  {C.FOAM}›{C.RESET} Network number: ").strip().lower()
+        except EOFError:
+            choice = "s"
 
         if choice == "r":
             print(f"\n  {C.DIM}Rescanning...{C.RESET}\n")
@@ -218,7 +236,10 @@ def wifi_setup():
         # Need password
         if net["security"] != "Open":
             import getpass
-            password = getpass.getpass(f"  {C.FOAM}›{C.RESET} Password for {ssid}: ")
+            try:
+                password = getpass.getpass(f"  {C.FOAM}›{C.RESET} Password for {ssid}: ")
+            except EOFError:
+                password = ""
             if not password:
                 print(f"  {C.SAND}   Skipped.{C.RESET}\n")
                 continue

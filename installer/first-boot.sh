@@ -333,8 +333,16 @@ LOGINEOF
     chmod +x "$CLAUDE_LOGIN"
 
     # Find a working terminal emulator (ghostty preferred, with fallbacks)
+    # Skip ghostty in VMs — it requires GPU acceleration and crashes on QXL/virtio-vga
+    local IN_VM=""
+    if systemd-detect-virt -q 2>/dev/null || grep -qi "hypervisor\|qemu\|kvm\|virtualbox\|vmware" /proc/cpuinfo 2>/dev/null; then
+        IN_VM="1"
+    fi
+
     local TERM_CMD=""
     for term in ghostty foot kitty alacritty; do
+        # Skip ghostty in VMs — requires GPU accel
+        [ "$IN_VM" = "1" ] && [ "$term" = "ghostty" ] && continue
         if command -v "$term" &>/dev/null; then
             TERM_CMD="$term"
             break
@@ -342,7 +350,10 @@ LOGINEOF
     done
 
     if [ -z "$TERM_CMD" ]; then
-        echo "  ⚠ No terminal emulator found for login prompt"
+        # No suitable terminal — create Hyprland autostart for next session
+        # The user can also run `claude` manually from any terminal
+        echo "  ⚠ No suitable terminal found for login prompt"
+        echo "  ✓ Run 'claude' from any terminal to log in"
         return
     fi
 
