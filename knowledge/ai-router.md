@@ -52,11 +52,14 @@ The router automatically gathers relevant system data based on the query:
 - Docker questions → lists containers
 
 ## VRAM Management
-The ollama-manager daemon automatically loads the best model for available GPU memory:
-- 12GB+ free → qwen2.5:14b (best quality)
-- 6GB+ free → qwen2.5:7b (good quality)
-- 3GB+ free → qwen2.5:3b (fast, basic)
-- <3GB free → cloud only (gaming mode)
+The ollama-manager daemon automatically loads the best model for available GPU memory (LLM-judge quality scores):
+- 10GB+ free → qwen3.5:9b (quality 0.606, best for architecture/code_debug/code_test)
+- 6GB+ free → qwen3.5:9b or qwen3.5:4b (quality 0.581, wins 5/6 categories vs 9b at 512-token budgets)
+- 4GB+ free → qwen3.5:4b (best speed/quality ratio at 28 t/s)
+- 2GB+ free → qwen3.5:2b (speed-only, 53 t/s, unreliable for general use)
+- <2GB free → cloud only (gaming mode)
+
+Category-aware routing can swap models per query type: qwen3:14b for code_write/general_knowledge, qwen3.5:9b for architecture/debugging.
 
 ## Knowledge System
 Knowledge files in `~/.config/costa/knowledge/` are auto-discovered and loaded based on query relevance.
@@ -66,8 +69,11 @@ Each file has YAML frontmatter with:
 - `tags` — semantic keywords for matching beyond regex patterns
 
 Knowledge loading is tiered by model size:
-- **3B models**: top 2 matched files at L1 (section summaries), rest at L0. ~800 token budget.
+- **0.8B-1B models**: top 1 at L1, rest at L0. ~400 token budget.
+- **2B-3B models**: top 2 matched files at L1 (section summaries), rest at L0. ~800 token budget.
+- **4B models**: top 2 at L1, rest at L0. ~1,200 token budget.
 - **7B models**: top 3 at L1, rest at L0. ~1,500 token budget.
+- **9B models**: top 3 at L1 + top 1 full content, rest at L0. ~2,000 token budget.
 - **14B models**: top 3 at L1 + top 1 full content, rest at L0. ~3,000 token budget.
 
 Prompts use XML delimiters (`<context>`, `<knowledge>`, `<query>`) for clear section boundaries.

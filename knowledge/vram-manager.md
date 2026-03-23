@@ -11,14 +11,18 @@ Automatically picks the best Ollama model that fits in available GPU memory. Run
 
 ## Model Tiers
 
-| Tier | Model | VRAM Needed | Speed | When |
-|------|-------|-------------|-------|------|
-| Full | qwen3.5:9b | ~8GB | ~21 t/s | Plenty of VRAM free |
-| Medium | qwen3.5:4b | ~5GB | ~30 t/s | Moderate VRAM pressure |
-| Reduced | qwen3.5:2b / qwen2.5:3b | ~3GB | ~40 t/s | Heavy VRAM usage |
-| Gaming | (none loaded) | 0GB | — | GPU needed for games |
+Quality scores from LLM-judge evaluation (Claude Haiku, 80+ prompts):
 
-Prefers qwen3.5 (better quality + thinking support). Falls back to qwen2.5 if qwen3.5 isn't pulled.
+| Tier | Model | VRAM | Speed | Quality | When |
+|------|-------|------|-------|---------|------|
+| Full | qwen3.5:9b | ~8GB | 23 t/s | 0.606 | Default for 16GB GPUs |
+| Value | qwen3.5:4b | ~5GB | 28 t/s | 0.581 | Best speed/quality ratio — wins 5/6 categories vs 9b at 512-token budgets |
+| Speed | qwen3.5:2b | ~3GB | 53 t/s | 0.375 | Classification/routing only — unreliable for general answers |
+| Gaming | (none loaded) | 0GB | — | — | GPU needed for games |
+
+The 4B model outperforms 9B on most categories at short response budgets (512 tokens) because it produces more complete answers before hitting the token limit. Reserve 9B for extended reasoning tasks (1024+ tokens).
+
+Note: qwen3.5:0.8b (0.231 quality) is not loaded as a default — it hallucinates too frequently.
 
 ## GPU Backend
 
