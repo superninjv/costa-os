@@ -487,7 +487,7 @@ PACSTRAP_FLAGS="-K"
 
 PACSTRAP_PACKAGES=(base linux linux-firmware base-devel
     networkmanager grub efibootmgr
-    hyprland ghostty zsh gtk4-layer-shell dart-sass typescript dunst rofi-wayland ydotool
+    hyprland ghostty foot zsh gtk4-layer-shell dart-sass typescript dunst rofi-wayland ydotool
     pipewire pipewire-alsa pipewire-pulse wireplumber
     firefox thunar gvfs git git-delta lazygit zellij docker docker-compose
     nodejs npm
@@ -774,8 +774,10 @@ if arch-chroot /mnt bash -c 'command -v yay' &>/dev/null; then
     fi
 fi
 
-# Restore normal sudo with password (remove NOPASSWD)
-echo '%wheel ALL=(ALL:ALL) ALL' > /mnt/etc/sudoers.d/wheel
+# Keep NOPASSWD sudo until first-boot.sh completes — first-boot.sh runs as a
+# background process with no TTY, so password-prompted sudo would hang forever.
+# first-boot.sh restores password-required sudo when it finishes.
+# echo '%wheel ALL=(ALL:ALL) ALL' > /mnt/etc/sudoers.d/wheel
 
 # ─── Done ─────────────────────────────────────────────────────
 gui_step done 100 "Installation complete!"

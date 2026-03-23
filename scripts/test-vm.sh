@@ -65,8 +65,8 @@ qemu-system-x86_64 \
     -drive file="$DISK",format=qcow2,if=virtio \
     -cdrom "$ISO" \
     -boot d \
-    -device virtio-vga-gl,xres=1920,yres=1080 \
-    -display gtk,gl=on \
+    -vga qxl \
+    -display gtk \
     -device virtio-net-pci,netdev=net0 \
     -netdev user,id=net0 \
     -device ich9-intel-hda \

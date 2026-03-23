@@ -1,4 +1,4 @@
-# Costa OS — Base packages (always installed)
+# Costa OS — ISO packages
 # Core system
 base
 base-devel
@@ -10,6 +10,9 @@ linux-headers
 grub
 efibootmgr
 os-prober
+mkinitcpio
+mkinitcpio-archiso
+arch-install-scripts
 
 # Network
 networkmanager
@@ -22,6 +25,7 @@ ntfs-3g
 dosfstools
 btrfs-progs
 e2fsprogs
+parted
 
 # Display
 hyprland
@@ -32,24 +36,24 @@ polkit-kde-agent
 
 # Terminal & Shell
 ghostty
-foot  # lightweight fallback terminal (works in VMs without GPU)
+foot
 zsh
 zsh-autosuggestions
 zsh-syntax-highlighting
 starship
 
 # Shell & Notifications
-aylurs-gtk-shell  # AUR — AGS v3 desktop shell
-nwg-dock-hyprland  # macOS-style auto-hiding dock
+# aylurs-gtk-shell (AGS v3) — AUR, installed via yay during install
 gtk4-layer-shell
+dart-sass
+typescript
 dunst
 rofi-wayland
 libnotify
-dart-sass
-typescript
 
 # Wallpaper & Screenshots
-mpvpaper  # AUR
+# mpvpaper — AUR only, installed via yay during first-boot
+swaybg
 swww
 grim
 slurp
@@ -82,17 +86,9 @@ noto-fonts-emoji
 
 # Theme
 papirus-icon-theme
-bibata-cursor-theme  # AUR
 adw-gtk-theme
 qt5ct
 qt6ct
-
-# Node.js — required for Claude Code
-nodejs
-npm
-
-# Knowledge management
-obsidian  # AUR — Claude's persistent knowledge vault
 
 # CLI essentials
 ripgrep
@@ -107,18 +103,58 @@ fastfetch
 less
 sox
 uv
-
-# GUI framework (keybinds_gui, settings)
-gtk4
-libadwaita
-
-# Media control
 playerctl
-ydotool
-python-pip
 
 # System
 greetd
 greetd-tuigreet
 brightnessctl
+
+# AI layer dependencies
+python
+python-requests
+python-evdev
+python-yaml
+python-pip
+ydotool
+inetutils
+
+# Camera detection (v4l2-ctl for IR camera / face auth detection)
+v4l-utils
+
+# GPU drivers — covers AMD/Intel/NVIDIA out of the box
+mesa
+vulkan-icd-loader
+vulkan-radeon
+vulkan-intel
+xf86-video-nouveau
+libva-mesa-driver
+
+# Dev tools (included in base — users expect git/docker)
+git
+git-delta
+github-cli
+lazygit
+docker
+docker-compose
+zellij
+
+# Node.js — required for Claude Code
+nodejs
+npm
+
+# GUI framework
+libadwaita
+
+# Power management
 power-profiles-daemon
+
+# Accessibility (AT-SPI for AI navigation screen reading)
+at-spi2-core
+
+# Input detection (touchscreen, tablets)
+libinput
+
+# Installer dependencies
+python-gobject
+gtk4

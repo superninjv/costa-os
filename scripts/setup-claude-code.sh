@@ -105,7 +105,14 @@ LOGINEOF
             break
         fi
     done
-    TERM_CMD="${TERM_CMD:-ghostty}"  # default to ghostty (real hardware)
+    if [ -z "$TERM_CMD" ]; then
+        if [ "$IN_VM" = "1" ]; then
+            echo "  ⚠ No suitable terminal found for login prompt (VM detected)"
+            echo "  ✓ Run 'claude' from any terminal to log in"
+            return 0
+        fi
+        TERM_CMD="ghostty"  # default to ghostty on real hardware
+    fi
 
     # Build exec command based on terminal
     case "$TERM_CMD" in

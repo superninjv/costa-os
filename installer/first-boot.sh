@@ -622,8 +622,8 @@ apply_timezone() {
         TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || echo "UTC")
     fi
     echo "→ Setting timezone: $TZ"
-    sudo timedatectl set-timezone "$TZ" 2>/dev/null || \
-        sudo ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime 2>/dev/null || true
+    sudo -n timedatectl set-timezone "$TZ" 2>/dev/null || \
+        sudo -n ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime 2>/dev/null || true
 }
 
 # ─── Install and set up Claude Code ──────────────────────────
@@ -761,13 +761,13 @@ install_gpu_drivers() {
     echo "→ Installing GPU drivers for $GPU_VENDOR..."
     case "$GPU_VENDOR" in
         amd)
-            sudo pacman -S --noconfirm --needed vulkan-radeon lib32-vulkan-radeon 2>&1 | tail -1
+            sudo -n pacman -S --noconfirm --needed vulkan-radeon lib32-vulkan-radeon 2>&1 | tail -1
             ;;
         nvidia)
-            sudo pacman -S --noconfirm --needed nvidia nvidia-utils lib32-nvidia-utils 2>&1 | tail -1
+            sudo -n pacman -S --noconfirm --needed nvidia nvidia-utils lib32-nvidia-utils 2>&1 | tail -1
             ;;
         intel)
-            sudo pacman -S --noconfirm --needed vulkan-intel 2>&1 | tail -1
+            sudo -n pacman -S --noconfirm --needed vulkan-intel 2>&1 | tail -1
             ;;
     esac
     echo "  GPU drivers installed"
@@ -955,7 +955,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
 
             if [ ${#OFFICIAL_PKGS[@]} -gt 0 ]; then
                 echo "  pacman: ${OFFICIAL_PKGS[*]}"
-                sudo pacman -S --noconfirm --needed "${OFFICIAL_PKGS[@]}" 2>&1 | tail -3 || true
+                sudo -n pacman -S --noconfirm --needed "${OFFICIAL_PKGS[@]}" 2>&1 | tail -3 || true
             fi
             if [ ${#AUR_DEV_PKGS[@]} -gt 0 ] && command -v yay &>/dev/null; then
                 echo "  AUR: ${AUR_DEV_PKGS[*]}"
@@ -965,16 +965,16 @@ if [ -f "$COSTA_DIR/config.json" ]; then
 
         # PostgreSQL
         echo "  Installing PostgreSQL..."
-        sudo pacman -S --noconfirm --needed postgresql 2>&1 | tail -1 || true
+        sudo -n pacman -S --noconfirm --needed postgresql 2>&1 | tail -1 || true
         if [ ! -d /var/lib/postgres/data ] || [ -z "$(ls -A /var/lib/postgres/data 2>/dev/null)" ]; then
-            sudo -u postgres initdb -D /var/lib/postgres/data 2>&1 | tail -1 || true
+            sudo -n -u postgres initdb -D /var/lib/postgres/data 2>&1 | tail -1 || true
         fi
-        sudo systemctl enable --now postgresql 2>&1 | tail -1 || true
+        sudo -n systemctl enable --now postgresql 2>&1 | tail -1 || true
 
         # Redis
         echo "  Installing Redis..."
-        sudo pacman -S --noconfirm --needed redis 2>&1 | tail -1 || true
-        sudo systemctl enable --now redis 2>&1 | tail -1 || true
+        sudo -n pacman -S --noconfirm --needed redis 2>&1 | tail -1 || true
+        sudo -n systemctl enable --now redis 2>&1 | tail -1 || true
 
         # Version managers (user-level, no sudo)
         echo "  Setting up version managers..."
@@ -1017,7 +1017,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
                 CREATIVE_PKGS+=("$line")
             done < "$COSTA_SHARE/packages/creative.txt"
             if [ ${#CREATIVE_PKGS[@]} -gt 0 ]; then
-                sudo pacman -S --noconfirm --needed "${CREATIVE_PKGS[@]}" 2>&1 | tail -3 || true
+                sudo -n pacman -S --noconfirm --needed "${CREATIVE_PKGS[@]}" 2>&1 | tail -3 || true
             fi
         fi
         echo "  ✓ Creative tools installed"
@@ -1034,7 +1034,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
                 GAMING_PKGS+=("$line")
             done < "$COSTA_SHARE/packages/gaming.txt"
             if [ ${#GAMING_PKGS[@]} -gt 0 ]; then
-                sudo pacman -S --noconfirm --needed "${GAMING_PKGS[@]}" 2>&1 | tail -3 || true
+                sudo -n pacman -S --noconfirm --needed "${GAMING_PKGS[@]}" 2>&1 | tail -3 || true
             fi
         fi
         echo "  ✓ Gaming packages installed"
@@ -1053,7 +1053,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
             # Configure howdy to use detected IR camera
             HOWDY_CONF="/lib/security/howdy/config.ini"
             if [ -f "$HOWDY_CONF" ]; then
-                sudo sed -i "s|^device_path.*|device_path = $IR_CAMERA|" "$HOWDY_CONF"
+                sudo -n sed -i "s|^device_path.*|device_path = $IR_CAMERA|" "$HOWDY_CONF"
                 echo "  Set howdy device to $IR_CAMERA"
             fi
 
@@ -1061,7 +1061,7 @@ if [ -f "$COSTA_DIR/config.json" ]; then
             HOWDY_PAM="auth sufficient pam_python.so /lib/security/howdy/pam.py"
             for pam_file in /etc/pam.d/greetd /etc/pam.d/sudo /etc/pam.d/hyprlock; do
                 if [ -f "$pam_file" ] && ! grep -q "howdy" "$pam_file"; then
-                    sudo sed -i "1a $HOWDY_PAM" "$pam_file"
+                    sudo -n sed -i "1a $HOWDY_PAM" "$pam_file"
                     echo "  Added howdy to $(basename $pam_file)"
                 fi
             done
@@ -1122,7 +1122,7 @@ TOUCHEOF
         # Install squeekboard (on-screen keyboard) from official repos
         if ! pacman -Qi squeekboard &>/dev/null; then
             echo "  Installing squeekboard (on-screen keyboard)..."
-            sudo pacman -S --noconfirm squeekboard 2>&1 | tail -1 || true
+            sudo -n pacman -S --noconfirm squeekboard 2>&1 | tail -1 || true
         fi
 
         # Add squeekboard autostart if not present
@@ -1237,11 +1237,11 @@ JSEOF
         # 6. Ensure at-spi2-core and python-gobject are installed
         if ! pacman -Qi at-spi2-core &>/dev/null; then
             echo "  Installing AT-SPI2..."
-            sudo pacman -S --noconfirm at-spi2-core 2>&1 | tail -1
+            sudo -n pacman -S --noconfirm at-spi2-core 2>&1 | tail -1
         fi
         if ! pacman -Qi python-gobject &>/dev/null; then
             echo "  Installing python-gobject..."
-            sudo pacman -S --noconfirm python-gobject 2>&1 | tail -1
+            sudo -n pacman -S --noconfirm python-gobject 2>&1 | tail -1
         fi
 
         # Enable accessibility service
@@ -1255,7 +1255,7 @@ fi
 if ls /sys/class/power_supply/BAT* &>/dev/null; then
     echo "→ Laptop detected — enabling power management..."
     if pacman -Qi power-profiles-daemon &>/dev/null; then
-        sudo systemctl enable --now power-profiles-daemon 2>/dev/null || true
+        sudo -n systemctl enable --now power-profiles-daemon 2>/dev/null || true
         echo "  Enabled power-profiles-daemon"
     fi
 fi
@@ -1269,6 +1269,12 @@ if [ -f "$COSTA_DIR/config.json" ]; then
         echo "  (Skipping interactive login during first-boot to avoid blocking)"
     fi
 fi
+
+# ─── Restore password-required sudo ─────────────────────────
+# NOPASSWD was left on by costa-install so first-boot.sh (which runs with no TTY)
+# could call sudo without hanging. Now that setup is complete, require password.
+echo "→ Restoring secure sudo configuration..."
+sudo -n bash -c "echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/wheel"
 
 echo ""
 echo "╔══════════════════════════════════════╗"
