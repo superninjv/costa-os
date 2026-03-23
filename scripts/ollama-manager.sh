@@ -33,26 +33,21 @@ select_model() {
     local free=$1
     local budget=$(( free - HEADROOM_GB ))
 
-    # Prefer qwen3.5 (better quality, thinking support, 262K context).
+    # LLM-judge quality tiers (2026-03-23, Claude Haiku scored):
+    #   qwen3.5:9b  0.606  ~8GB   — best quality, default for 16GB GPUs
+    #   qwen3.5:4b  0.581  ~5GB   — best value, 96% of 9b quality
+    #   qwen3:14b   0.578  ~11GB  — similar to 4b, complementary strengths
+    #   qwen3.5:2b  0.375  ~3GB   — speed-only, unreliable for general use
+    #   qwen3.5:0.8b 0.231 ~1.5GB — not viable, hallucinates frequently
     # Requires Vulkan backend on RDNA4 (ROCm HIP pegs GPU at 100% idle).
-    # Falls back to qwen2.5 if qwen3.5 variants aren't pulled.
-    #
-    # VRAM requirements (Q4_K_M, benchmarked 2026-03-23):
-    #   qwen3:14b   ~11GB   qwen3.5:9b  ~8GB
-    #   qwen3.5:4b  ~5GB    qwen2.5:7b  ~6GB
-    #   qwen3.5:2b  ~3GB    qwen2.5:3b  ~3GB
-    #   qwen3.5:0.8b ~1.5GB
-    # Note: qwen3.5:27b tested but NOT viable on 16GB (3.4 t/s, frequent failures)
     if [ "$budget" -ge 10 ]; then
-        try_model "qwen3:14b" || try_model "qwen3.5:9b" || try_model "qwen2.5:14b" || try_model "qwen2.5:7b" || echo "qwen2.5:3b"
+        try_model "qwen3.5:9b" || try_model "qwen3:14b" || try_model "qwen2.5:14b" || try_model "qwen3.5:4b" || echo "qwen2.5:7b"
     elif [ "$budget" -ge 6 ]; then
-        try_model "qwen3.5:9b" || try_model "qwen2.5:7b" || try_model "qwen3.5:4b" || echo "qwen2.5:3b"
+        try_model "qwen3.5:9b" || try_model "qwen3.5:4b" || try_model "qwen2.5:7b" || echo "qwen3.5:2b"
     elif [ "$budget" -ge 4 ]; then
-        try_model "qwen3.5:4b" || try_model "qwen2.5:3b" || try_model "qwen3.5:2b" || echo "none"
+        try_model "qwen3.5:4b" || try_model "qwen3.5:2b" || try_model "qwen2.5:3b" || echo "none"
     elif [ "$budget" -ge 2 ]; then
-        try_model "qwen3.5:2b" || try_model "qwen2.5:3b" || try_model "qwen3.5:0.8b" || echo "none"
-    elif [ "$budget" -ge 1 ]; then
-        try_model "qwen3.5:0.8b" || echo "none"
+        try_model "qwen3.5:2b" || try_model "qwen2.5:3b" || echo "none"
     else
         echo "none"
     fi

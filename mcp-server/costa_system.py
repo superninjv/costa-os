@@ -722,14 +722,18 @@ async def list_tools():
         Tool(
             name="ollama_query",
             description=(
-                "Query the local Ollama LLM directly. Use this to delegate simple questions "
-                "to the local model (saves API cost), test local model capabilities, or ask "
-                "questions that need live system context. The local model has real-time system "
-                "data injected into its prompts when include_context is true. NEVER escalates "
-                "to cloud — safe from infinite loops. "
-                "Prefer this for: system status queries, simple factual questions, summarizing "
-                "text, formatting data. Prefer Claude for: complex reasoning, code review, "
-                "multi-step planning."
+                "Query local Ollama LLMs as specialized workers. Use the 'model' parameter to "
+                "pick the right model for the task. Available models (LLM-judge scored):\n"
+                "  qwen3.5:9b (0.61) — architecture, code_debug, code_test, system reasoning\n"
+                "  qwen3:14b (0.58) — code_write, general_knowledge, system_info, code_deploy\n"
+                "  qwen3.5:4b (0.58) — deep_knowledge, code_debug, best speed/quality ratio\n"
+                "  qwen3.5:2b (0.38) — fast classification/routing only (unreliable for answers)\n"
+                "  qwen2.5-coder:14b — code generation specialist (Qwen code finetune)\n"
+                "  qwen3-coder — MoE code model (3.3B active params, agentic coding)\n"
+                "NEVER escalates to cloud. Use include_context=true for system queries. "
+                "Prefer this for: knowledge questions, debugging, summarization, code generation "
+                "drafts, classification. Prefer Claude for: complex multi-step reasoning, "
+                "code review, architectural decisions."
             ),
             inputSchema={
                 "type": "object",
@@ -740,7 +744,7 @@ async def list_tools():
                     },
                     "model": {
                         "type": "string",
-                        "description": "Model override (e.g. 'qwen3.5:9b'). Default: auto-selected by VRAM manager",
+                        "description": "Model to use. Pick by task: 'qwen3.5:9b' (architecture/debug), 'qwen3:14b' (code_write/general), 'qwen3.5:4b' (fast+good), 'qwen2.5-coder:14b' (code specialist), 'qwen3-coder' (agentic code). Default: VRAM manager choice.",
                     },
                     "include_context": {
                         "type": "boolean",

@@ -253,7 +253,7 @@ def benchmark_model(model: str, prompts: list[dict],
         result = PromptResult(
             prompt=prompt_text,
             category=category,
-            response=response_text[:500],
+            response=response_text[:2000],
             quality_score=quality,
             failure_type=failure,
             eval_tokens=eval_count,

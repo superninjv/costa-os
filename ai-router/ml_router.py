@@ -91,15 +91,15 @@ HYPRLAND_CONFIG_KEYWORDS = re.compile(
 )
 
 VRAM_MODEL_MAP = {
-    # Quality scores from benchmark_qwen35.py (2026-03-23, 80 prompts, Vulkan/RADV)
-    "qwen3.5:9b": 0.87,    # Best quality (0.871), 24 t/s, ~8GB VRAM
-    "qwen3:14b": 0.85,     # Similar quality (0.854), 25 t/s, ~11GB VRAM
-    "qwen3.5:4b": 0.86,    # Near-best quality (0.858), 28 t/s, ~5GB VRAM
-    "qwen3.5:2b": 0.85,    # Best value (0.852), 55 t/s, ~3GB VRAM
-    "qwen3.5:0.8b": 0.84,  # Still viable (0.846), 16 t/s, ~1.5GB VRAM
-    "qwen2.5:14b": 1.0,    # Legacy baseline
-    "qwen2.5:7b": 0.66,
-    "qwen2.5:3b": 0.33,
+    # LLM-judge quality scores (2026-03-23, Claude Haiku judge, 80 prompts, Vulkan/RADV)
+    "qwen3.5:9b": 0.61,    # Best quality (0.606), 23 t/s, ~8GB VRAM
+    "qwen3.5:4b": 0.58,    # Best value (0.581), 28 t/s, ~5GB VRAM
+    "qwen3:14b": 0.58,     # Similar to 4b (0.578), 24 t/s, ~11GB VRAM
+    "qwen3.5:2b": 0.38,    # Speed-only (0.375), 53 t/s, ~3GB VRAM — unreliable for general use
+    "qwen3.5:0.8b": 0.23,  # Not viable (0.231), hallucinates frequently
+    "qwen2.5:14b": 0.60,   # Legacy, estimated
+    "qwen2.5:7b": 0.45,    # Legacy, estimated
+    "qwen2.5:3b": 0.25,    # Legacy, estimated
 }
 
 # Category-aware model preferences — best model per category from benchmark data.
@@ -110,17 +110,22 @@ VRAM_MODEL_MAP = {
 # Format: category → [(model, quality, vram_gb), ...] sorted best-first
 # The router picks the first model that fits in current VRAM budget.
 CATEGORY_MODEL_PREFS = {
-    # qwen3:14b dominates architecture and test generation
-    "architecture":    [("qwen3:14b", 0.955, 11), ("qwen3.5:9b", 0.905, 8), ("qwen3.5:4b", 0.900, 5)],
-    "code_test":       [("qwen3:14b", 1.000, 11), ("qwen3.5:4b", 1.000, 5), ("qwen3.5:9b", 0.667, 8)],
-    # qwen3.5:9b dominates these categories
-    "package_query":   [("qwen3.5:9b", 0.903, 8), ("qwen3:14b", 0.819, 11), ("qwen3.5:2b", 0.778, 3)],
-    "code_deploy":     [("qwen3.5:9b", 1.000, 8), ("qwen3.5:4b", 0.833, 5), ("qwen3:14b", 0.833, 11)],
-    # qwen3.5:2b and 4b are surprisingly strong here — use for speed
-    "code_debug":      [("qwen3.5:2b", 1.000, 3), ("qwen3.5:4b", 1.000, 5), ("qwen3.5:9b", 0.875, 8)],
-    "code_refactor":   [("qwen3.5:2b", 1.000, 3), ("qwen3.5:4b", 1.000, 5), ("qwen3.5:9b", 1.000, 8)],
-    # deep_knowledge — 2b is perfect, save VRAM
-    "deep_knowledge":  [("qwen3.5:2b", 1.000, 3), ("qwen3.5:4b", 0.988, 5), ("qwen3.5:9b", 0.975, 8)],
+    # LLM-judge scored category preferences (2026-03-23)
+    # qwen3.5:9b dominates architecture and code tasks
+    "architecture":    [("qwen3.5:9b", 0.80, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
+    "code_debug":      [("qwen3.5:9b", 1.00, 8), ("qwen3.5:4b", 1.00, 5), ("qwen3:14b", 0.75, 11)],
+    "code_test":       [("qwen3.5:9b", 0.75, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
+    "code_refactor":   [("qwen3.5:9b", 0.75, 8), ("qwen3.5:4b", 0.50, 5), ("qwen3.5:2b", 0.50, 3)],
+    # qwen3:14b leads on code_write and general_knowledge
+    "code_write":      [("qwen3:14b", 0.70, 11), ("qwen3.5:4b", 0.64, 5), ("qwen3.5:9b", 0.61, 8)],
+    "general_knowledge": [("qwen3:14b", 0.75, 11), ("qwen3.5:4b", 0.72, 5), ("qwen3.5:9b", 0.59, 8)],
+    # qwen3.5:4b leads on deep_knowledge
+    "deep_knowledge":  [("qwen3.5:4b", 0.78, 5), ("qwen3.5:9b", 0.75, 8), ("qwen3:14b", 0.62, 11)],
+    # System tasks — 9b and 14b both strong
+    "system_info":     [("qwen3:14b", 0.70, 11), ("qwen3.5:9b", 0.68, 8), ("qwen3.5:4b", 0.54, 5)],
+    "package_query":   [("qwen3.5:9b", 0.58, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.42, 5)],
+    # code_deploy — 14b leads
+    "code_deploy":     [("qwen3:14b", 0.75, 11), ("qwen3.5:9b", 0.50, 8), ("qwen3.5:4b", 0.50, 5)],
 }
 
 # VRAM size (GB) for each model — used to check if a preferred model fits
