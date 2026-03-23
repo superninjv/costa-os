@@ -23,16 +23,36 @@ get_vram_free_gb() {
     fi
 }
 
+try_model() {
+    # Check if a model is pulled locally before selecting it
+    ollama list 2>/dev/null | grep -q "$1" && echo "$1" && return 0
+    return 1
+}
+
 select_model() {
     local free=$1
     local budget=$(( free - HEADROOM_GB ))
 
-    if [ "$budget" -ge 12 ]; then
-        echo "qwen2.5:14b"
+    # Prefer qwen3.5 (better quality, thinking support, 262K context).
+    # Requires Vulkan backend on RDNA4 (ROCm HIP pegs GPU at 100% idle).
+    # Falls back to qwen2.5 if qwen3.5 variants aren't pulled.
+    #
+    # VRAM requirements (Q4_K_M, benchmarked 2026-03-23):
+    #   qwen3:14b   ~11GB   qwen3.5:9b  ~8GB
+    #   qwen3.5:4b  ~5GB    qwen2.5:7b  ~6GB
+    #   qwen3.5:2b  ~3GB    qwen2.5:3b  ~3GB
+    #   qwen3.5:0.8b ~1.5GB
+    # Note: qwen3.5:27b tested but NOT viable on 16GB (3.4 t/s, frequent failures)
+    if [ "$budget" -ge 10 ]; then
+        try_model "qwen3:14b" || try_model "qwen3.5:9b" || try_model "qwen2.5:14b" || try_model "qwen2.5:7b" || echo "qwen2.5:3b"
     elif [ "$budget" -ge 6 ]; then
-        echo "qwen2.5:7b"
-    elif [ "$budget" -ge 3 ]; then
-        echo "qwen2.5:3b"
+        try_model "qwen3.5:9b" || try_model "qwen2.5:7b" || try_model "qwen3.5:4b" || echo "qwen2.5:3b"
+    elif [ "$budget" -ge 4 ]; then
+        try_model "qwen3.5:4b" || try_model "qwen2.5:3b" || try_model "qwen3.5:2b" || echo "none"
+    elif [ "$budget" -ge 2 ]; then
+        try_model "qwen3.5:2b" || try_model "qwen2.5:3b" || try_model "qwen3.5:0.8b" || echo "none"
+    elif [ "$budget" -ge 1 ]; then
+        try_model "qwen3.5:0.8b" || echo "none"
     else
         echo "none"
     fi
@@ -44,9 +64,15 @@ if ! command -v ollama &>/dev/null; then
     exit 0
 fi
 
-# If no GPU detected, use smallest model
+# If no GPU detected, use smallest available model (CPU inference)
 if [ "${VRAM_GB:-0}" -eq 0 ]; then
-    echo "qwen2.5:3b" > "$MODEL_FILE"
+    if ollama list 2>/dev/null | grep -q "qwen3.5:0.8b"; then
+        echo "qwen3.5:0.8b" > "$MODEL_FILE"
+    elif ollama list 2>/dev/null | grep -q "qwen3.5:2b"; then
+        echo "qwen3.5:2b" > "$MODEL_FILE"
+    else
+        echo "qwen2.5:3b" > "$MODEL_FILE"
+    fi
     exit 0
 fi
 

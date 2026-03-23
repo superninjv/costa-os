@@ -59,7 +59,7 @@ The router: gathers live system context → queries local Ollama → detects "I 
 - Base: Arch Linux (archiso)
 - Compositor: Hyprland
 - Theme: Costa (Mediterranean coastal palette)
-- AI Layer: Whisper STT + Ollama (local) + Claude API (cloud) + smart routing
+- AI Layer: Whisper STT + Ollama (local, Vulkan backend) + Claude API (cloud) + smart routing
 - Package manager: pacman + yay (AUR)
 
 ## Workflow Commands

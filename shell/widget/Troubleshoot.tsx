@@ -60,11 +60,15 @@ export default function Troubleshoot() {
       class="troubleshoot"
       visible={getIssues.as(i => i.count > 0)}
     >
-      <label
-        label={"\uF071"}
-        class="trouble-icon"
+      <button
+        class="trouble-btn"
+        onClicked={() =>
+          execAsync("bash -c 'foot -T \"System Issues\" bash -c \"echo \\\"=== Failed Services ===\\\"; systemctl --user --failed; echo; echo \\\"=== System Load ===\\\"; uptime; echo; echo \\\"=== Disk Usage ===\\\"; df -h /; echo; read -p \\\"Press Enter to close...\\\"\"'").catch(() => {})
+        }
         tooltipText={getIssues.as(i => i.details.join("\n"))}
-      />
+      >
+        <label label={"\uF071"} class="trouble-icon" />
+      </button>
     </box>
   )
 }

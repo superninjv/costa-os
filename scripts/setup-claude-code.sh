@@ -77,9 +77,9 @@ echo -n "Log in now? (Y/n): "
 read -r choice
 if [ "${choice:-y}" != "n" ] && [ "${choice:-y}" != "N" ]; then
     echo ""
-    echo "Starting Claude Code — complete the browser login, then type /exit"
+    echo "Starting Claude Code authentication..."
     echo ""
-    claude --no-update-check
+    claude auth login
 fi
 # Remove the autostart trigger after first run (whether they logged in or not)
 rm -f ~/.config/hypr/costa-claude-login.conf
@@ -92,7 +92,7 @@ LOGINEOF
 
     # Find a working terminal emulator
     # Skip ghostty in VMs — it requires GPU acceleration and crashes on QXL/virtio-vga
-    local IN_VM=""
+    IN_VM=""
     if systemd-detect-virt -q 2>/dev/null || grep -qi "hypervisor\|qemu\|kvm\|virtualbox\|vmware" /proc/cpuinfo 2>/dev/null; then
         IN_VM="1"
     fi
@@ -109,10 +109,15 @@ LOGINEOF
         if [ "$IN_VM" = "1" ]; then
             echo "  ⚠ No suitable terminal found for login prompt (VM detected)"
             echo "  ✓ Run 'claude' from any terminal to log in"
-            return 0
+            SKIP_LOGIN_TERMINAL=1
+        else
+            TERM_CMD="ghostty"  # default to ghostty on real hardware
         fi
-        TERM_CMD="ghostty"  # default to ghostty on real hardware
     fi
+
+    if [ "${SKIP_LOGIN_TERMINAL:-}" = "1" ]; then
+        echo "  Skipping login terminal setup"
+    else
 
     # Build exec command based on terminal
     case "$TERM_CMD" in
@@ -147,6 +152,9 @@ LOGINEOF
     else
         echo "  ✓ Claude login will prompt on next Hyprland session"
     fi
+
+    fi  # end SKIP_LOGIN_TERMINAL check
+
 fi
 
 # ─── 2. Create ~/.claude/ directory ──────────────────────────

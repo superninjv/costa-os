@@ -52,10 +52,14 @@ TOPIC_PATTERNS = {
 }
 
 # Token budget per model tier (approximate — measured in chars, ~4 chars/token)
+# qwen3.5 models have 262K context but smaller models can't reason over large context
 TIER_CONFIG = {
-    "3b": {"top_l1": 2, "full": 0, "budget_chars": 3200},    # ~800 tokens
-    "7b": {"top_l1": 3, "full": 0, "budget_chars": 6000},    # ~1500 tokens
-    "14b": {"top_l1": 3, "full": 1, "budget_chars": 12000},   # ~3000 tokens
+    "1b":  {"top_l1": 1, "full": 0, "budget_chars": 1600},    # ~400 tokens (qwen3.5:0.8b)
+    "3b":  {"top_l1": 2, "full": 0, "budget_chars": 3200},    # ~800 tokens (qwen3.5:2b, qwen2.5:3b)
+    "4b":  {"top_l1": 2, "full": 0, "budget_chars": 4800},    # ~1200 tokens (qwen3.5:4b)
+    "7b":  {"top_l1": 3, "full": 0, "budget_chars": 6000},    # ~1500 tokens (qwen2.5:7b)
+    "9b":  {"top_l1": 3, "full": 1, "budget_chars": 8000},    # ~2000 tokens (qwen3.5:9b)
+    "14b": {"top_l1": 3, "full": 1, "budget_chars": 12000},   # ~3000 tokens (qwen2.5:14b)
 }
 
 
@@ -186,13 +190,31 @@ def score_match(query: str, kf: KnowledgeFile) -> int:
 
 
 def detect_model_tier(model_name: str) -> str:
-    """Detect the tier from an Ollama model name."""
+    """Detect the tier from an Ollama model name.
+
+    Parses the parameter count from model names like 'qwen3.5:4b', 'qwen2.5:14b'.
+    Maps to the closest TIER_CONFIG key.
+    """
+    import re
     name = model_name.lower()
-    if "1.5b" in name or "1b" in name or "3b" in name:
-        return "3b"
-    if "7b" in name or "8b" in name:
-        return "7b"
-    # 14b, 32b, 72b, or unknown — use 14b tier (most generous)
+
+    # Extract numeric param count (e.g. "0.8b", "4b", "14b")
+    match = re.search(r"(\d+\.?\d*)b", name)
+    if match:
+        params = float(match.group(1))
+        if params < 1.5:
+            return "1b"
+        if params < 4:
+            return "3b"
+        if params < 6:
+            return "4b"
+        if params < 8:
+            return "7b"
+        if params < 12:
+            return "9b"
+        return "14b"
+
+    # Fallback for names without param count
     return "14b"
 
 

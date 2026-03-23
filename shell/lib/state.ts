@@ -33,6 +33,13 @@ export function hideBar(delay = 400) {
 // Reference to bar window for show/hide
 let barWindow: any = null
 export function setBarWindow(win: any) {
+  // If replacing an existing bar (monitor reconnect), clean up old state
+  if (barWindow && barWindow !== win) {
+    barWindow.visible = false
+  }
   barWindow = win
   win.visible = false
+}
+export function clearBarWindow() {
+  barWindow = null
 }

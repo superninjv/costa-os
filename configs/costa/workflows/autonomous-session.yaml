@@ -1,0 +1,54 @@
+name: autonomous-session
+description: Template for scheduling autonomous Claude Code work sessions
+trigger:
+  type: manual  # Change to schedule + calendar for recurring
+
+steps:
+  - id: check-clean
+    action: shell
+    command: "cd ~/projects/costa-os && git status --porcelain | wc -l"
+
+  - id: ensure-clean
+    action: condition
+    check: check-clean
+    contains: "0"
+
+  - id: create-branch
+    action: shell
+    command: "cd ~/projects/costa-os && git checkout -b auto/session-$(date +%Y%m%d-%H%M) 2>/dev/null || true"
+
+  - id: run-claude
+    action: claude-code
+    workdir: ~/projects/costa-os
+    model: sonnet
+    budget: 15.0
+    timeout: 14400
+    permission_mode: acceptEdits
+    allowed_tools: "Bash(git diff:*,git log:*,git status:*,git add:*,git commit:*,python:*,npm:*,node:*) Read Edit Write Glob Grep Agent"
+    query: |
+      You are working autonomously on the Costa OS project.
+      Read CLAUDE.md first for project context.
+
+      Your task:
+      [REPLACE WITH ACTUAL TASK]
+
+      Rules:
+      - Do NOT push to remote
+      - Do NOT modify installer/ or iso/ directories
+      - Create one commit per logical change
+      - If unsure about something, skip it and note it
+
+      When done, write a summary to /tmp/costa-session-summary.txt
+
+  - id: summary
+    action: shell
+    command: "cat /tmp/costa-session-summary.txt 2>/dev/null || echo 'No summary generated. Check git log for changes.'"
+
+  - id: diff-stats
+    action: shell
+    command: "cd ~/projects/costa-os && git diff main --stat 2>/dev/null || git log --oneline -5"
+
+  - id: notify
+    action: notify
+    title: "Autonomous Session Complete"
+    body: "{{steps.summary.output}}\n\nChanges:\n{{steps.diff-stats.output}}"

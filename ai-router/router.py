@@ -171,6 +171,7 @@ from project_switch import switch_project, fuzzy_match, list_projects
 from file_search import search_files, format_results as format_file_results, record_file_open
 from keybinds import is_keybind_query, handle_keybind_query
 from knowledge import select_knowledge_tiered, detect_model_tier
+from ml_router import select_local_model, CATEGORY_MODEL_PREFS
 
 
 # System prompt paths — tiered by model size
@@ -406,6 +407,11 @@ def query_ollama(prompt: str, system: str, model: str, timeout: int = 30,
         "keep_alive": "5m",
         "options": {},
     }
+    # Qwen3.5 models default to "thinking mode" which consumes the entire
+    # num_predict budget on chain-of-thought before generating visible output.
+    # Disable thinking to get direct responses within the token budget.
+    if "qwen3.5" in model or "qwen3" in model:
+        payload_dict["think"] = False
     if temperature is not None:
         payload_dict["options"]["temperature"] = temperature
     if num_predict is not None:
@@ -976,6 +982,57 @@ def route_query(query: str, force_model: str | None = None,
                 }
                 _log_to_db(result, input_modality)
                 return result
+
+            # Category-aware model selection: if the ML classifier or regex
+            # detected a category where a different model excels, swap to it.
+            # Ollama auto-loads the requested model (2-3s swap).
+            query_category = None
+            try:
+                from ml_router import get_router
+                router_inst = get_router()
+                _route, _conf = router_inst.predict(query)
+                # The classifier returns a route, but we need the category.
+                # Use the knowledge topic scoring as a proxy for category.
+                from knowledge import TOPIC_PATTERNS
+                best_cat, best_score = None, 0
+                for cat, pat in TOPIC_PATTERNS.items():
+                    if re.search(pat, query, re.IGNORECASE):
+                        best_cat = cat
+                        break
+                # Map knowledge topics to benchmark categories
+                _TOPIC_TO_CATEGORY = {
+                    "arch-admin": "package_query",
+                    "dev-tools": "code_write",
+                    "ai-router": "architecture",
+                    "costa-os": "deep_knowledge",
+                    "costa-nav": "architecture",
+                    "pipewire-audio": "system_info",
+                    "process-management": "system_info",
+                }
+                if best_cat:
+                    query_category = _TOPIC_TO_CATEGORY.get(best_cat, best_cat)
+            except Exception:
+                pass
+
+            # Also detect category from code/refactor/test/debug keywords
+            if not query_category:
+                q_lower = query.lower()
+                if re.search(r"\b(refactor|clean up|simplify|rename)\b", q_lower):
+                    query_category = "code_refactor"
+                elif re.search(r"\b(test|spec|coverage|assert)\b", q_lower):
+                    query_category = "code_test"
+                elif re.search(r"\b(debug|trace|error|crash|fix|bug)\b", q_lower):
+                    query_category = "code_debug"
+                elif re.search(r"\b(deploy|release|ship|ci|cd|pipeline)\b", q_lower):
+                    query_category = "code_deploy"
+                elif re.search(r"\b(architect|design|structure|pattern|system)\b", q_lower):
+                    query_category = "architecture"
+
+            # Pick the best model for this category (if we identified one)
+            if query_category and query_category in CATEGORY_MODEL_PREFS:
+                preferred = select_local_model(query_category, ollama_model)
+                if preferred != ollama_model:
+                    ollama_model = preferred
 
             model_used = ollama_model
             system_prompt = get_system_prompt(ollama_model)

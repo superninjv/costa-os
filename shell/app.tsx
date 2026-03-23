@@ -11,6 +11,9 @@ import ClaudeBar from "./widget/ClaudeBar"
 
 const hypr = Hyprland.get_default()
 
+// Track active monitors to prevent duplicates and enable cleanup
+const activeMonitors = new Map<string, Gtk.Window[]>()
+
 function getMonitorType(connector: string): "primary" | "secondary" | "portrait" | "headless" {
   if (connector.startsWith("HEADLESS")) return "headless"
   if (connector === "HDMI-A-1") return "portrait"
@@ -21,23 +24,66 @@ function getMonitorType(connector: string): "primary" | "secondary" | "portrait"
 
 function setupMonitor(gdkMon: Gdk.Monitor) {
   const connector = gdkMon.get_connector() ?? "unknown"
+
+  if (activeMonitors.has(connector)) {
+    print(`[costa-shell] ${connector} already active, skipping`)
+    return
+  }
+
   const type = getMonitorType(connector)
   print(`[costa-shell] ${connector} → ${type}`)
+  const windows: Gtk.Window[] = []
 
   switch (type) {
     case "primary":
-      Notch(gdkMon)
-      Bar(gdkMon)
+      windows.push(Notch(gdkMon))
+      windows.push(Bar(gdkMon))
       break
     case "secondary":
-      MinimalPill(gdkMon)
+      windows.push(MinimalPill(gdkMon))
       break
     case "portrait":
-      PortraitBar(gdkMon)
+      windows.push(PortraitBar(gdkMon))
       break
     case "headless":
-      ClaudeBar(gdkMon)
+      windows.push(ClaudeBar(gdkMon))
       break
+  }
+
+  activeMonitors.set(connector, windows)
+}
+
+function teardownMonitor(connector: string) {
+  const windows = activeMonitors.get(connector)
+  if (!windows) return
+
+  print(`[costa-shell] ${connector} removed, destroying ${windows.length} windows`)
+  for (const win of windows) {
+    win.close()
+  }
+  activeMonitors.delete(connector)
+}
+
+function reconcileMonitors(monitorList: import("gi://Gio").ListModel) {
+  const currentConnectors = new Set<string>()
+  const n = monitorList.get_n_items()
+  for (let i = 0; i < n; i++) {
+    const mon = monitorList.get_item(i) as Gdk.Monitor
+    const c = mon?.get_connector()
+    if (c) currentConnectors.add(c)
+  }
+
+  // Tear down monitors that disappeared
+  for (const connector of activeMonitors.keys()) {
+    if (!currentConnectors.has(connector)) {
+      teardownMonitor(connector)
+    }
+  }
+
+  // Set up monitors that are new (setupMonitor deduplicates)
+  for (let i = 0; i < n; i++) {
+    const mon = monitorList.get_item(i) as Gdk.Monitor
+    if (mon) setupMonitor(mon)
   }
 }
 
@@ -49,16 +95,11 @@ app.start({
       setupMonitor(gdkMon)
     }
 
-    // Handle monitors that come online later (e.g. HDMI-A-2 slow EDID)
+    // Reconcile on any monitor change (hotplug, EDID, reboot timing)
     const display = Gdk.Display.get_default()
     if (display) {
       const monitorList = display.get_monitors() as import("gi://Gio").ListModel
-      monitorList.connect("items-changed", (_list: any, position: number, removed: number, added: number) => {
-        for (let i = 0; i < added; i++) {
-          const gdkMon = monitorList.get_item(position + i) as Gdk.Monitor
-          if (gdkMon) setupMonitor(gdkMon)
-        }
-      })
+      monitorList.connect("items-changed", () => reconcileMonitors(monitorList))
     }
   },
 })

@@ -91,10 +91,94 @@ HYPRLAND_CONFIG_KEYWORDS = re.compile(
 )
 
 VRAM_MODEL_MAP = {
-    "qwen2.5:14b": 1.0,
+    # Quality scores from benchmark_qwen35.py (2026-03-23, 80 prompts, Vulkan/RADV)
+    "qwen3.5:9b": 0.87,    # Best quality (0.871), 24 t/s, ~8GB VRAM
+    "qwen3:14b": 0.85,     # Similar quality (0.854), 25 t/s, ~11GB VRAM
+    "qwen3.5:4b": 0.86,    # Near-best quality (0.858), 28 t/s, ~5GB VRAM
+    "qwen3.5:2b": 0.85,    # Best value (0.852), 55 t/s, ~3GB VRAM
+    "qwen3.5:0.8b": 0.84,  # Still viable (0.846), 16 t/s, ~1.5GB VRAM
+    "qwen2.5:14b": 1.0,    # Legacy baseline
     "qwen2.5:7b": 0.66,
     "qwen2.5:3b": 0.33,
 }
+
+# Category-aware model preferences — best model per category from benchmark data.
+# Used by select_local_model() to override the default VRAM-tier model when a
+# category-specialist would do better. Only triggers if the preferred model fits
+# in VRAM (checked against /tmp/ollama-smart-model tier).
+#
+# Format: category → [(model, quality, vram_gb), ...] sorted best-first
+# The router picks the first model that fits in current VRAM budget.
+CATEGORY_MODEL_PREFS = {
+    # qwen3:14b dominates architecture and test generation
+    "architecture":    [("qwen3:14b", 0.955, 11), ("qwen3.5:9b", 0.905, 8), ("qwen3.5:4b", 0.900, 5)],
+    "code_test":       [("qwen3:14b", 1.000, 11), ("qwen3.5:4b", 1.000, 5), ("qwen3.5:9b", 0.667, 8)],
+    # qwen3.5:9b dominates these categories
+    "package_query":   [("qwen3.5:9b", 0.903, 8), ("qwen3:14b", 0.819, 11), ("qwen3.5:2b", 0.778, 3)],
+    "code_deploy":     [("qwen3.5:9b", 1.000, 8), ("qwen3.5:4b", 0.833, 5), ("qwen3:14b", 0.833, 11)],
+    # qwen3.5:2b and 4b are surprisingly strong here — use for speed
+    "code_debug":      [("qwen3.5:2b", 1.000, 3), ("qwen3.5:4b", 1.000, 5), ("qwen3.5:9b", 0.875, 8)],
+    "code_refactor":   [("qwen3.5:2b", 1.000, 3), ("qwen3.5:4b", 1.000, 5), ("qwen3.5:9b", 1.000, 8)],
+    # deep_knowledge — 2b is perfect, save VRAM
+    "deep_knowledge":  [("qwen3.5:2b", 1.000, 3), ("qwen3.5:4b", 0.988, 5), ("qwen3.5:9b", 0.975, 8)],
+}
+
+# VRAM size (GB) for each model — used to check if a preferred model fits
+MODEL_VRAM_GB = {
+    "qwen3.5:0.8b": 1.5,
+    "qwen3.5:2b": 3,
+    "qwen3.5:4b": 5,
+    "qwen3.5:9b": 8,
+    "qwen3:14b": 11,
+    "qwen3.5:27b": 17,
+    "qwen2.5:3b": 3,
+    "qwen2.5:7b": 6,
+    "qwen2.5:14b": 11,
+}
+
+
+def select_local_model(category: str, default_model: str, vram_budget_gb: float = 0) -> str:
+    """Pick the best local model for a query category.
+
+    If the category has a specialist model that fits in VRAM, use it.
+    Otherwise fall back to the default model from the VRAM manager.
+
+    Only swaps if the quality gain is >= 5% over the default model's quality
+    in that category, to avoid unnecessary 2-3s model load penalties.
+
+    Args:
+        category: Query category from ML classifier (e.g. "architecture")
+        default_model: Current model from /tmp/ollama-smart-model
+        vram_budget_gb: Available VRAM in GB (0 = use default model's tier)
+
+    Returns:
+        Model name to use for this query.
+    """
+    prefs = CATEGORY_MODEL_PREFS.get(category)
+    if not prefs:
+        return default_model
+
+    # If no VRAM budget provided, estimate from the default model
+    if vram_budget_gb <= 0:
+        vram_budget_gb = MODEL_VRAM_GB.get(default_model, 8) + 2  # headroom
+
+    # Find the default model's quality in this category (if listed)
+    default_quality = 0.0
+    for model, quality, _vram in prefs:
+        if model == default_model:
+            default_quality = quality
+            break
+    # If default isn't in prefs, use its overall score
+    if default_quality == 0.0:
+        default_quality = VRAM_MODEL_MAP.get(default_model, 0.5)
+
+    for model, quality, vram_needed in prefs:
+        if model == default_model:
+            return default_model  # Already the best — no swap needed
+        if vram_needed <= vram_budget_gb and (quality - default_quality) >= 0.049:
+            return model
+
+    return default_model
 
 # ---------------------------------------------------------------------------
 # Intent structure features — verb+noun patterns that disambiguate routes

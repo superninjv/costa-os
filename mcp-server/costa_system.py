@@ -719,6 +719,61 @@ async def list_tools():
                 "required": ["query"],
             },
         ),
+        Tool(
+            name="ollama_query",
+            description=(
+                "Query the local Ollama LLM directly. Use this to delegate simple questions "
+                "to the local model (saves API cost), test local model capabilities, or ask "
+                "questions that need live system context. The local model has real-time system "
+                "data injected into its prompts when include_context is true. NEVER escalates "
+                "to cloud — safe from infinite loops. "
+                "Prefer this for: system status queries, simple factual questions, summarizing "
+                "text, formatting data. Prefer Claude for: complex reasoning, code review, "
+                "multi-step planning."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The query to send to the local model",
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": "Model override (e.g. 'qwen3.5:9b'). Default: auto-selected by VRAM manager",
+                    },
+                    "include_context": {
+                        "type": "boolean",
+                        "description": "Gather live system context (CPU, GPU, RAM, disk). Default false",
+                        "default": False,
+                    },
+                    "use_router": {
+                        "type": "boolean",
+                        "description": "Route through full costa-ai stack (knowledge injection, context, no escalation). Default false",
+                        "default": False,
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "Query category hint for model selection (architecture, code_test, code_debug, code_refactor, code_deploy, deep_knowledge, package_query). Auto-picks the best local model for the category.",
+                    },
+                    "max_tokens": {
+                        "type": "integer",
+                        "description": "Max response tokens (default 512)",
+                        "default": 512,
+                    },
+                    "system_prompt": {
+                        "type": "string",
+                        "description": "Custom system prompt. Default: Costa OS assistant prompt",
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "description": "Generation temperature 0.0-1.0 (default 0.3)",
+                        "default": 0.3,
+                    },
+                },
+                "required": ["prompt"],
+            },
+        ),
     ]
 
 
@@ -838,6 +893,7 @@ async def call_tool(name: str, arguments: dict):
             "system_command": handle_system_command,
             "scroll_window": handle_scroll_window,
             "vault_search": handle_vault_search,
+            "ollama_query": handle_ollama_query,
         }.get(name)
         if handler:
             return await handler(arguments)
@@ -1384,6 +1440,136 @@ async def handle_scroll_window(args: dict):
         return [TextContent(type="text", text=f"Scrolled {direction} {amount}x in {win_class}")]
     else:
         return [TextContent(type="text", text=f"Window '{win_class}' not found in X11 — scroll requires XWayland")]
+
+
+# ─── ollama_query ─────────────────────────────────────────────
+
+async def handle_ollama_query(args: dict):
+    """Query local Ollama model directly or via the costa-ai router.
+
+    Two modes:
+    - Direct (default): POST to Ollama API. Fast, no routing overhead.
+    - Router (use_router=true): Calls costa-ai --json --no-escalate. Gets
+      knowledge injection + context. Always forces --no-escalate to prevent
+      Claude -> local -> Claude infinite loops.
+    """
+    prompt = args.get("prompt", "").strip()
+    if not prompt:
+        return [TextContent(type="text", text="ERROR: prompt is required")]
+
+    use_router = args.get("use_router", False)
+
+    if use_router:
+        # Full costa-ai pipeline, but NEVER escalate (prevents loops)
+        cmd = ["costa-ai", "--json", "--no-escalate"]
+        if args.get("include_context") is False:
+            cmd.append("--no-context")
+        cmd.append(prompt)
+
+        try:
+            env = {**os.environ, "COSTA_AI_NO_ESCALATE": "1", "COSTA_AI_SOURCE": "mcp"}
+            r = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=60, env=env
+            )
+            output = r.stdout.strip() if r.returncode == 0 else f"ERROR (rc={r.returncode}): {r.stderr.strip()}"
+            if len(output) > 8000:
+                output = output[:8000] + "\n... (truncated)"
+            return [TextContent(type="text", text=output)]
+        except subprocess.TimeoutExpired:
+            return [TextContent(type="text", text="ERROR: costa-ai query timed out (60s)")]
+        except FileNotFoundError:
+            return [TextContent(type="text", text="ERROR: costa-ai not found in PATH")]
+
+    # Direct Ollama mode
+    model = args.get("model", "")
+    if not model:
+        try:
+            model = Path("/tmp/ollama-smart-model").read_text().strip()
+        except Exception:
+            model = "qwen2.5:7b"
+
+    # Category-aware model selection: pick the best model for this query type
+    category = args.get("category", "")
+    if category and not args.get("model"):
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "ai-router"))
+            from ml_router import select_local_model
+            model = select_local_model(category, model)
+        except Exception:
+            pass  # Fall through to default model
+
+    if model == "none":
+        return [TextContent(type="text", text="No local model available (GPU in gaming mode — all VRAM reserved)")]
+
+    system = args.get("system_prompt", "You are a helpful Linux system assistant running on Arch Linux. Be concise and accurate.")
+
+    # Optionally gather live system context
+    if args.get("include_context", False):
+        ctx_cmds = [
+            ("System", "uname -a"),
+            ("Memory", "free -h | head -3"),
+            ("Disk", "df -h / /home 2>/dev/null | tail -n +2"),
+            ("GPU VRAM", "cat /sys/class/drm/card*/device/mem_info_vram_used /sys/class/drm/card*/device/mem_info_vram_total 2>/dev/null || nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader 2>/dev/null || echo 'N/A'"),
+            ("Load", "uptime"),
+        ]
+        ctx_parts = []
+        for label, cmd_str in ctx_cmds:
+            try:
+                r = subprocess.run(cmd_str, shell=True, capture_output=True, text=True, timeout=5)
+                if r.returncode == 0 and r.stdout.strip():
+                    ctx_parts.append(f"{label}: {r.stdout.strip()}")
+            except Exception:
+                pass
+        if ctx_parts:
+            system += "\n\n[LIVE SYSTEM CONTEXT]\n" + "\n".join(ctx_parts)
+
+    payload_dict = {
+        "model": model,
+        "prompt": prompt,
+        "system": system,
+        "stream": False,
+        "keep_alive": "5m",
+        "options": {
+            "temperature": args.get("temperature", 0.3),
+            "num_predict": args.get("max_tokens", 512),
+        },
+    }
+    # Disable thinking for qwen3.5 models (they consume the entire token
+    # budget on chain-of-thought, leaving the response field empty)
+    if "qwen3.5" in model or "qwen3" in model:
+        payload_dict["think"] = False
+    payload = json.dumps(payload_dict)
+
+    try:
+        r = subprocess.run(
+            ["curl", "-sf", "http://localhost:11434/api/generate", "-d", payload],
+            capture_output=True, text=True, timeout=120,
+        )
+        if r.returncode != 0:
+            return [TextContent(type="text", text=f"ERROR: Ollama request failed (rc={r.returncode}). Is Ollama running?")]
+
+        data = json.loads(r.stdout)
+        response = data.get("response", "").strip()
+        model_used = data.get("model", model)
+        eval_duration = data.get("eval_duration", 0) / 1e9  # nanoseconds -> seconds
+        prompt_eval_duration = data.get("prompt_eval_duration", 0) / 1e9
+        total_duration = data.get("total_duration", 0) / 1e9
+
+        result = {
+            "response": response,
+            "model": model_used,
+            "eval_seconds": round(eval_duration, 2),
+            "prompt_eval_seconds": round(prompt_eval_duration, 2),
+            "total_seconds": round(total_duration, 2),
+            "source": "ollama_direct",
+        }
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except subprocess.TimeoutExpired:
+        return [TextContent(type="text", text="ERROR: Ollama query timed out (120s)")]
+    except json.JSONDecodeError as e:
+        return [TextContent(type="text", text=f"ERROR: Invalid JSON from Ollama: {e}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"ERROR: {e}")]
 
 
 # ─── Main ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 ---
 l0: "VRAM manager: automatic Ollama model selection based on available GPU memory"
-l1_sections: ["What It Does", "Model Tiers", "Checking Current State", "How It Decides", "Gaming Mode", "Manual Override", "Configuration"]
-tags: [vram, gpu, ollama, model, memory, gaming, manager]
+l1_sections: ["What It Does", "Model Tiers", "GPU Backend", "Checking Current State", "How It Decides", "Gaming Mode", "Manual Override", "Configuration"]
+tags: [vram, gpu, ollama, model, memory, gaming, manager, vulkan]
 ---
 # Costa OS VRAM Manager
 
@@ -11,12 +11,23 @@ Automatically picks the best Ollama model that fits in available GPU memory. Run
 
 ## Model Tiers
 
-| Tier | Model | VRAM Needed | When |
-|------|-------|-------------|------|
-| Full | qwen2.5:14b | ~11GB | Plenty of VRAM free |
-| Medium | qwen2.5:7b | ~6.5GB | Moderate VRAM pressure |
-| Reduced | qwen2.5:3b | ~4GB | Heavy VRAM usage |
-| Gaming | (none loaded) | 0GB | GPU needed for games |
+| Tier | Model | VRAM Needed | Speed | When |
+|------|-------|-------------|-------|------|
+| Full | qwen3.5:9b | ~8GB | ~21 t/s | Plenty of VRAM free |
+| Medium | qwen3.5:4b | ~5GB | ~30 t/s | Moderate VRAM pressure |
+| Reduced | qwen3.5:2b / qwen2.5:3b | ~3GB | ~40 t/s | Heavy VRAM usage |
+| Gaming | (none loaded) | 0GB | — | GPU needed for games |
+
+Prefers qwen3.5 (better quality + thinking support). Falls back to qwen2.5 if qwen3.5 isn't pulled.
+
+## GPU Backend
+
+Ollama uses **Vulkan** (mesa RADV) on AMD GPUs. ROCm/HIP has a known bug on RDNA4 (gfx1200) that pegs the GPU at 100% idle and never releases — even after unloading models. Vulkan avoids this entirely while delivering comparable performance.
+
+The Vulkan backend is configured via systemd override:
+```
+/etc/systemd/system/ollama.service.d/vulkan.conf
+```
 
 ## Checking Current State
 

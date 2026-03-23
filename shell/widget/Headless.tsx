@@ -1,4 +1,5 @@
 import { createState } from "gnim"
+import { execAsync } from "ags/process"
 import Hyprland from "gi://AstalHyprland"
 
 const hypr = Hyprland.get_default()
@@ -12,11 +13,15 @@ export default function Headless() {
       class="headless"
       visible={getMonitors.as(ms => ms.some((m) => m.get_name().startsWith("HEADLESS")))}
     >
-      <label
-        label={"\uF108"}
-        class="headless-icon"
-        tooltipText="Headless monitor active"
-      />
+      <button
+        class="headless-btn"
+        onClicked={() =>
+          execAsync("hyprctl dispatch workspace 7").catch(() => {})
+        }
+        tooltipText="Headless monitor active — click to switch"
+      >
+        <label label={"\uF108"} class="headless-icon" />
+      </button>
     </box>
   )
 }
