@@ -35,7 +35,7 @@ export default function NowPlaying() {
     <button
       class="now-playing-btn"
       onClicked={() => {
-        execAsync("/usr/bin/python3 /home/jack/.config/music-widget/widget.py").catch(() => {})
+        execAsync("bash -c '~/.config/costa/scripts/toggle-app.sh costa-music-widget \"/usr/bin/python3 $HOME/.config/costa/music-widget/widget.py\"'").catch(() => {})
       }}
       tooltipText={getTitle.as((t) => t || "Open music player")}
     >

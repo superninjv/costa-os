@@ -57,7 +57,7 @@ export default function Audio() {
     >
       <button
         class={getVolume.as((v) => (v.muted ? "audio-btn muted" : "audio-btn"))}
-        onClicked={() => execAsync("pavucontrol").catch(() => {})}
+        onClicked={() => execAsync("bash -c 'command -v pavucontrol && pavucontrol || wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle'").catch(() => {})}
         tooltipText={getVolume.as(
           (v) => `${Math.round(v.level * 100)}%${v.muted ? " (muted)" : ""}`,
         )}

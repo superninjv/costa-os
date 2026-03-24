@@ -22,7 +22,16 @@ else
     exec 9>"$LOCK"
     flock -n 9 || { rm -f "$LOCK"; exec 9>"$LOCK"; flock -n 9 || exit 0; }
 
-    ghostty --title="$DROPDOWN_TITLE" -e $CMD &disown
+    TERM=""
+    for t in ghostty foot kitty alacritty; do
+        command -v "$t" &>/dev/null && TERM="$t" && break
+    done
+    case "$TERM" in
+        ghostty)   ghostty --title="$DROPDOWN_TITLE" -e $CMD &disown ;;
+        foot)      foot -T "$DROPDOWN_TITLE" $CMD &disown ;;
+        kitty)     kitty -T "$DROPDOWN_TITLE" $CMD &disown ;;
+        alacritty) alacritty -t "$DROPDOWN_TITLE" -e $CMD &disown ;;
+    esac
     # Wait for window to appear (window rules handle positioning)
     for i in $(seq 1 20); do
         ADDR=$(hyprctl clients -j | jq -r ".[] | select(.initialTitle == \"$DROPDOWN_TITLE\") | .address" 2>/dev/null | head -1)

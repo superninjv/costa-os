@@ -29,7 +29,7 @@ export default function PTT() {
         }
       })}
       onClicked={() =>
-        execAsync("bash -c '~/.config/hypr/push-to-talk.sh'").catch(() => {})
+        execAsync("bash -c '~/.config/costa/voice/push-to-talk.sh'").catch(() => {})
       }
     >
       <label label={"\uF130"} />

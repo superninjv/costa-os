@@ -1,7 +1,7 @@
 import { Gtk } from "ags/gtk4"
 import { execAsync } from "ags/process"
 
-const LAUNCHER = "~/.config/waybar/scripts/claude-launcher.sh"
+const LAUNCHER = "~/.config/costa/scripts/claude-launcher.sh"
 
 export default function Claude() {
   return (

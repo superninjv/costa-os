@@ -110,7 +110,7 @@ export default function CostaWave() {
     <button
       class="costa-wave"
       onClicked={() =>
-        execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh costa-ai-widget \"/usr/bin/python3 $HOME/.config/costa-ai-widget/widget.py\"'").catch(() => {})
+        execAsync("bash -c '~/.config/costa/scripts/toggle-app.sh costa-ai-widget \"/usr/bin/python3 $HOME/.config/costa-ai-widget/widget.py\"'").catch(() => {})
       }
       tooltipText={getWave.as((w) => w.tooltip)}
     >

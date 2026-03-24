@@ -131,21 +131,21 @@ export default function PortraitBar(gdkmonitor: Gdk.Monitor) {
         <box $type="end" spacing={4}>
           <button
             class="stat-btn"
-            onClicked={() => execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh amdgpu_top amdgpu_top'").catch(() => {})}
+            onClicked={() => execAsync("bash -c '~/.config/costa/scripts/toggle-app.sh amdgpu_top amdgpu_top'").catch(() => {})}
             tooltipText="GPU VRAM — click for amdgpu_top"
           >
             <label label={getVramStr.as((v) => v)} class="stat" />
           </button>
           <button
             class="stat-btn"
-            onClicked={() => execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh btm btm'").catch(() => {})}
+            onClicked={() => execAsync("bash -c '~/.config/costa/scripts/toggle-app.sh btm btm'").catch(() => {})}
             tooltipText="CPU — click for btm"
           >
             <label label={getCpuStr.as((v) => v)} class="stat" />
           </button>
           <button
             class="stat-btn"
-            onClicked={() => execAsync("bash -c '~/.config/waybar/scripts/toggle-app.sh btm btm'").catch(() => {})}
+            onClicked={() => execAsync("bash -c '~/.config/costa/scripts/toggle-app.sh btm btm'").catch(() => {})}
             tooltipText="RAM — click for btm"
           >
             <label label={getRamStr.as((v) => v)} class="stat" />

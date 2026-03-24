@@ -10,7 +10,17 @@ action="${1:-launch}"
 launch_claude() {
   local dir="$1"
   local args="$2"
-  ghostty -e $SHELL_WRAPPER "cd '${dir:-$HOME}' && $CLAUDE_CMD $args"
+  local TERM=""
+  for t in ghostty foot kitty alacritty; do
+    command -v "$t" &>/dev/null && TERM="$t" && break
+  done
+  case "$TERM" in
+    ghostty)   ghostty -e $SHELL_WRAPPER "cd '${dir:-$HOME}' && $CLAUDE_CMD $args" ;;
+    foot)      foot $SHELL_WRAPPER "cd '${dir:-$HOME}' && $CLAUDE_CMD $args" ;;
+    kitty)     kitty $SHELL_WRAPPER "cd '${dir:-$HOME}' && $CLAUDE_CMD $args" ;;
+    alacritty) alacritty -e $SHELL_WRAPPER "cd '${dir:-$HOME}' && $CLAUDE_CMD $args" ;;
+    *)         echo "No terminal found" ;;
+  esac
 }
 
 case "$action" in
