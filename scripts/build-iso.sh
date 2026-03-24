@@ -71,6 +71,7 @@ cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/nu
 cp "$PROJECT_DIR"/scripts/costa-memory-flush.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-session-start.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-update.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
+cp "$PROJECT_DIR"/scripts/costa-deferred-setup.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 chmod +x "$COSTA_SHARE/scripts/costa-"* 2>/dev/null || true
 
 # VERSION file
