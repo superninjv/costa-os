@@ -14,6 +14,7 @@ import Troubleshoot from "./Troubleshoot"
 import Clock from "./Clock"
 import Claude from "./Claude"
 import Power from "./Power"
+import CostaBadge from "./CostaBadge"
 
 const { TOP } = Astal.WindowAnchor
 
@@ -64,6 +65,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             <Clock />
             <Claude />
             <Power />
+            <CostaBadge />
           </box>
         </centerbox>
       </revealer>
