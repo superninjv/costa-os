@@ -66,6 +66,7 @@ mkdir -p "$COSTA_SHARE/scripts"
 cp "$PROJECT_DIR"/scripts/wallpaper.sh "$COSTA_SHARE/scripts/"
 cp "$PROJECT_DIR"/scripts/ollama-manager.sh "$COSTA_SHARE/scripts/"
 
+cp "$PROJECT_DIR"/scripts/supervise-dock.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/headless-preview.py "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-memory-flush.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true

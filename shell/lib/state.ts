@@ -12,7 +12,6 @@ export function revealBar() {
     hideSource = null
   }
   setBarRevealed(true)
-  // Also show the bar window
   if (barWindow) barWindow.visible = true
 }
 
@@ -20,7 +19,7 @@ export function hideBar(delay = 400) {
   if (hideSource !== null) GLib.source_remove(hideSource)
   hideSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
     setBarRevealed(false)
-    // Hide bar window after animation completes
+    // Hide window after slide-up animation completes
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
       if (!getBarRevealed() && barWindow) barWindow.visible = false
       return GLib.SOURCE_REMOVE
@@ -30,15 +29,13 @@ export function hideBar(delay = 400) {
   })
 }
 
-// Reference to bar window for show/hide
+// Reference to bar window for cleanup on monitor reconnect
 let barWindow: any = null
 export function setBarWindow(win: any) {
-  // If replacing an existing bar (monitor reconnect), clean up old state
   if (barWindow && barWindow !== win) {
-    barWindow.visible = false
+    barWindow.close()
   }
   barWindow = win
-  win.visible = false
 }
 export function clearBarWindow() {
   barWindow = null

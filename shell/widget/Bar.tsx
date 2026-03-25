@@ -20,7 +20,7 @@ const { TOP } = Astal.WindowAnchor
 export default function Bar(gdkmonitor: Gdk.Monitor) {
   return (
     <window
-      visible={false}
+      visible={true}
       name="costa-bar"
       class="Bar"
       gdkmonitor={gdkmonitor}
@@ -30,6 +30,10 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       namespace="costa-bar"
       application={app}
       $={(self: Gtk.Window) => {
+        // Present first so compositor registers the layer surface,
+        // then hide — revealBar() will show it on notch hover
+        self.present()
+        self.visible = false
         setBarWindow(self)
         const motion = new Gtk.EventControllerMotion()
         motion.connect("enter", () => revealBar())
