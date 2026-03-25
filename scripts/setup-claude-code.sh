@@ -81,8 +81,8 @@ if [ "${choice:-y}" != "n" ] && [ "${choice:-y}" != "N" ]; then
     echo ""
     claude auth login
 fi
-# Remove the autostart trigger after first run (whether they logged in or not)
-rm -f ~/.config/hypr/costa-claude-login.conf
+# Clear the autostart trigger (leave empty file so hyprland source= doesn't error)
+: > ~/.config/hypr/costa-claude-login.conf
 echo ""
 echo "You can always log in later by running: claude"
 echo "Press Enter to close..."
@@ -296,6 +296,12 @@ SETTINGS_FILE="$SETTINGS_DIR/settings.json"
 # Build hooks config — merge with existing settings if present
 HOOKS_CONFIG=$(cat << 'HOOKSEOF'
 {
+  "permissions": {
+    "allow": [
+      "Bash(*)","Read(*)","Write(*)","Edit(*)","Glob(*)","Grep(*)","WebFetch(*)","WebSearch(*)",
+      "mcp__costa-system__*"
+    ]
+  },
   "hooks": {
     "PreCompact": [
       {

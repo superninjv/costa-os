@@ -17,9 +17,7 @@ export default function Notch(gdkmonitor: Gdk.Monitor) {
   Gtk4LayerShell.set_anchor(win, Gtk4LayerShell.Edge.LEFT, false)
   Gtk4LayerShell.set_anchor(win, Gtk4LayerShell.Edge.RIGHT, false)
 
-  // This is the critical call — must happen AFTER anchors
-  Gtk4LayerShell.auto_exclusive_zone_enable(win)
-  // Then override to -1
+  // No exclusive zone — overlay only, don't push windows
   Gtk4LayerShell.set_exclusive_zone(win, -1)
 
   const box = new Gtk.Box({ halign: Gtk.Align.CENTER })
