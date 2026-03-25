@@ -12,13 +12,17 @@ function batteryIcon(percent: number, charging: boolean): string {
   return "\uF244"
 }
 
-const [getPercentage, setPercentage] = createState(bat.get_percentage())
-const [getCharging, setCharging] = createState(bat.get_charging())
-const [getIsPresent, setIsPresent] = createState(bat.get_is_present())
+// Guard against battery service being unavailable (desktops, VMs)
+const hasBattery = bat != null
+const [getPercentage, setPercentage] = createState(hasBattery ? bat.get_percentage() : 0)
+const [getCharging, setCharging] = createState(hasBattery ? bat.get_charging() : false)
+const [getIsPresent, setIsPresent] = createState(hasBattery ? bat.get_is_present() : false)
 
-bat.connect("notify::percentage", () => setPercentage(bat.get_percentage()))
-bat.connect("notify::charging", () => setCharging(bat.get_charging()))
-bat.connect("notify::is-present", () => setIsPresent(bat.get_is_present()))
+if (hasBattery) {
+  bat.connect("notify::percentage", () => setPercentage(bat.get_percentage()))
+  bat.connect("notify::charging", () => setCharging(bat.get_charging()))
+  bat.connect("notify::is-present", () => setIsPresent(bat.get_is_present()))
+}
 
 export default function BatteryWidget() {
   return (

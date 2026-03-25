@@ -1,6 +1,7 @@
 import app from "ags/gtk4/app"
 import style from "./style.scss"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
+import GLib from "gi://GLib"
 import Hyprland from "gi://AstalHyprland"
 
 import Notch from "./widget/Notch"
@@ -16,9 +17,21 @@ const activeMonitors = new Map<string, Gtk.Window[]>()
 
 function getMonitorType(connector: string): "primary" | "secondary" | "portrait" | "headless" {
   if (connector.startsWith("HEADLESS")) return "headless"
-  if (connector === "HDMI-A-1") return "portrait"
-  if (connector === "HDMI-A-2") return "secondary"
+  // Read monitor config if it exists — allows user/first-boot to assign roles
+  try {
+    const [ok, bytes] = GLib.file_get_contents(
+      GLib.get_home_dir() + "/.config/costa/monitor-roles.json"
+    )
+    if (ok && bytes) {
+      const roles = JSON.parse(new TextDecoder().decode(bytes))
+      if (roles[connector]) return roles[connector]
+    }
+  } catch {}
+  // Fallback: first non-headless monitor is primary, rest are secondary
+  // eDP = laptop built-in = primary
+  if (connector.startsWith("eDP")) return "primary"
   if (connector.startsWith("DP-")) return "primary"
+  if (connector.startsWith("HDMI-")) return "secondary"
   return "primary"
 }
 

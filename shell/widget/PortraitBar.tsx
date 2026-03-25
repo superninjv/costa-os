@@ -17,12 +17,19 @@ function readFile(path: string): string {
 }
 
 function getVram(): string {
-  const used = readFile("/sys/class/drm/card1/device/mem_info_vram_used")
-  const total = readFile("/sys/class/drm/card1/device/mem_info_vram_total")
-  if (!used || !total) return "--"
-  const usedG = (parseInt(used) / 1073741824).toFixed(1)
-  const totalG = (parseInt(total) / 1073741824).toFixed(1)
-  return `${usedG}/${totalG}G`
+  // Try AMD sysfs paths (card0 and card1)
+  for (const card of ["card1", "card0"]) {
+    const used = readFile(`/sys/class/drm/${card}/device/mem_info_vram_used`)
+    const total = readFile(`/sys/class/drm/${card}/device/mem_info_vram_total`)
+    if (used && total) {
+      const usedG = (parseInt(used) / 1073741824).toFixed(1)
+      const totalG = (parseInt(total) / 1073741824).toFixed(1)
+      return `${usedG}/${totalG}G`
+    }
+  }
+  // Try NVIDIA via nvidia-smi (TODO: cache this)
+  // For Intel/VM: no discrete VRAM to show
+  return "--"
 }
 
 let prevIdle = 0
