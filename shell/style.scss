@@ -166,22 +166,121 @@ window.Bar {
     font-size: 13px;
     color: $dim;
     transition: $transition;
-    margin-top: 3px;
     margin-left: 10px;
   }
   .ptt-ready { color: $success; }
   .ptt-listening { color: $error; }
   .ptt-processing { color: $accent; }
 
+  // ── WiFi ──
+  .wifi-btn {
+    font-size: 13px;
+    color: $dim;
+
+    &:hover { color: $text; }
+    &.disconnected { color: rgba(107, 112, 137, 0.25); }
+    &.connected { color: $dim; }
+  }
+
+  // ── Bluetooth ──
+  .bt-btn {
+    font-size: 13px;
+    color: $dim;
+
+    &:hover { color: $text; }
+    &.off { color: rgba(107, 112, 137, 0.25); }
+    &.connected { color: $accent; }
+  }
+
   // ── Audio ──
   .audio-btn {
     font-size: 13px;
     color: $dim;
-    margin-top: 3px;
     margin-right: 12px;
 
     &:hover { color: $text; }
     &.muted { color: rgba(107, 112, 137, 0.25); }
+  }
+
+  // ── WiFi & Bluetooth Popups ──
+  .wifi-btn, .bt-btn {
+    popover {
+      background: rgba(27, 29, 43, 0.95);
+      color: $text;
+      border-radius: 10px;
+      border: 1px solid rgba(126, 181, 176, 0.12);
+      padding: 0;
+    }
+  }
+
+  .wifi-popup, .bt-popup {
+    padding: 8px;
+  }
+
+  .wifi-header, .bt-header {
+    padding: 4px 2px 8px 2px;
+    border-bottom: 1px solid rgba(126, 181, 176, 0.1);
+    margin-bottom: 6px;
+  }
+
+  .wifi-title, .bt-title {
+    color: $text;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .wifi-refresh, .bt-scan, .bt-power {
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: $dim;
+    font-size: 12px;
+    &:hover { color: $text; background: rgba(126, 181, 176, 0.1); }
+  }
+
+  .bt-power.on { color: $accent; }
+
+  .wifi-net-item, .bt-dev-item {
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    transition: $transition;
+
+    &:hover { background: rgba(126, 181, 176, 0.08); }
+    &.active, &.connected { background: rgba(126, 181, 176, 0.1); }
+  }
+
+  .wifi-net-signal { color: $dim; font-size: 12px; min-width: 16px; }
+  .wifi-net-name, .bt-dev-name { color: $subtext; font-size: 12px; }
+  .wifi-net-lock { color: $dim; font-size: 10px; }
+  .wifi-net-check, .bt-dev-check { color: $accent; font-size: 11px; }
+  .bt-dev-icon { color: $dim; font-size: 13px; min-width: 16px; }
+  .bt-dev-paired { color: $dim; font-size: 10px; font-style: italic; }
+  .wifi-empty, .bt-empty { color: $dim; font-size: 12px; padding: 16px 8px; font-style: italic; }
+
+  .wifi-password-box {
+    padding: 6px 4px;
+    border-bottom: 1px solid rgba(126, 181, 176, 0.1);
+    margin-bottom: 4px;
+  }
+
+  .wifi-password-label { color: $subtext; font-size: 11px; }
+
+  .wifi-password-entry {
+    background: rgba(37, 40, 54, 0.8);
+    color: $text;
+    border: 1px solid rgba(126, 181, 176, 0.15);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    min-height: 26px;
+    &:focus { border-color: $accent; }
+  }
+
+  .wifi-password-cancel {
+    color: $dim;
+    padding: 2px 6px;
+    &:hover { color: $error; }
   }
 
   // ── Headless ──

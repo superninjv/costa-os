@@ -8,6 +8,8 @@ import NowPlaying from "./NowPlaying"
 import CostaWave from "./CostaWave"
 import Headless from "./Headless"
 import PTT from "./PTT"
+import Wifi from "./Wifi"
+import Bluetooth from "./Bluetooth"
 import Audio from "./Audio"
 import BatteryWidget from "./BatteryWidget"
 import Troubleshoot from "./Troubleshoot"
@@ -54,6 +56,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           <box $type="end" class="bar-right" spacing={2}>
             <Headless />
             <PTT />
+            <Wifi />
+            <Bluetooth />
             <Audio />
             <BatteryWidget />
             <Troubleshoot />
