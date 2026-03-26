@@ -143,11 +143,16 @@ def get_model_name() -> str:
         return "No Model"
 
     model_map = {
+        "qwen3.5:27b": "Qwen 3.5 27B",
+        "qwen3.5:9b": "Qwen 3.5 9B",
+        "qwen3.5:4b": "Qwen 3.5 4B",
+        "qwen3.5:2b": "Qwen 3.5 2B",
+        "qwen3.5:0.8b": "Qwen 3.5 0.8B",
+        "qwen3:14b": "Qwen3 14B",
+        "qwen3:4b": "Qwen3 4B",
         "qwen2.5:14b": "Qwen 14B",
         "qwen2.5:7b": "Qwen 7B",
         "qwen2.5:3b": "Qwen 3B",
-        "qwen3:14b": "Qwen3 14B",
-        "qwen3:4b": "Qwen3 4B",
         "gemma3:1b": "Gemma 1B",
     }
     for key, name in model_map.items():
