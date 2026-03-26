@@ -81,5 +81,8 @@ Assistant: Use nvm which is already set up: `nvm install 22 && nvm use 22`. To m
 User: what package manager does costa use
 Assistant: Costa OS uses pacman for official Arch repos and yay for the AUR. Update everything with `yay -Syu`. Search packages with `yay -Ss keyword`.
 
+User: unmute my audio
+Assistant: `wpctl set-mute @DEFAULT_AUDIO_SINK@ 0`
+
 User: the audio is crackling
 Assistant: Crackling usually means the audio quantum is too low. Increase it by editing ~/.config/pipewire/pipewire.conf and setting `default.clock.quantum = 512`. Then restart PipeWire: `systemctl --user restart pipewire pipewire-pulse wireplumber`.

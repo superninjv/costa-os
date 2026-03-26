@@ -28,7 +28,7 @@ from knowledge import TOPIC_PATTERNS
 def _smart_model_file():
     """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
     xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
-    return xdg if xdg.exists() else _smart_model_file()
+    return xdg if xdg.exists() else Path("/tmp/ollama-smart-model")
 
 
 # ---------------------------------------------------------------------------
@@ -117,14 +117,16 @@ VRAM_MODEL_MAP = {
 # Format: category → [(model, quality, vram_gb), ...] sorted best-first
 # The router picks the first model that fits in current VRAM budget.
 CATEGORY_MODEL_PREFS = {
-    # LLM-judge scored category preferences (2026-03-23)
+    # LLM-judge scored category preferences (2026-03-23, updated 2026-03-26)
+    # Simple actions (mute, volume, brightness, media) — 4b is fast and reliable
+    "simple_action":   [("qwen3.5:4b", 0.95, 5), ("qwen3.5:9b", 0.95, 8), ("qwen3.5:2b", 0.70, 3)],
     # qwen3.5:9b dominates architecture and code tasks
     "architecture":    [("qwen3.5:9b", 0.80, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
-    "code_debug":      [("qwen3.5:9b", 1.00, 8), ("qwen3.5:4b", 1.00, 5), ("qwen3:14b", 0.75, 11)],
-    "code_test":       [("qwen3.5:9b", 0.75, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
-    "code_refactor":   [("qwen3.5:9b", 0.75, 8), ("qwen3.5:4b", 0.50, 5), ("qwen3.5:2b", 0.50, 3)],
-    # qwen3:14b leads on code_write and general_knowledge
-    "code_write":      [("qwen3:14b", 0.70, 11), ("qwen3.5:4b", 0.64, 5), ("qwen3.5:9b", 0.61, 8)],
+    "code_debug":      [("qwen3.5:9b", 1.00, 8), ("qwen2.5-coder:14b", 0.90, 9), ("qwen3.5:4b", 1.00, 5), ("qwen3:14b", 0.75, 11)],
+    "code_test":       [("qwen3.5:9b", 0.75, 8), ("qwen2.5-coder:14b", 0.80, 9), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
+    "code_refactor":   [("qwen3.5:9b", 0.75, 8), ("qwen2.5-coder:14b", 0.80, 9), ("qwen3.5:4b", 0.50, 5), ("qwen3.5:2b", 0.50, 3)],
+    # qwen3:14b leads on code_write and general_knowledge; coder:14b strong here too
+    "code_write":      [("qwen2.5-coder:14b", 0.85, 9), ("qwen3:14b", 0.70, 11), ("qwen3.5:4b", 0.64, 5), ("qwen3.5:9b", 0.61, 8)],
     "general_knowledge": [("qwen3:14b", 0.75, 11), ("qwen3.5:4b", 0.72, 5), ("qwen3.5:9b", 0.59, 8)],
     # qwen3.5:4b leads on deep_knowledge
     "deep_knowledge":  [("qwen3.5:4b", 0.78, 5), ("qwen3.5:9b", 0.75, 8), ("qwen3:14b", 0.62, 11)],
@@ -146,6 +148,7 @@ MODEL_VRAM_GB = {
     "qwen2.5:3b": 3,
     "qwen2.5:7b": 6,
     "qwen2.5:14b": 11,
+    "qwen2.5-coder:14b": 9,
 }
 
 
@@ -187,8 +190,12 @@ def select_local_model(category: str, default_model: str, vram_budget_gb: float 
     for model, quality, vram_needed in prefs:
         if model == default_model:
             return default_model  # Already the best — no swap needed
-        if vram_needed <= vram_budget_gb and (quality - default_quality) >= 0.049:
-            return model
+        if vram_needed <= vram_budget_gb:
+            # Swap if: quality gain >= 5%, OR smaller model with equal quality (speed win)
+            quality_gain = quality - default_quality
+            smaller = MODEL_VRAM_GB.get(model, 99) < MODEL_VRAM_GB.get(default_model, 0)
+            if quality_gain >= 0.049 or (quality_gain >= -0.01 and smaller):
+                return model
 
     return default_model
 

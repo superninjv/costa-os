@@ -17,7 +17,7 @@ from pathlib import Path
 def _smart_model_file():
     """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
     xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
-    return xdg if xdg.exists() else _smart_model_file()
+    return xdg if xdg.exists() else Path("/tmp/ollama-smart-model")
 
 
 

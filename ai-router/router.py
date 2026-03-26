@@ -176,7 +176,7 @@ from ml_router import select_local_model, CATEGORY_MODEL_PREFS
 def _smart_model_file():
     """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
     xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
-    return xdg if xdg.exists() else _smart_model_file()
+    return xdg if xdg.exists() else Path("/tmp/ollama-smart-model")
 
 
 
@@ -1018,8 +1018,18 @@ def route_query(query: str, force_model: str | None = None,
                     "ai-router": "architecture",
                     "costa-os": "deep_knowledge",
                     "costa-nav": "architecture",
-                    "pipewire-audio": "system_info",
+                    "pipewire-audio": "simple_action",
+                    "music-control": "simple_action",
                     "process-management": "system_info",
+                    "bluetooth": "system_info",
+                    "display": "system_info",
+                    "network": "system_info",
+                    "hyprland": "system_info",
+                    "keybinds": "system_info",
+                    "customization": "deep_knowledge",
+                    "security": "architecture",
+                    "screenshots": "simple_action",
+                    "notifications": "simple_action",
                 }
                 if best_cat:
                     query_category = _TOPIC_TO_CATEGORY.get(best_cat, best_cat)
@@ -1029,7 +1039,10 @@ def route_query(query: str, force_model: str | None = None,
             # Also detect category from code/refactor/test/debug keywords
             if not query_category:
                 q_lower = query.lower()
-                if re.search(r"\b(refactor|clean up|simplify|rename)\b", q_lower):
+                # Simple actions — fast model handles these instantly
+                if re.search(r"\b(unmute|mute|volume|brightness|play|pause|skip|next|prev|previous|louder|quieter|turn (up|down|on|off))\b", q_lower) and len(query.split()) <= 10:
+                    query_category = "simple_action"
+                elif re.search(r"\b(refactor|clean up|simplify|rename)\b", q_lower):
                     query_category = "code_refactor"
                 elif re.search(r"\b(test|spec|coverage|assert)\b", q_lower):
                     query_category = "code_test"
@@ -1104,8 +1117,11 @@ def route_query(query: str, force_model: str | None = None,
                                     temperature=temp, num_predict=num_predict)
             model_ms = int((time.time() - t0) * 1000)
 
-            # Check for "I don't know" responses and escalate
-            if allow_escalation and is_idk_response(response) and not _cancelled:
+            # Check for "I don't know" responses and escalate.
+            # But if the response contains a valid command, it's NOT an IDK —
+            # the model gave the answer even if it hedged with "you can run...".
+            has_command = bool(response and extract_command(response))
+            if allow_escalation and not has_command and is_idk_response(response) and not _cancelled:
                 escalated = True
                 haiku_prompt = query
                 if context:
