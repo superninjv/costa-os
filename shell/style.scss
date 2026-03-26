@@ -187,22 +187,166 @@ window.Bar {
     font-size: 13px;
     color: $dim;
     transition: $transition;
-    margin-top: 3px;
     margin-left: 10px;
   }
   .ptt-ready { color: $success; }
   .ptt-listening { color: $error; }
   .ptt-processing { color: $accent; }
 
+  // ── WiFi ──
+  .wifi-btn {
+    font-size: 13px;
+    color: $dim;
+
+    &:hover { color: $text; }
+    &.disconnected { color: rgba(107, 112, 137, 0.25); }
+    &.connected { color: $dim; }
+  }
+
+  // ── Bluetooth ──
+  .bt-btn {
+    font-size: 13px;
+    color: $dim;
+
+    &:hover { color: $text; }
+    &.off { color: rgba(107, 112, 137, 0.25); }
+    &.connected { color: $accent; }
+  }
+
   // ── Audio ──
   .audio-btn {
     font-size: 13px;
     color: $dim;
-    margin-top: 3px;
     margin-right: 12px;
 
     &:hover { color: $text; }
     &.muted { color: rgba(107, 112, 137, 0.25); }
+  }
+
+  // ── WiFi Popup ──
+  .wifi-popup, .bt-popup {
+    padding: 8px;
+    background: rgba(27, 29, 43, 0.95);
+    border-radius: 10px;
+  }
+
+  .wifi-header, .bt-header {
+    padding: 4px 2px 8px 2px;
+    border-bottom: 1px solid rgba(126, 181, 176, 0.1);
+    margin-bottom: 6px;
+  }
+
+  .wifi-title, .bt-title {
+    color: $text;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .wifi-refresh, .bt-scan, .bt-power {
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: $dim;
+    font-size: 12px;
+    &:hover { color: $text; background: rgba(126, 181, 176, 0.1); }
+  }
+
+  .bt-power.on {
+    color: $accent;
+  }
+
+  .wifi-net-item, .bt-dev-item {
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    transition: $transition;
+
+    &:hover { background: rgba(126, 181, 176, 0.08); }
+
+    &.active, &.connected {
+      background: rgba(126, 181, 176, 0.1);
+    }
+  }
+
+  .wifi-net-signal {
+    color: $dim;
+    font-size: 12px;
+    min-width: 16px;
+  }
+
+  .wifi-net-name, .bt-dev-name {
+    color: $subtext;
+    font-size: 12px;
+  }
+
+  .wifi-net-lock {
+    color: $dim;
+    font-size: 10px;
+  }
+
+  .wifi-net-check, .bt-dev-check {
+    color: $accent;
+    font-size: 11px;
+  }
+
+  .bt-dev-icon {
+    color: $dim;
+    font-size: 13px;
+    min-width: 16px;
+  }
+
+  .bt-dev-paired {
+    color: $dim;
+    font-size: 10px;
+    font-style: italic;
+  }
+
+  .wifi-empty, .bt-empty {
+    color: $dim;
+    font-size: 12px;
+    padding: 16px 8px;
+    font-style: italic;
+  }
+
+  .wifi-password-box {
+    padding: 6px 4px;
+    border-bottom: 1px solid rgba(126, 181, 176, 0.1);
+    margin-bottom: 4px;
+  }
+
+  .wifi-password-label {
+    color: $subtext;
+    font-size: 11px;
+  }
+
+  .wifi-password-entry {
+    background: rgba(37, 40, 54, 0.8);
+    color: $text;
+    border: 1px solid rgba(126, 181, 176, 0.15);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    min-height: 26px;
+
+    &:focus {
+      border-color: $accent;
+    }
+  }
+
+  .wifi-password-cancel {
+    color: $dim;
+    padding: 2px 6px;
+    &:hover { color: $error; }
+  }
+
+  .wifi-btn, .bt-btn {
+    popover {
+      background: rgba(27, 29, 43, 0.95);
+      color: $text;
+      border-radius: 10px;
+      border: 1px solid rgba(126, 181, 176, 0.12);
+      padding: 0;
+    }
   }
 
   // ── Headless ──
@@ -388,4 +532,176 @@ window.ClaudeBar {
     color: $dim;
     font-size: 11px;
   }
+}
+
+// ========== AirPods Panel ==========
+
+.airpods-btn {
+  background: transparent;
+  border: none;
+  color: $dim;
+  font-size: 13px;
+  padding: 0 4px;
+  transition: $transition;
+
+  &:hover { color: $text; background: rgba(126, 181, 176, 0.08); }
+  &.airpods-low { color: $error; }
+  &.airpods-warn { color: $warn; }
+}
+
+.ap-popup {
+  padding: 12px;
+  background: rgba(27, 29, 43, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(126, 181, 176, 0.15);
+}
+
+.ap-header {
+  margin-bottom: 4px;
+}
+.ap-header-icon {
+  font-size: 22px;
+  color: $accent;
+}
+.ap-header-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: $text;
+}
+.ap-header-status {
+  font-size: 11px;
+  color: $dim;
+}
+
+.ap-section {
+  padding: 4px 0;
+}
+.ap-section-title {
+  font-size: 11px;
+  color: $dim;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+// Battery bars
+.ap-bat-row {
+  min-height: 20px;
+}
+.ap-bat-label {
+  font-size: 11px;
+  color: $subtext;
+}
+.ap-bat-bar {
+  min-height: 6px;
+  border-radius: 3px;
+
+  trough {
+    min-height: 6px;
+    border-radius: 3px;
+    background: rgba(107, 112, 137, 0.2);
+  }
+}
+.ap-bat-green trough block.filled { background: $success; }
+.ap-bat-yellow trough block.filled { background: $warn; }
+.ap-bat-red trough block.filled { background: $error; }
+
+.ap-bat-pct {
+  font-size: 11px;
+  color: $subtext;
+}
+
+// ANC mode buttons
+.ap-anc-row {
+  padding: 6px 0;
+}
+.ap-anc-btn {
+  background: rgba(37, 40, 54, 0.8);
+  border: 1px solid rgba(107, 112, 137, 0.15);
+  border-radius: 10px;
+  padding: 6px 4px;
+  transition: $transition;
+
+  &:hover { background: rgba(126, 181, 176, 0.1); }
+  &.active {
+    background: rgba(126, 181, 176, 0.2);
+    border-color: $accent;
+  }
+}
+.ap-anc-icon {
+  font-size: 16px;
+  color: $dim;
+
+  .active & { color: $accent; }
+}
+.ap-anc-label {
+  font-size: 9px;
+  color: $dim;
+
+  .active & { color: $accent; }
+}
+
+// Noise slider
+.ap-noise-row {
+  padding: 2px 0;
+}
+.ap-noise-slider {
+  trough {
+    min-height: 4px;
+    border-radius: 2px;
+    background: rgba(107, 112, 137, 0.2);
+  }
+  highlight {
+    background: $accent;
+    border-radius: 2px;
+  }
+  slider {
+    min-width: 14px;
+    min-height: 14px;
+    border-radius: 50%;
+    background: $accent;
+  }
+}
+
+// Toggles
+.ap-toggle-label {
+  font-size: 12px;
+  color: $subtext;
+}
+
+// EQ
+.ap-eq-row {
+  margin-top: 2px;
+}
+.ap-eq-btn {
+  font-size: 10px;
+  background: rgba(37, 40, 54, 0.8);
+  border: 1px solid rgba(107, 112, 137, 0.15);
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: $dim;
+  transition: $transition;
+
+  &:hover { background: rgba(126, 181, 176, 0.1); }
+  &.active {
+    background: rgba(126, 181, 176, 0.2);
+    border-color: $accent;
+    color: $accent;
+  }
+}
+
+// Ear status
+.ap-ear-row {
+  padding: 2px 0;
+}
+.ap-ear {
+  font-size: 11px;
+  color: $dim;
+}
+
+// Footer
+.ap-footer {
+  font-size: 10px;
+  color: rgba(107, 112, 137, 0.6);
+  padding-top: 4px;
 }

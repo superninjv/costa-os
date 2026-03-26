@@ -5,6 +5,10 @@ const [getBarRevealed, setBarRevealed] = createState(false)
 export { getBarRevealed, setBarRevealed }
 
 let hideSource: number | null = null
+let barLocked = false
+
+export function lockBar() { barLocked = true; revealBar() }
+export function unlockBar() { barLocked = false; hideBar(1200) }
 
 export function revealBar() {
   if (hideSource !== null) {
@@ -16,10 +20,11 @@ export function revealBar() {
 }
 
 export function hideBar(delay = 400) {
+  if (barLocked) return
   if (hideSource !== null) GLib.source_remove(hideSource)
   hideSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+    if (barLocked) { hideSource = null; return GLib.SOURCE_REMOVE }
     setBarRevealed(false)
-    // Hide window after slide-up animation completes
     GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
       if (!getBarRevealed() && barWindow) barWindow.visible = false
       return GLib.SOURCE_REMOVE

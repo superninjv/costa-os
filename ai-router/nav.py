@@ -89,7 +89,7 @@ def get_model():
     if env:
         return env
     try:
-        return Path("/tmp/ollama-smart-model").read_text().strip()
+        return _smart_model_file().read_text().strip()
     except FileNotFoundError:
         return "qwen2.5:14b"
 
@@ -404,6 +404,12 @@ def read_screen_state() -> str:
 # - 8GB+ VRAM (7b/14b + 3b): full 3-tier
 
 import re
+
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else _smart_model_file()
+
 
 
 def get_fast_model() -> str | None:

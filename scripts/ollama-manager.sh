@@ -4,11 +4,20 @@
 # Writes the best model name to /tmp/ollama-smart-model for costa-ai to read.
 
 COSTA_DIR="$HOME/.config/costa"
-MODEL_FILE="/tmp/ollama-smart-model"
+MODEL_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/costa"
+mkdir -p "$MODEL_DIR" 2>/dev/null
+MODEL_FILE="$MODEL_DIR/ollama-smart-model"
+LEGACY_MODEL_FILE="/tmp/ollama-smart-model"
 CHECK_INTERVAL=30
 HEADROOM_GB=2  # Reserve this much VRAM for other apps
 
 source "$COSTA_DIR/gpu.conf" 2>/dev/null
+
+write_model() {
+    echo "$1" > "$MODEL_FILE"
+    # Legacy path for transition period
+    echo "$1" > "$LEGACY_MODEL_FILE" 2>/dev/null || true
+}
 
 get_vram_free_gb() {
     if [ "$GPU_VENDOR" = "amd" ] && [ -n "$GPU_VRAM_USED_FILE" ] && [ -n "$GPU_VRAM_TOTAL_FILE" ]; then
@@ -55,18 +64,18 @@ select_model() {
 
 # Check if Ollama is available
 if ! command -v ollama &>/dev/null; then
-    echo "qwen2.5:3b" > "$MODEL_FILE"
+    write_model "qwen2.5:3b"
     exit 0
 fi
 
 # If no GPU detected, use smallest available model (CPU inference)
 if [ "${VRAM_GB:-0}" -eq 0 ]; then
     if ollama list 2>/dev/null | grep -q "qwen3.5:0.8b"; then
-        echo "qwen3.5:0.8b" > "$MODEL_FILE"
+        write_model "qwen3.5:0.8b"
     elif ollama list 2>/dev/null | grep -q "qwen3.5:2b"; then
-        echo "qwen3.5:2b" > "$MODEL_FILE"
+        write_model "qwen3.5:2b"
     else
-        echo "qwen2.5:3b" > "$MODEL_FILE"
+        write_model "qwen2.5:3b"
     fi
     exit 0
 fi
@@ -81,9 +90,9 @@ while true; do
         if [ "$BEST" = "none" ]; then
             # Unload all models (gaming mode)
             ollama stop 2>/dev/null || true
-            echo "none" > "$MODEL_FILE"
+            write_model "none"
         else
-            echo "$BEST" > "$MODEL_FILE"
+            write_model "$BEST"
             # Pre-warm the model (keep_alive keeps it in VRAM)
             curl -s http://localhost:11434/api/generate \
                 -d "{\"model\":\"$BEST\",\"prompt\":\"\",\"keep_alive\":\"30m\"}" \

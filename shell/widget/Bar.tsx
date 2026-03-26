@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { getBarRevealed, revealBar, hideBar, setBarWindow } from "../lib/state"
+import { getBarRevealed, revealBar, hideBar, setBarWindow, lockBar, unlockBar } from "../lib/state"
 
 import Workspaces from "./Workspaces"
 import Git from "./Git"
@@ -8,7 +8,10 @@ import NowPlaying from "./NowPlaying"
 import CostaWave from "./CostaWave"
 import Headless from "./Headless"
 import PTT from "./PTT"
+import Bluetooth from "./Bluetooth"
 import Audio from "./Audio"
+import AirPodsBattery, { setBarLock } from "./airpods/AirPodsBattery"
+import { initPopup } from "./airpods/AirPodsPopup"
 import BatteryWidget from "./BatteryWidget"
 import Troubleshoot from "./Troubleshoot"
 import Clock from "./Clock"
@@ -16,9 +19,12 @@ import Claude from "./Claude"
 import Power from "./Power"
 import CostaBadge from "./CostaBadge"
 
+setBarLock(lockBar, unlockBar)
+
 const { TOP } = Astal.WindowAnchor
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
+  try { initPopup(gdkmonitor) } catch (_) {}
   return (
     <window
       visible={true}
@@ -59,7 +65,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           <box $type="end" class="bar-right" spacing={2}>
             <Headless />
             <PTT />
+            <Bluetooth />
             <Audio />
+            <AirPodsBattery />
             <BatteryWidget />
             <Troubleshoot />
             <Clock />

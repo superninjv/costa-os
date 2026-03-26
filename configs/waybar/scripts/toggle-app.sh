@@ -5,7 +5,7 @@
 
 APP="$1"
 shift
-CMD="$*"
+CMD=("$@")
 DROPDOWN_TITLE="dropdown-${APP}"
 
 # Find window by initialTitle (stable even if app changes title)
@@ -15,10 +15,10 @@ if [ -n "$ADDR" ]; then
     # Window exists — close it
     hyprctl dispatch closewindow "address:$ADDR" 2>/dev/null
     # Clean up lock so next open works
-    rm -f "/tmp/toggle-${DROPDOWN_TITLE}.lock"
+    rm -f "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/toggle-${DROPDOWN_TITLE}.lock"
 else
     # No window — launch it
-    LOCK="/tmp/toggle-${DROPDOWN_TITLE}.lock"
+    LOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/toggle-${DROPDOWN_TITLE}.lock"
     exec 9>"$LOCK"
     flock -n 9 || { rm -f "$LOCK"; exec 9>"$LOCK"; flock -n 9 || exit 0; }
 
@@ -27,10 +27,10 @@ else
         command -v "$t" &>/dev/null && TERM="$t" && break
     done
     case "$TERM" in
-        ghostty)   ghostty --title="$DROPDOWN_TITLE" -e $CMD &disown ;;
-        foot)      foot -T "$DROPDOWN_TITLE" $CMD &disown ;;
-        kitty)     kitty -T "$DROPDOWN_TITLE" $CMD &disown ;;
-        alacritty) alacritty -t "$DROPDOWN_TITLE" -e $CMD &disown ;;
+        ghostty)   ghostty --title="$DROPDOWN_TITLE" -e "${CMD[@]}" &disown ;;
+        foot)      foot -T "$DROPDOWN_TITLE" "${CMD[@]}" &disown ;;
+        kitty)     kitty -T "$DROPDOWN_TITLE" "${CMD[@]}" &disown ;;
+        alacritty) alacritty -t "$DROPDOWN_TITLE" -e "${CMD[@]}" &disown ;;
     esac
     # Wait for window to appear (window rules handle positioning)
     for i in $(seq 1 20); do

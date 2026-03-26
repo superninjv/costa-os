@@ -494,7 +494,7 @@ ollama ps                     # check if a model is loaded
 | No audio captured | Run `wpctl status` and check that your microphone is the default source |
 | Transcription is garbage | Background noise is too high: verify DeepFilterNet is running in the pipeline |
 | VAD never stops recording | Silero VAD needs DeepFilterNet preprocessing to work properly |
-| Slow response | The model may not be loaded: check `ollama ps` and `/tmp/ollama-smart-model` |
+| Slow response | The model may not be loaded: check `ollama ps` and `$XDG_RUNTIME_DIR/costa/ollama-smart-model` |
 | Nothing happens on keypress | Verify the keybind exists: `hyprctl binds \| grep ALT+V` |
 
 ### Usage Tracking and Budgets
@@ -1506,7 +1506,7 @@ The VRAM manager is a background daemon that automatically keeps the best AI mod
 **Checking current state:**
 
 ```bash
-cat /tmp/ollama-smart-model                # currently loaded model name
+cat $XDG_RUNTIME_DIR/costa/ollama-smart-model                # currently loaded model name
 cat /tmp/ollama-tier                       # current tier (full/medium/reduced/gaming)
 ollama ps                                  # show loaded models and VRAM usage
 ```
@@ -1950,7 +1950,7 @@ systemctl --user restart pipewire pipewire-pulse wireplumber   # restart audio s
 systemctl status ollama                    # check service status
 systemctl restart ollama                   # restart
 ollama ps                                  # check loaded models
-cat /tmp/ollama-smart-model                # check VRAM manager's model selection
+cat $XDG_RUNTIME_DIR/costa/ollama-smart-model                # check VRAM manager's model selection
 ```
 
 **Application will not close:**

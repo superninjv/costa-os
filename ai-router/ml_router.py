@@ -11,6 +11,7 @@ Usage:
 """
 
 import json
+import os
 import re
 import sys
 import time
@@ -23,6 +24,12 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 
 from knowledge import TOPIC_PATTERNS
+
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else _smart_model_file()
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -360,7 +367,7 @@ N_FEATURES = N_BASE_FEATURES + N_TOPIC_FEATURES + N_NGRAM_FEATURES  # 55
 def _read_vram_tier() -> float:
     """Read current VRAM tier from /tmp/ollama-smart-model."""
     try:
-        model = Path("/tmp/ollama-smart-model").read_text().strip()
+        model = _smart_model_file().read_text().strip()
         return VRAM_MODEL_MAP.get(model, 0.0)
     except (FileNotFoundError, PermissionError):
         return 0.0
@@ -533,7 +540,7 @@ def _llm_classify(query: str) -> tuple[str | None, float]:
 
     # Use the best available model — classification needs reasoning
     try:
-        classify_model = Path("/tmp/ollama-smart-model").read_text().strip()
+        classify_model = _smart_model_file().read_text().strip()
     except Exception:
         classify_model = "qwen2.5:7b"
 

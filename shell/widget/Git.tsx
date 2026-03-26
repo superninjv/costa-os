@@ -13,6 +13,10 @@ interface GitState {
 
 const [getGitState, setGitState] = createState<GitState>({ branch: "", dirty: false, visible: false })
 
+function isValidPath(p: string): boolean {
+  return /^\/[a-zA-Z0-9._\/-]+$/.test(p) && !p.includes("..")
+}
+
 function detectProjectDir(): string | null {
   const client = hypr.get_focused_client()
   if (!client) return null
@@ -24,11 +28,12 @@ function detectProjectDir(): string | null {
   const homeMatch = title.match(/~\/([^\s]+)/)
   if (homeMatch) {
     const home = GLib.get_home_dir()
-    return `${home}/${homeMatch[1]}`
+    const dir = `${home}/${homeMatch[1]}`
+    return isValidPath(dir) ? dir : null
   }
 
   const absMatch = title.match(/(\/[^\s]+)/)
-  if (absMatch) return absMatch[1]
+  if (absMatch) return isValidPath(absMatch[1]) ? absMatch[1] : null
 
   return null
 }
@@ -40,11 +45,12 @@ function pollGit() {
     return
   }
 
-  execAsync(`git -C ${dir} rev-parse --git-dir`)
+  const safeDir = GLib.shell_quote(dir)
+  execAsync(`git -C ${safeDir} rev-parse --git-dir`)
     .then(() => {
       return Promise.all([
-        execAsync(`git -C ${dir} symbolic-ref --short HEAD`).catch(() => "detached"),
-        execAsync(`git -C ${dir} status --porcelain`).catch(() => ""),
+        execAsync(`git -C ${safeDir} symbolic-ref --short HEAD`).catch(() => "detached"),
+        execAsync(`git -C ${safeDir} status --porcelain`).catch(() => ""),
       ])
     })
     .then(([branch, status]) => {

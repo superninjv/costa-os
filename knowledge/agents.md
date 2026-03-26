@@ -176,7 +176,7 @@ The assigned model isn't running. Check:
 ```bash
 ollama list                    # is the model pulled?
 ollama ps                      # is it loaded in memory?
-cat /tmp/ollama-smart-model    # what model is currently active?
+cat $XDG_RUNTIME_DIR/costa/ollama-smart-model  # what model is currently active?
 ```
 For cloud agents, check your API key: `costa-settings` → AI → Claude API.
 

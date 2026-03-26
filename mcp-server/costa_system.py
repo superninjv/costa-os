@@ -20,6 +20,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -292,7 +293,9 @@ async def read_resource(uri: str):
     # Parse URI: costa://knowledge/<name>
     if uri.startswith("costa://knowledge/"):
         name = uri.split("/")[-1]
-        filepath = KNOWLEDGE_DIR / f"{name}.md"
+        filepath = (KNOWLEDGE_DIR / f"{name}.md").resolve()
+        if not filepath.is_relative_to(KNOWLEDGE_DIR.resolve()):
+            return "Access denied: path escapes knowledge directory"
         if filepath.exists():
             return _read_knowledge_content(filepath)
         return f"Knowledge file not found: {name}"
@@ -847,8 +850,24 @@ def find_hypr_window(class_name: str, prefer_workspace: str = "") -> dict | None
 
 import re as _re
 
-# Regex-based dangerous command deny list — matches shell metacharacter attacks,
-# destructive system commands, and code execution via pipes.
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else _smart_model_file()
+
+
+# ─── Costa config helper ─────────────────────────────────────
+_COSTA_CONFIG = Path(os.path.expanduser("~/.config/costa/config.json"))
+
+def _get_costa_setting(key: str, default=None):
+    """Read a setting from ~/.config/costa/config.json."""
+    try:
+        return json.loads(_COSTA_CONFIG.read_text()).get(key, default)
+    except Exception:
+        return default
+
+# ─── Command deny lists ──────────────────────────────────────
+# Base deny list — always active (prevents accidental destruction)
 _DANGEROUS_PATTERN_LIST = [
     r"\brm\s+(-rf?|--recursive)",
     r"\bdd\s+",
@@ -872,7 +891,25 @@ _DANGEROUS_PATTERN_LIST = [
 ]
 DANGEROUS_RE = _re.compile("|".join(_DANGEROUS_PATTERN_LIST), _re.IGNORECASE)
 
-# Keep old name for backward compatibility in the substring check loop
+# Strict deny list — only active when strict_command_safety is enabled in settings.
+# Blocks shell-within-shell, bare sudo, sensitive file reads, service disruption.
+_STRICT_PATTERN_LIST = [
+    r"\bsudo\b",                       # all sudo usage
+    r"\bbash\s+-c\b",                  # bash -c (shell-within-shell)
+    r"\bsh\s+-c\b",                    # sh -c
+    r"\bzsh\s+-c\b",                   # zsh -c
+    r"\bcat\s+(/etc/shadow|/etc/sudoers)",  # sensitive file reads
+    r"\bcat\s+~/\.ssh/",              # SSH key reads
+    r"\bcat\s+~/\.gnupg/",            # GPG key reads
+    r"\bsystemctl\s+(stop|disable|mask)\b",  # service disruption
+    r"\bchmod\b.*\b/etc\b",           # permissions on system dirs
+    r"\bchown\b.*\b/etc\b",           # ownership on system dirs
+    r"\bnc\b.*-[el]",                 # netcat listeners
+    r"\bcurl\b.*-[dX]",              # curl data exfiltration (POST/PUT)
+]
+_STRICT_RE = _re.compile("|".join(_STRICT_PATTERN_LIST), _re.IGNORECASE)
+
+# Legacy substring checks
 DANGEROUS_PATTERNS = [
     ":(){ :|:& };:",
 ]
@@ -952,6 +989,8 @@ async def handle_nav_plan(args: dict):
 
 async def handle_nav_routine(args: dict):
     name = args.get("name", "")
+    if not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        return [TextContent(type="text", text=f"Invalid routine name: {name}")]
     output = await _run_costa_nav(["routine", name], timeout=120)
     return [TextContent(type="text", text=output)]
 
@@ -1183,6 +1222,8 @@ async def handle_screenshot(args: dict):
             w, h = win["size"]
             run(["grim", "-g", f"{x},{y} {w}x{h}", tmp_path])
         elif mode == "region" and target:
+            if not re.match(r'^\d+,\d+ \d+x\d+$', target):
+                return [TextContent(type="text", text=f"Invalid region format: {target} (expected 'x,y WxH')")]
             run(["grim", "-g", target, tmp_path])
         elif monitor:
             run(["grim", "-o", monitor, tmp_path])
@@ -1396,6 +1437,8 @@ async def handle_manage_window(args: dict):
         result = "Minimized"
     elif action == "move_to_workspace":
         ws = extra or "1"
+        if not re.match(r'^(\d+|special:\w+)$', ws):
+            return [TextContent(type="text", text=f"Invalid workspace: {ws}")]
         run(["hyprctl", "dispatch", "movetoworkspacesilent", f"{ws},address:{addr}"])
         result = f"Moved to workspace {ws}"
 
@@ -1414,6 +1457,12 @@ async def handle_system_command(args: dict):
     m = DANGEROUS_RE.search(cmd_lower)
     if m:
         return [TextContent(type="text", text=f"BLOCKED: dangerous command pattern '{m.group()}'")]
+
+    # Strict safety mode — additional blocks when enabled in settings
+    if _get_costa_setting("strict_command_safety", False):
+        m = _STRICT_RE.search(cmd_lower)
+        if m:
+            return [TextContent(type="text", text=f"BLOCKED (strict mode): '{m.group()}' — disable in Costa Settings to allow")]
 
     # Legacy substring checks (fork bomb etc.)
     for pattern in DANGEROUS_PATTERNS:
@@ -1468,7 +1517,7 @@ async def handle_ollama_query(args: dict):
         cmd = ["costa-ai", "--json", "--no-escalate"]
         if args.get("include_context") is False:
             cmd.append("--no-context")
-        cmd.append(prompt)
+        cmd.extend(["--", prompt])
 
         try:
             env = {**os.environ, "COSTA_AI_NO_ESCALATE": "1", "COSTA_AI_SOURCE": "mcp"}
@@ -1488,7 +1537,7 @@ async def handle_ollama_query(args: dict):
     model = args.get("model", "")
     if not model:
         try:
-            model = Path("/tmp/ollama-smart-model").read_text().strip()
+            model = _smart_model_file().read_text().strip()
         except Exception:
             model = "qwen2.5:7b"
 

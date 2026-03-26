@@ -360,24 +360,6 @@ SAFE_ACTION_TOOLS = [
 
 ASK_FIRST_TOOLS = [
     {
-        "name": "run_command",
-        "description": "Execute a shell command. Use for commands not covered by other tools. The user will be asked to confirm before execution.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "command": {
-                    "type": "string",
-                    "description": "Shell command to execute",
-                },
-                "timeout": {
-                    "type": "integer",
-                    "description": "Timeout in seconds (default: 30)",
-                },
-            },
-            "required": ["command"],
-        },
-    },
-    {
         "name": "install_package",
         "description": "Install a package via pacman or yay (AUR). Requires user confirmation.",
         "input_schema": {
@@ -630,8 +612,20 @@ def handle_get_service_status(service: str, **kwargs) -> str:
     return result or f"Service '{service}' not found"
 
 
+_SENSITIVE_PATHS = [
+    os.path.expanduser("~/.ssh"),
+    os.path.expanduser("~/.gnupg"),
+    os.path.expanduser("~/.config/costa/env"),
+    "/etc/shadow", "/etc/sudoers",
+]
+
 def handle_read_file(path: str, **kwargs) -> str:
-    expanded = os.path.expanduser(path)
+    expanded = os.path.realpath(os.path.expanduser(path))
+    if ".." in path:
+        return f"Access denied: path traversal not allowed"
+    for sensitive in _SENSITIVE_PATHS:
+        if expanded.startswith(sensitive):
+            return f"Access denied: {path} is in a sensitive location"
     if not os.path.exists(expanded):
         return f"File not found: {path}"
     if not os.path.isfile(expanded):
@@ -749,10 +743,6 @@ def handle_switch_project(project: str, **kwargs) -> str:
         return f"Project switch error: {e}"
 
 
-def handle_run_command(command: str, timeout: int = 30, **kwargs) -> str:
-    if DANGEROUS_RE.search(command):
-        return f"BLOCKED: This command matches a dangerous pattern and cannot be executed: {command}"
-    return _run(command, timeout=timeout)
 
 
 def handle_install_package(package: str, aur: bool = False, **kwargs) -> str:
@@ -805,7 +795,6 @@ HANDLERS = {
     "reload_config": handle_reload_config,
     "send_notification": handle_send_notification,
     "switch_project": handle_switch_project,
-    "run_command": handle_run_command,
     "install_package": handle_install_package,
     "manage_service": handle_manage_service,
 }

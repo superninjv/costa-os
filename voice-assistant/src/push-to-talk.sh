@@ -13,7 +13,7 @@ SYSTEM_AI_PROMPT_FILE="${COSTA_SYSTEM_PROMPT:-$HOME/.config/costa/system-ai.md}"
 TERMINAL="${COSTA_TERMINAL:-ghostty}"
 OLLAMA_URL="${COSTA_OLLAMA_URL:-http://localhost:11434}"
 OLLAMA_FAST="${COSTA_OLLAMA_FAST:-qwen2.5:3b}"
-OLLAMA_MODEL=$(cat /tmp/ollama-smart-model 2>/dev/null || echo "${COSTA_OLLAMA_DEFAULT:-qwen2.5:14b}")
+OLLAMA_MODEL=$(cat "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/costa/ollama-smart-model" 2>/dev/null || cat /tmp/ollama-smart-model 2>/dev/null || echo "${COSTA_OLLAMA_DEFAULT:-qwen2.5:14b}")
 OLLAMA_SUMMARY="$OLLAMA_FAST"
 
 LOCKFILE="/tmp/ptt.lock"

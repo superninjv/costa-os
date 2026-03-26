@@ -16,6 +16,12 @@ from pathlib import Path
 from collections import deque
 from typing import Optional
 
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else _smart_model_file()
+
+
 AGENTS_DIR = Path.home() / ".config" / "costa" / "agents"
 INSTALLED_AGENTS_DIR = Path("/usr/share/costa-os/configs/costa/agents")
 PROJECT_AGENTS_DIR = Path(__file__).parent.parent / "configs" / "costa" / "agents"
@@ -321,7 +327,7 @@ Execute this task now. Be concise in your response. End with a one-line summary.
         elif agent.min_tier == "local-14b":
             # Check if 14b is actually loaded; if not, escalate to cloud
             try:
-                current = Path("/tmp/ollama-smart-model").read_text().strip()
+                current = _smart_model_file().read_text().strip()
                 if "14b" not in current and "32b" not in current:
                     force_model = "sonnet"  # local model too small, use cloud
             except Exception:

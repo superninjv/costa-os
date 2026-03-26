@@ -90,7 +90,7 @@ def _handle_meta(query: str) -> dict | None:
 
     if re.search(r"models? (are |)(available|loaded|running)", q):
         try:
-            model = Path("/tmp/ollama-smart-model").read_text().strip()
+            model = _smart_model_file().read_text().strip()
             return {
                 "response": f"Local: {model} (via Ollama). Cloud: Claude Haiku (web), Sonnet (code), Opus (architecture). "
                             f"Routing is automatic — local for fast queries, cloud when needed.",
@@ -172,6 +172,12 @@ from file_search import search_files, format_results as format_file_results, rec
 from keybinds import is_keybind_query, handle_keybind_query
 from knowledge import select_knowledge_tiered, detect_model_tier
 from ml_router import select_local_model, CATEGORY_MODEL_PREFS
+
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else _smart_model_file()
+
 
 
 # System prompt paths — tiered by model size
@@ -282,7 +288,7 @@ def get_ollama_model() -> str | None:
     Returns None if no local model is available (gaming mode / no GPU).
     """
     try:
-        model = Path("/tmp/ollama-smart-model").read_text().strip()
+        model = _smart_model_file().read_text().strip()
         if not model or model == "none":
             return None
         return model
@@ -639,11 +645,17 @@ def extract_command(response: str) -> str | None:
     return None
 
 
+_SHELL_METACHAR_RE = re.compile(r'[;|&$`(){}]')
+
 def classify_command(cmd: str) -> str:
     """Classify a command as 'safe', 'dangerous', or 'ask'."""
     if DANGEROUS_RE.search(cmd):
         return "dangerous"
     if SAFE_RE.search(cmd):
+        # Even safe-prefix commands are dangerous if they contain shell metacharacters
+        # that could chain additional commands (e.g. "git status; rm -rf /")
+        if _SHELL_METACHAR_RE.search(cmd):
+            return "ask"
         return "safe"
     return "ask"
 
