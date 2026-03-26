@@ -50,7 +50,7 @@
     "return-type": "json",
     "max-length": 50,
     "exec": "~/.config/waybar/scripts/costa-ai-status.sh",
-    "on-click": "~/.config/waybar/scripts/toggle-app.sh costa-ai-widget '/usr/bin/python3 $HOME/.config/costa-ai-widget/widget.py'",
+    "on-click": "costa-widget --toggle costa-ai-widget",
     "on-click-right": "~/.config/waybar/scripts/voice-click.sh",
     "tooltip": true
   },
@@ -68,7 +68,7 @@
     "format": "{}",
     "return-type": "json",
     "exec": "if hyprctl monitors -j 2>/dev/null | grep -q HEADLESS; then echo '{\"text\": \"\\uf108\", \"tooltip\": \"Claude Screen\"}'; else echo '{\"text\": \"\"}'; fi",
-    "on-click": "/usr/bin/python3 /usr/share/costa-os/scripts/headless-preview.py",
+    "on-click": "costa-widget --toggle headless-preview",
     "interval": 30
   },
 
@@ -87,7 +87,7 @@
     "exec": "~/.config/waybar/scripts/now-playing.sh",
     "interval": 3,
     "tooltip": true,
-    "on-click": "/usr/bin/python3 $HOME/.config/music-widget/widget.py",
+    "on-click": "costa-widget --toggle music-widget",
     "on-click-middle": "playerctl play-pause",
     "on-click-right": "playerctl next",
     "on-scroll-up": "playerctl position 5+",
