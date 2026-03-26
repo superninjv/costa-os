@@ -1,7 +1,7 @@
 import { Gtk } from "ags/gtk4"
-import { createState } from "gnim"
 import { execAsync } from "ags/process"
 import GLib from "gi://GLib"
+import { lockBar, unlockBar } from "../lib/state"
 
 interface BtDevice {
   mac: string
@@ -10,69 +10,66 @@ interface BtDevice {
   paired: boolean
 }
 
-interface BtState {
-  powered: boolean
-  connected: string
-  devices: BtDevice[]
-  scanning: boolean
-  connectingMac: string
-}
+let powered = false
+let connectedName = ""
+let devices: BtDevice[] = []
+let scanning = false
+let connectingMac = ""
 
-const [getBt, setBt] = createState<BtState>({
-  powered: false,
-  connected: "",
-  devices: [],
-  scanning: false,
-  connectingMac: "",
-})
+// Listeners to notify on state change
+const listeners: (() => void)[] = []
+function notify() { for (const fn of listeners) fn() }
 
 function pollBt() {
   execAsync("bash -c \"bluetoothctl show | grep -q 'Powered: yes' && echo powered || echo off\"")
     .then((out) => {
-      const powered = out.trim() === "powered"
+      powered = out.trim() === "powered"
       if (powered) {
         execAsync("bash -c \"bluetoothctl devices Connected | head -1 | cut -d' ' -f3-\"")
-          .then((dev) => setBt({ ...getBt(), powered: true, connected: dev.trim() }))
-          .catch(() => setBt({ ...getBt(), powered: true, connected: "" }))
+          .then((dev) => { connectedName = dev.trim(); notify() })
+          .catch(() => { connectedName = ""; notify() })
       } else {
-        setBt({ ...getBt(), powered: false, connected: "" })
+        connectedName = ""
+        notify()
       }
     })
-    .catch(() => setBt({ ...getBt(), powered: false, connected: "" }))
+    .catch(() => { powered = false; connectedName = ""; notify() })
 }
 
 function scanDevices() {
-  const state = getBt()
-  if (!state.powered) return
+  if (!powered) return
+  scanning = true
+  notify()
 
-  setBt({ ...getBt(), scanning: true })
-
-  // Start scan briefly
   execAsync("bluetoothctl scan on").catch(() => {})
-
-  // Stop scan after 4 seconds and collect results
   GLib.timeout_add(GLib.PRIORITY_DEFAULT, 4000, () => {
     execAsync("bluetoothctl scan off").catch(() => {})
     return GLib.SOURCE_REMOVE
   })
 
-  // Gather paired + available devices
+  refreshDevices()
+  GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => { refreshDevices(); return GLib.SOURCE_REMOVE })
+  GLib.timeout_add(GLib.PRIORITY_DEFAULT, 4500, () => {
+    refreshDevices()
+    scanning = false
+    notify()
+    return GLib.SOURCE_REMOVE
+  })
+}
+
+function refreshDevices() {
   execAsync("bash -c \"bluetoothctl devices\"")
     .then((out) => {
-      const connectedPromise = execAsync("bash -c \"bluetoothctl devices Connected 2>/dev/null || true\"")
-      const pairedPromise = execAsync("bash -c \"bluetoothctl devices Paired 2>/dev/null || true\"")
+      const connP = execAsync("bash -c \"bluetoothctl devices Connected 2>/dev/null || true\"")
+      const pairP = execAsync("bash -c \"bluetoothctl devices Paired 2>/dev/null || true\"")
 
-      Promise.all([connectedPromise, pairedPromise])
+      Promise.all([connP, pairP])
         .then(([connOut, pairedOut]) => {
-          const connectedMacs = new Set(
-            connOut.trim().split("\n").filter(Boolean).map((l) => l.split(" ")[1])
-          )
-          const pairedMacs = new Set(
-            pairedOut.trim().split("\n").filter(Boolean).map((l) => l.split(" ")[1])
-          )
+          const connMacs = new Set(connOut.trim().split("\n").filter(Boolean).map((l) => l.split(" ")[1]))
+          const pairMacs = new Set(pairedOut.trim().split("\n").filter(Boolean).map((l) => l.split(" ")[1]))
 
           const seen = new Set<string>()
-          const devices: BtDevice[] = []
+          const devs: BtDevice[] = []
 
           for (const line of out.trim().split("\n")) {
             if (!line) continue
@@ -81,19 +78,12 @@ function scanDevices() {
             const mac = parts[1]
             const name = parts.slice(2).join(" ")
             if (!mac || seen.has(mac)) continue
-            // Skip unnamed devices
             if (name === mac || name.startsWith("00:") || name.startsWith("FF:")) continue
             seen.add(mac)
-            devices.push({
-              mac,
-              name,
-              connected: connectedMacs.has(mac),
-              paired: pairedMacs.has(mac),
-            })
+            devs.push({ mac, name, connected: connMacs.has(mac), paired: pairMacs.has(mac) })
           }
 
-          // Connected first, then paired, then others
-          devices.sort((a, b) => {
+          devs.sort((a, b) => {
             if (a.connected && !b.connected) return -1
             if (!a.connected && b.connected) return 1
             if (a.paired && !b.paired) return -1
@@ -101,131 +91,146 @@ function scanDevices() {
             return a.name.localeCompare(b.name)
           })
 
-          setBt({ ...getBt(), devices, scanning: false })
+          devices = devs
+          notify()
         })
-        .catch(() => setBt({ ...getBt(), scanning: false }))
+        .catch(() => {})
     })
-    .catch(() => setBt({ ...getBt(), scanning: false }))
+    .catch(() => {})
 }
 
-function toggleDevice(mac: string, currentlyConnected: boolean) {
-  setBt({ ...getBt(), connectingMac: mac })
-  const cmd = currentlyConnected ? "disconnect" : "connect"
-  execAsync(`bluetoothctl ${cmd} ${mac}`)
+function handleDevice(mac: string, isPaired: boolean, isConnected: boolean) {
+  connectingMac = mac
+  notify()
+  let cmd: string
+  if (isConnected) cmd = `bluetoothctl disconnect ${mac}`
+  else if (isPaired) cmd = `bluetoothctl connect ${mac}`
+  else cmd = `bash -c "bluetoothctl pair ${mac} && bluetoothctl trust ${mac} && bluetoothctl connect ${mac}"`
+
+  execAsync(cmd)
     .then(() => {
-      setBt({ ...getBt(), connectingMac: "" })
-      GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-        pollBt()
-        scanDevices()
-        return GLib.SOURCE_REMOVE
-      })
+      connectingMac = ""
+      notify()
+      GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => { pollBt(); refreshDevices(); return GLib.SOURCE_REMOVE })
     })
-    .catch(() => {
-      setBt({ ...getBt(), connectingMac: "" })
-    })
+    .catch(() => { connectingMac = ""; notify() })
 }
 
 function togglePower() {
-  const state = getBt()
-  const cmd = state.powered ? "power off" : "power on"
-  execAsync(`bluetoothctl ${cmd}`).catch(() => {})
-  GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-    pollBt()
-    return GLib.SOURCE_REMOVE
-  })
+  execAsync(`bluetoothctl ${powered ? "power off" : "power on"}`).catch(() => {})
+  GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => { pollBt(); return GLib.SOURCE_REMOVE })
 }
 
 pollBt()
-GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
-  pollBt()
-  return GLib.SOURCE_CONTINUE
-})
+refreshDevices()
+GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => { pollBt(); return GLib.SOURCE_CONTINUE })
 
-function DeviceItem({ dev }: { dev: BtDevice }) {
-  const state = getBt()
-  const isConnecting = state.connectingMac === dev.mac
-  const icon = dev.connected ? "\uF293" : dev.paired ? "\uF294" : "\uF294"
-
-  return (
-    <button
-      class={`bt-dev-item ${dev.connected ? "connected" : ""}`}
-      onClicked={() => toggleDevice(dev.mac, dev.connected)}
-      sensitive={!isConnecting}
-      tooltipText={dev.connected ? "Click to disconnect" : dev.paired ? "Click to connect" : "Click to connect"}
-    >
-      <box spacing={8}>
-        <label class="bt-dev-icon" label={icon} />
-        <label
-          class="bt-dev-name"
-          label={isConnecting ? `${dev.name}...` : dev.name}
-          hexpand={true}
-          xalign={0}
-        />
-        {dev.connected ? (
-          <label class="bt-dev-check" label={"\uF00C"} />
-        ) : dev.paired ? (
-          <label class="bt-dev-paired" label="paired" />
-        ) : (
-          <box />
-        )}
-      </box>
-    </button>
-  )
+function clearChildren(box: Gtk.Box) {
+  let c = box.get_first_child()
+  while (c) { const n = c.get_next_sibling(); box.remove(c); c = n }
 }
 
 export default function Bluetooth() {
-  return (
-    <menubutton
-      class={getBt.as((b) => {
-        if (!b.powered) return "bt-btn off"
-        return b.connected ? "bt-btn connected" : "bt-btn on"
-      })}
-      tooltipText={getBt.as((b) => {
-        if (!b.powered) return "Bluetooth off"
-        return b.connected ? `Connected: ${b.connected}` : "Bluetooth on (no device)"
-      })}
-      onActivate={() => {
-        if (getBt().powered) scanDevices()
-      }}
-    >
-      <label label={getBt.as((b) => b.powered ? "\uF293" : "\uF294")} />
-      <popover>
-        <box vertical={true} class="bt-popup" widthRequest={260}>
-          <box class="bt-header" spacing={8}>
-            <label class="bt-title" label="Bluetooth" hexpand={true} xalign={0} />
-            <button
-              class="bt-scan"
-              onClicked={() => scanDevices()}
-              tooltipText="Scan"
-              sensitive={getBt.as((b) => b.powered && !b.scanning)}
-            >
-              <label label={getBt.as((b) => b.scanning ? "\uF110" : "\uF002")} />
-            </button>
-            <button
-              class={getBt.as((b) => b.powered ? "bt-power on" : "bt-power")}
-              onClicked={() => togglePower()}
-              tooltipText={getBt.as((b) => b.powered ? "Turn off" : "Turn on")}
-            >
-              <label label={"\uF011"} />
-            </button>
-          </box>
-          <Gtk.ScrolledWindow
-            vexpand={true}
-            hscrollbarPolicy={Gtk.PolicyType.NEVER}
-            maxContentHeight={250}
-            propagateNaturalHeight={true}
-          >
-            <box vertical={true} class="bt-list" spacing={2}>
-              {getBt.as((b) => {
-                if (!b.powered) return [<label class="bt-empty" label="Bluetooth is off" />]
-                if (b.devices.length === 0)
-                  return [<label class="bt-empty" label={b.scanning ? "Scanning..." : "No devices found"} />]
-                return b.devices.map((dev) => <DeviceItem dev={dev} />)
-              })}
-            </box>
-          </Gtk.ScrolledWindow>
-        </box>
-      </popover>
-    </menubutton>
-  )
+  const deviceList = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, cssClasses: ["bt-list"], spacing: 2 })
+  const btnLabel = new Gtk.Label({ label: "\uF294" })
+
+  function render() {
+    // Update device list
+    clearChildren(deviceList)
+
+    if (!powered) {
+      deviceList.append(new Gtk.Label({ cssClasses: ["bt-empty"], label: "Bluetooth is off" }))
+      return
+    }
+
+    if (devices.length === 0) {
+      deviceList.append(new Gtk.Label({
+        cssClasses: ["bt-empty"],
+        label: scanning ? "Scanning..." : "No devices found",
+      }))
+      return
+    }
+
+    for (const dev of devices) {
+      const isConn = connectingMac === dev.mac
+      const row = new Gtk.Button({
+        cssClasses: dev.connected ? ["bt-dev-item", "connected"] : ["bt-dev-item"],
+        sensitive: !isConn,
+      })
+      const box = new Gtk.Box({ spacing: 8 })
+      box.append(new Gtk.Label({ cssClasses: ["bt-dev-icon"], label: dev.connected ? "\uF293" : "\uF294" }))
+      box.append(new Gtk.Label({
+        cssClasses: ["bt-dev-name"],
+        label: isConn ? `${dev.name}...` : dev.name,
+        hexpand: true,
+        xalign: 0,
+      }))
+      if (dev.connected) box.append(new Gtk.Label({ cssClasses: ["bt-dev-check"], label: "\uF00C" }))
+      else if (dev.paired) box.append(new Gtk.Label({ cssClasses: ["bt-dev-paired"], label: "paired" }))
+      else box.append(new Gtk.Label({ cssClasses: ["bt-dev-paired"], label: "new" }))
+
+      row.set_child(box)
+      row.connect("clicked", () => handleDevice(dev.mac, dev.paired, dev.connected))
+      deviceList.append(row)
+    }
+  }
+
+  listeners.push(render)
+  render()
+
+  const scroll = new Gtk.ScrolledWindow({
+    vexpand: true,
+    hscrollbarPolicy: Gtk.PolicyType.NEVER,
+    maxContentHeight: 250,
+    propagateNaturalHeight: true,
+  })
+  scroll.set_child(deviceList)
+
+  const popupBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, cssClasses: ["bt-popup"], widthRequest: 260 })
+
+  const header = new Gtk.Box({ cssClasses: ["bt-header"], spacing: 8 })
+  header.append(new Gtk.Label({ cssClasses: ["bt-title"], label: "Bluetooth", hexpand: true, xalign: 0 }))
+
+  const scanBtn = new Gtk.Button({ cssClasses: ["bt-scan"], tooltipText: "Scan" })
+  scanBtn.set_child(new Gtk.Label({ label: "\uF002" }))
+  scanBtn.connect("clicked", () => scanDevices())
+
+  const powerBtn = new Gtk.Button({ cssClasses: ["bt-power"], tooltipText: "Toggle power" })
+  powerBtn.set_child(new Gtk.Label({ label: "\uF011" }))
+  powerBtn.connect("clicked", () => togglePower())
+
+  header.append(scanBtn)
+  header.append(powerBtn)
+  popupBox.append(header)
+  popupBox.append(scroll)
+
+  const popover = new Gtk.Popover()
+  popover.set_child(popupBox)
+  popover.connect("notify::visible", () => {
+    if (popover.visible) {
+      lockBar()
+      if (powered) { refreshDevices(); scanDevices() }
+    } else {
+      unlockBar()
+    }
+  })
+
+  const menuBtn = new Gtk.MenuButton({
+    cssClasses: ["bt-btn"],
+    popover: popover,
+    tooltipText: powered ? (connectedName || "Bluetooth on") : "Bluetooth off",
+  })
+  const menuLabel = new Gtk.Label({ label: powered ? "\uF293" : "\uF294" })
+  menuBtn.set_child(menuLabel)
+
+  listeners.push(() => {
+    menuBtn.tooltipText = powered
+      ? (connectedName ? `Connected: ${connectedName}` : "Bluetooth on (no device)")
+      : "Bluetooth off"
+    const cls = !powered ? "bt-btn off" : connectedName ? "bt-btn connected" : "bt-btn on"
+    menuBtn.cssClasses = [cls]
+    menuLabel.label = powered ? "\uF293" : "\uF294"
+  })
+
+  return menuBtn as Gtk.Widget
 }
