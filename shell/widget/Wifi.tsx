@@ -183,7 +183,7 @@ function PasswordEntry() {
   if (!state.showPassword) return <box />
 
   return (
-    <box class="wifi-password-box" vertical={true} spacing={6}>
+    <box class="wifi-password-box" orientation={Gtk.Orientation.VERTICAL} spacing={6}>
       <label class="wifi-password-label" label={`Password for ${state.passwordSsid}`} xalign={0} />
       <box spacing={6}>
         <entry
@@ -216,7 +216,7 @@ export default function Wifi() {
     >
       <label label={getWifi.as((w) => wifiIcon(w))} />
       <popover>
-        <box vertical={true} class="wifi-popup" widthRequest={280}>
+        <box orientation={Gtk.Orientation.VERTICAL} class="wifi-popup" widthRequest={280}>
           <box class="wifi-header" spacing={8}>
             <label class="wifi-title" label="Wi-Fi Networks" hexpand={true} xalign={0} />
             <button
@@ -234,7 +234,7 @@ export default function Wifi() {
             maxContentHeight={300}
             propagateNaturalHeight={true}
           >
-            <box vertical={true} class="wifi-list" spacing={2}>
+            <box orientation={Gtk.Orientation.VERTICAL} class="wifi-list" spacing={2}>
               {getWifi.as((w) =>
                 w.networks.length > 0
                   ? w.networks.map((net) => <NetworkItem net={net} />)
