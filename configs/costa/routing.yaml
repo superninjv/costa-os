@@ -1,0 +1,45 @@
+# Costa OS — Hand-curated routing decisions
+# Based on verified benchmark data as of March 2026.
+# The benchmark aggregator monitors for changes; manual review required to update.
+
+routing_rules:
+  math_reasoning:
+    description: "Math, science, and complex reasoning queries"
+    prefer:
+      - {provider: gemini, model: "gemini-2.0-flash", tier: free}
+      - {provider: gemini, model: "gemini-3-flash", tier: paid}
+      - {provider: gemini, model: "gemini-3.1-pro", tier: premium}
+    evidence: "GPQA Diamond: Gemini 94.3% vs Claude 91.3%. AIME 2025: Gemini 100%."
+    patterns:
+      - "\\b(solve|calculate|compute|derive|prove|equation|integral|derivative)\\b"
+      - "\\b(math|algebra|calculus|geometry|statistics|probability)\\b"
+      - "\\b(physics|chemistry|biology)\\s+(problem|question|equation)"
+
+  fast_web_query:
+    description: "Quick factual queries needing web search"
+    prefer:
+      - {provider: groq, model: "llama-3.1-8b-instant", tier: free}
+      - {provider: gemini, model: "gemini-2.0-flash", tier: free}
+      - {provider: gemini, model: "gemini-3-flash", tier: paid}
+    evidence: "Groq Llama 8B: 840 t/s, free tier. Gemini Flash: 200 t/s, $0.50/M."
+
+  devops_terminal:
+    description: "CI/CD, infrastructure, DevOps tasks"
+    prefer:
+      - {provider: openai, model: "gpt-5.3-codex", tier: paid}
+    evidence: "Terminal-Bench 2.0: 77.3% (#1). Only verified Codex advantage."
+    patterns:
+      - "\\b(ci|cd|pipeline|deploy|docker|kubernetes|k8s|terraform|ansible)\\b"
+      - "\\b(nginx|caddy|systemd|service|daemon)\\b"
+      - "\\b(github actions|gitlab ci|jenkins)\\b"
+
+  budget_code_fallback:
+    description: "Code tasks when cloud budget is exhausted"
+    prefer:
+      - {provider: mistral, model: "devstral-small-2505", tier: free}
+    evidence: "68% SWE-bench Verified, free unlimited."
+
+  default:
+    description: "All other tasks — Claude excels overall"
+    prefer: []  # Empty = stay on Claude
+    evidence: "Chatbot Arena #1 (1504), WebDev Arena #1 (1549), MCP ecosystem."
