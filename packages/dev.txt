@@ -17,6 +17,7 @@ choose
 dog
 bandwhich
 docker
+docker-buildx
 docker-compose
 lazydocker
 kubectl

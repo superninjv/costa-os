@@ -230,6 +230,11 @@ def gather_context(query: str) -> str:
         dt = run("date '+%A %B %d, %Y %I:%M %p %Z'")
         context_parts.append(f"[Current date/time: {dt}]")
 
+    # Code / AST context (active editor file)
+    code_ctx = _gather_code_context(q)
+    if code_ctx:
+        context_parts.append(code_ctx)
+
     if not context_parts:
         return ""
 
@@ -295,6 +300,110 @@ def _extract_topic(query: str) -> str:
             if topic.lower() not in ("any", "my", "the", "some", "all", "do", "i"):
                 return topic
     return ""
+
+
+def _gather_code_context(query: str) -> str:
+    """Gather AST-aware code context when the query is about code.
+
+    Checks if there's an active editor (code, zed, neovim) and parses
+    the open file to inject structural understanding into the prompt.
+    """
+    # Only for code-related queries
+    if not _matches(query, r"(refactor|function|class|method|fix|debug|explain|implement|"
+                           r"what does|how does|rename|move|extract|inline|optimize|"
+                           r"complexity|import|depend|symbol|struct|interface|type)"):
+        return ""
+
+    # Try to get the active editor window's file
+    try:
+        import json as _json
+        active = run(["hyprctl", "activewindow", "-j"])
+        if not active:
+            return ""
+        win = _json.loads(active)
+        win_class = win.get("class", "").lower()
+        title = win.get("title", "")
+
+        # Detect editor windows
+        file_path = ""
+        if "code" in win_class or "codium" in win_class:
+            # VS Code: title is "filename — folder — Visual Studio Code"
+            parts = title.split(" — ")
+            if parts:
+                candidate = parts[0].strip()
+                if "/" in candidate or "." in candidate:
+                    file_path = candidate
+        elif "zed" in win_class:
+            # Zed: title is "filename — Zed"
+            parts = title.split(" — ")
+            if parts:
+                file_path = parts[0].strip()
+        elif "nvim" in win_class or "neovim" in win_class or "vim" in win_class:
+            # Terminal editors: harder to detect, skip for now
+            pass
+        elif "ghostty" in win_class or "foot" in win_class:
+            # Terminal: check if running nvim
+            if " - NVIM" in title or "nvim " in title.lower():
+                pass  # Can't reliably get the file path
+
+        if not file_path or not os.path.isfile(file_path):
+            # Try common project dirs
+            if file_path and not file_path.startswith("/"):
+                for base in [os.path.expanduser("~/projects"), os.getcwd()]:
+                    candidate = os.path.join(base, file_path)
+                    if os.path.isfile(candidate):
+                        file_path = candidate
+                        break
+            if not file_path or not os.path.isfile(file_path):
+                return ""
+
+        # Parse the file with tree-sitter
+        import sys as _sys
+        ast_dir = str(Path(__file__).parent)
+        if ast_dir not in _sys.path:
+            _sys.path.insert(0, ast_dir)
+
+        import ast_parser
+        summary = ast_parser.get_file_summary(file_path)
+        if not summary.get("parseable"):
+            return ""
+
+        # Build context string
+        parts = [f"[Active file: {file_path} — {summary['language']}, {summary['total_lines']} lines]"]
+
+        # Symbol summary
+        if summary.get("symbols"):
+            counts = ", ".join(f"{v} {k}{'s' if v > 1 else ''}"
+                              for k, v in summary["symbols"].items())
+            parts.append(f"[Symbols: {counts}]")
+
+        # Top-level definitions
+        top = summary.get("top_level", [])
+        if top:
+            defs = ", ".join(f"{s['kind']} {s['name']}({s['lines']}L)"
+                            for s in top[:15])
+            parts.append(f"[Definitions: {defs}]")
+
+        # Imports
+        imports = summary.get("imports", [])
+        if imports:
+            parts.append(f"[Imports: {', '.join(imports[:10])}]")
+
+        # Complexity if it's a refactor/debug query
+        if _matches(query, r"(refactor|complex|simplif|debug|optimize)"):
+            cx = ast_parser.get_complexity(file_path)
+            if cx.get("functions"):
+                high = [f for f in cx["functions"] if f["complexity"] > 10]
+                if high:
+                    hotspots = ", ".join(
+                        f"{f['name']}(cx={f['complexity']})"
+                        for f in sorted(high, key=lambda x: -x["complexity"])[:5]
+                    )
+                    parts.append(f"[High complexity: {hotspots}]")
+
+        return "\n".join(parts)
+    except Exception:
+        return ""
 
 
 def _extract_config_path(query: str) -> str:

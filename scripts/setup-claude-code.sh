@@ -202,6 +202,23 @@ else
     echo "  ✓ Created ~/.claude.json with costa-system MCP server"
 fi
 
+# ─── 3b. Add Firecrawl MCP server if set up ─────────────────
+FIRECRAWL_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/costa/firecrawl"
+if [ -d "$FIRECRAWL_DIR" ]; then
+    # Add firecrawl-mcp pointing to local instance
+    UPDATED=$(jq '.mcpServers["firecrawl"] = {
+        "command": "npx",
+        "args": ["-y", "firecrawl-mcp"],
+        "env": {
+            "FIRECRAWL_API_URL": "http://localhost:3002"
+        }
+    }' "$CLAUDE_JSON")
+    echo "$UPDATED" > "$CLAUDE_JSON"
+    echo "  ✓ Added Firecrawl MCP server (local at :3002)"
+else
+    echo "  Firecrawl not set up — skipping MCP registration (run costa-firecrawl setup)"
+fi
+
 # ─── 4. Copy commands from Costa OS templates ────────────────
 COMMANDS_SRC="$COSTA_SHARE/configs/claude/commands"
 COMMANDS_DST="$CLAUDE_DIR/commands"

@@ -16,6 +16,9 @@ networkmanager
 network-manager-applet
 iwd
 openssh
+bluez
+bluez-utils
+ufw
 
 # Filesystem
 ntfs-3g

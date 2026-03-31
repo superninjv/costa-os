@@ -351,7 +351,7 @@ def format_conversation_context(history: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def select_route(query: str) -> str:
+def select_route(query: str, file_path: str | None = None) -> str:
     """Determine the best model tier for this query.
 
     Tries ML router first (if trained and confident), falls back to regex patterns.
@@ -360,7 +360,7 @@ def select_route(query: str) -> str:
     try:
         from ml_router import get_router
         router = get_router()
-        ml_route, confidence = router.predict(query)
+        ml_route, confidence = router.predict(query, file_path=file_path)
         if ml_route and confidence > 0.65:
             return ml_route
     except Exception:
@@ -997,7 +997,28 @@ def route_query(query: str, force_model: str | None = None,
     knowledge_ms = None
     model_ms = None
 
-    route = force_model or select_route(query)
+    # Detect active editor file for AST-enriched routing
+    _active_file_path = None
+    try:
+        import json as _json
+        _aw = subprocess.run(
+            ["hyprctl", "activewindow", "-j"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if _aw.returncode == 0:
+            _win = _json.loads(_aw.stdout)
+            _win_class = _win.get("class", "").lower()
+            _title = _win.get("title", "")
+            if any(ed in _win_class for ed in ("code", "codium", "zed")):
+                _parts = _title.split(" — ")
+                if _parts:
+                    _candidate = _parts[0].strip()
+                    if os.path.isfile(_candidate):
+                        _active_file_path = _candidate
+    except Exception:
+        pass
+
+    route = force_model or select_route(query, file_path=_active_file_path)
     system_prompt = get_system_prompt()
     escalated = False
     context_used = False
@@ -1361,6 +1382,31 @@ def route_query(query: str, force_model: str | None = None,
                 elif re.search(r"\b(physics|chemistry|biology)\s+(problem|question|equation)\b", q_lower):
                     query_category = "science"
 
+            # AST-enriched category detection: if the query references code and
+            # we have an active editor, use structural analysis to improve routing.
+            # A 5-line helper refactor → fast model; a 200-line class with 40
+            # dependents → route to Claude.
+            if query_category in ("code_refactor", "code_debug", "code_test", None) and _active_file_path:
+                try:
+                    import ast_parser
+                    summary = ast_parser.get_file_summary(_active_file_path)
+                    if summary.get("parseable"):
+                        total_lines = summary.get("total_lines", 0)
+                        sym_count = summary.get("symbol_count", 0)
+
+                        # If the active file is complex, consider
+                        # escalating category to architecture
+                        if total_lines > 500 or sym_count > 30:
+                            if query_category == "code_refactor":
+                                query_category = "architecture"
+                            elif not query_category and re.search(
+                                r"\b(this|here|current|open)\b", q_lower
+                            ):
+                                # Query references current context + large file
+                                query_category = "code_debug"
+                except Exception:
+                    pass
+
             # Route math/reasoning to Gemini if available (verified GPQA advantage)
             if query_category in ("math", "reasoning", "science") and not force_model:
                 alt = select_cloud_model(route, query_category)
@@ -1572,6 +1618,18 @@ def route_query(query: str, force_model: str | None = None,
         }
 
         _log_to_db(result, input_modality)
+
+        # Log AST features for future training
+        if _active_file_path:
+            try:
+                from ml_router import extract_ast_features
+                _ast_feats = extract_ast_features(query, _active_file_path)
+                if _ast_feats is not None:
+                    from db import log_ast_features
+                    log_ast_features(result.get("query_id"), _active_file_path, _ast_feats.tolist())
+            except Exception:
+                pass
+
         return result
 
     finally:

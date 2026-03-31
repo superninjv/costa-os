@@ -781,6 +781,119 @@ async def list_tools():
                 "required": ["prompt"],
             },
         ),
+        Tool(
+            name="ast_symbols",
+            description=(
+                "Get structural symbols (functions, classes, interfaces, etc.) from a source file "
+                "using tree-sitter AST parsing. Returns symbol names, kinds, line ranges, and "
+                "nesting. Supports Python, TypeScript, JavaScript, Rust, Go, Bash, C/C++, Java, "
+                "and 30+ languages. Use this to understand code structure without reading the "
+                "whole file. Much cheaper than reading the file — returns only the skeleton."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the source file",
+                    },
+                },
+                "required": ["path"],
+            },
+        ),
+        Tool(
+            name="ast_scope",
+            description=(
+                "Get the scope chain at a specific position in a source file. "
+                "Returns the nesting of functions, classes, loops, etc. that contain "
+                "the given line/column. Useful for understanding context when debugging "
+                "or refactoring — 'what function am I inside?'"
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the source file",
+                    },
+                    "line": {
+                        "type": "integer",
+                        "description": "Line number (1-indexed)",
+                    },
+                    "col": {
+                        "type": "integer",
+                        "description": "Column number (0-indexed, default 0)",
+                        "default": 0,
+                    },
+                },
+                "required": ["path", "line"],
+            },
+        ),
+        Tool(
+            name="ast_complexity",
+            description=(
+                "Analyze cyclomatic complexity of every function in a file. "
+                "Returns per-function complexity scores, total, and average. "
+                "High complexity (>15) suggests a function needs refactoring. "
+                "Use this before delegating code tasks to pick the right model tier."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the source file",
+                    },
+                },
+                "required": ["path"],
+            },
+        ),
+        Tool(
+            name="ast_dependents",
+            description=(
+                "Find files that reference a given symbol (function, class, variable). "
+                "Uses AST-aware matching — distinguishes calls, imports, and references. "
+                "Searches the file's directory by default; provide search_dirs to widen scope."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the file containing the symbol",
+                    },
+                    "symbol": {
+                        "type": "string",
+                        "description": "Symbol name to search for (e.g. 'route_query', 'ASTService')",
+                    },
+                    "search_dirs": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Additional directories to search (default: same dir as file)",
+                    },
+                },
+                "required": ["path", "symbol"],
+            },
+        ),
+        Tool(
+            name="ast_file_summary",
+            description=(
+                "Get a structural summary of a source file: language, line count, "
+                "symbol breakdown by kind, imports list, and top-level definitions. "
+                "Ideal for AI context injection — gives structural understanding "
+                "without sending the whole file content."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Absolute path to the source file",
+                    },
+                },
+                "required": ["path"],
+            },
+        ),
     ]
 
 
@@ -935,6 +1048,11 @@ async def call_tool(name: str, arguments: dict):
             "scroll_window": handle_scroll_window,
             "vault_search": handle_vault_search,
             "ollama_query": handle_ollama_query,
+            "ast_symbols": handle_ast_symbols,
+            "ast_scope": handle_ast_scope,
+            "ast_complexity": handle_ast_complexity,
+            "ast_dependents": handle_ast_dependents,
+            "ast_file_summary": handle_ast_file_summary,
         }.get(name)
         if handler:
             return await handler(arguments)
@@ -1623,6 +1741,106 @@ async def handle_ollama_query(args: dict):
         return [TextContent(type="text", text=f"ERROR: Invalid JSON from Ollama: {e}")]
     except Exception as e:
         return [TextContent(type="text", text=f"ERROR: {e}")]
+
+
+# ─── AST tools (tree-sitter via costa-ast D-Bus daemon) ──────
+
+def _ast_dbus_call(method: str, *args) -> str:
+    """Call a method on the costa-ast D-Bus service.
+
+    Falls back to direct ast_parser import if the daemon isn't running.
+    """
+    import subprocess as _sp
+    # Build busctl args
+    sig = ""
+    bus_args = []
+    for a in args:
+        if isinstance(a, int):
+            sig += "u"
+            bus_args.append(str(a))
+        elif isinstance(a, list):
+            sig += "as"
+            bus_args.append(str(len(a)))
+            bus_args.extend(a)
+        else:
+            sig += "s"
+            bus_args.append(str(a))
+
+    cmd = [
+        "busctl", "--user", "call",
+        "org.costa.AST", "/org/costa/AST", "org.costa.AST",
+        method, sig, *bus_args,
+    ]
+    try:
+        r = _sp.run(cmd, capture_output=True, text=True, timeout=10)
+        if r.returncode == 0 and r.stdout.strip():
+            # busctl returns: s "json_string"
+            # Extract the JSON from the D-Bus response
+            out = r.stdout.strip()
+            if out.startswith('s "') and out.endswith('"'):
+                return json.loads(out[3:-1].replace('\\"', '"'))
+            # Try parsing directly
+            return json.loads(out)
+    except (_sp.TimeoutExpired, json.JSONDecodeError):
+        pass
+
+    # Fallback: direct import (works if daemon is down)
+    return _ast_direct_call(method, *args)
+
+
+def _ast_direct_call(method: str, *args):
+    """Direct ast_parser call when the D-Bus daemon isn't running."""
+    ast_dir = Path(__file__).parent.parent / "ai-router"
+    _sys = sys
+    if str(ast_dir) not in _sys.path:
+        _sys.path.insert(0, str(ast_dir))
+    try:
+        import ast_parser
+        dispatch = {
+            "GetSymbols": lambda: ast_parser.get_symbols(args[0]),
+            "GetScope": lambda: ast_parser.get_scope(args[0], int(args[1]), int(args[2]) if len(args) > 2 else 0),
+            "GetComplexity": lambda: ast_parser.get_complexity(args[0]),
+            "GetDependents": lambda: ast_parser.get_dependents(args[0], args[1], list(args[2]) if len(args) > 2 else None),
+            "GetFileSummary": lambda: ast_parser.get_file_summary(args[0]),
+        }
+        fn = dispatch.get(method)
+        return fn() if fn else {"error": f"Unknown method: {method}"}
+    except ImportError:
+        return {"error": "costa-ast daemon not running and ast_parser not found"}
+
+
+async def handle_ast_symbols(args: dict):
+    path = os.path.realpath(args["path"])
+    result = _ast_dbus_call("GetSymbols", path)
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_ast_scope(args: dict):
+    path = os.path.realpath(args["path"])
+    line = args["line"]
+    col = args.get("col", 0)
+    result = _ast_dbus_call("GetScope", path, line, col)
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_ast_complexity(args: dict):
+    path = os.path.realpath(args["path"])
+    result = _ast_dbus_call("GetComplexity", path)
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_ast_dependents(args: dict):
+    path = os.path.realpath(args["path"])
+    symbol = args["symbol"]
+    search_dirs = args.get("search_dirs", [])
+    result = _ast_dbus_call("GetDependents", path, symbol, search_dirs)
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_ast_file_summary(args: dict):
+    path = os.path.realpath(args["path"])
+    result = _ast_dbus_call("GetFileSummary", path)
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
 # ─── Main ────────────────────────────────────────────────────

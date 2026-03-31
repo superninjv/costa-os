@@ -90,6 +90,10 @@ chmod +x "$AIROOTFS/usr/local/bin/costa-update"
 cp "$PROJECT_DIR/scripts/costa-widget.sh" "$AIROOTFS/usr/local/bin/costa-widget"
 chmod +x "$AIROOTFS/usr/local/bin/costa-widget"
 
+# launch-on-primary — opens apps on primary monitor regardless of focus
+cp "$PROJECT_DIR/scripts/launch-on-primary.sh" "$AIROOTFS/usr/local/bin/launch-on-primary"
+chmod +x "$AIROOTFS/usr/local/bin/launch-on-primary"
+
 # Installer
 mkdir -p "$COSTA_SHARE/installer"
 cp "$PROJECT_DIR"/installer/*.py "$COSTA_SHARE/installer/"

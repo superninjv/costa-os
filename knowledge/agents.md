@@ -20,6 +20,7 @@ Agents are specialized AI personas with focused system prompts, specific tool ac
 | **janitor** | qwen2.5:3b (local) | Clean caches, remove orphan packages, free disk |
 | **monitor** | qwen2.5:3b (local) | Watch logs, alert on errors, track resource usage |
 | **navigator** | qwen2.5:7b+ (local) | Screen reading, app interaction, UI automation via AT-SPI and CLI wrappers |
+| **security** | qwen2.5:7b (local) | Security scanning, vulnerability detection, hardening verification |
 
 ## How to Use Agents
 
@@ -100,6 +101,14 @@ costa-agents run navigator "list all open Firefox tabs"
 costa-agents run navigator "check my Vast.ai credit balance"
 costa-agents run navigator "fill out the registration form on the current page"
 ```
+
+### security (local, qwen2.5:7b)
+Security scanning, vulnerability detection, hardening verification. Two modes: efficient (quick daily) and full (comprehensive weekly).
+```bash
+costa-agents run security "efficient scan"
+costa-agents run security "full scan"
+```
+Scheduled: daily 3am (efficient), Sunday 2:30am (full). Read-only — reports issues, never modifies system.
 
 ## Queue Management
 

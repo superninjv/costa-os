@@ -1,3 +1,5 @@
 requests
 PyYAML
 evdev
+tree-sitter
+tree-sitter-language-pack

@@ -64,7 +64,9 @@ def main():
     parser.add_argument("--stop", action="store_true", help="Cancel running query")
 
     # Phase 5: ML router
-    parser.add_argument("--train-router", action="store_true", help="Train ML routing classifier")
+    parser.add_argument("--train-router", action="store_true", help="Train ML routing classifier (both stages)")
+    parser.add_argument("--train-stage2", action="store_true", help="Train Stage 2 (AST-enriched) router only")
+    parser.add_argument("--generate-training-data", action="store_true", help="Generate training data via LLM classification")
     parser.add_argument("--train-if-stale", action="store_true", help="Train only if 50+ new queries since last train")
     parser.add_argument("--eval", action="store_true", help="Evaluate ML router (with --train-router)")
     parser.add_argument("--router-stats", action="store_true", help="Show ML router stats")
@@ -247,6 +249,70 @@ def main():
                 print(f"Training error: {e}")
                 sys.exit(1)
         return
+
+    # --- Generate training data for Stage 2 ---
+    if args.generate_training_data:
+        try:
+            from generate_training_data import main as gen_main
+            gen_main()
+        except Exception as e:
+            print(f"Training data generation error: {e}")
+            sys.exit(1)
+        return
+
+    # --- Train Stage 2 (AST-enriched) router ---
+    if args.train_stage2 or (args.train_router and not args.train_if_stale):
+        try:
+            from ml_router import get_router, ROUTE_CLASSES
+            from db import get_ast_training_data
+            import json as _json
+
+            router = get_router()
+
+            # Load generated training data
+            training_file = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "training_data", "stage2_labeled.json",
+            )
+            data = []
+            weights = []
+
+            if os.path.exists(training_file):
+                with open(training_file) as f:
+                    generated = _json.load(f)
+                for entry in generated:
+                    route = entry.get("route", "")
+                    if route not in ROUTE_CLASSES:
+                        continue
+                    data.append((entry["query"], route, entry.get("file_path")))
+                    weights.append(entry.get("weight", 2.0))
+                print(f"Loaded {len(data)} entries from generated training data")
+
+            # Add real AST-labeled queries from DB
+            ast_rows = get_ast_training_data()
+            real_count = 0
+            for row in ast_rows:
+                if row["route"] not in ROUTE_CLASSES:
+                    continue
+                data.append((row["query"], row["route"], row.get("file_path")))
+                weights.append(5.0)
+                real_count += 1
+            if real_count:
+                print(f"Added {real_count} real AST-labeled queries from DB")
+
+            if not data:
+                print("No Stage 2 training data. Run --generate-training-data first.")
+                sys.exit(1)
+
+            print(f"Training Stage 2 on {len(data)} examples...")
+            stats = router.train_ast(data, weights=weights)
+            print(f"Stage 2 trained: {stats['duration_s']}s, loss={stats['final_loss']:.4f}, samples={stats['samples']}")
+        except Exception as e:
+            print(f"Stage 2 training error: {e}")
+            import traceback; traceback.print_exc()
+            sys.exit(1)
+        if not args.train_router:
+            return
 
     # --- Router stats ---
     if args.router_stats:

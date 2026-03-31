@@ -1,6 +1,6 @@
 ---
 l0: "Network management: WiFi, ethernet, VPN, DNS, SSH, firewall, diagnostics"
-l1_sections: ["WiFi", "Wired/Ethernet", "IP & Interface Info", "DNS", "Firewall (if installed)", "VPN", "Diagnostics", "Hostname", "SSH"]
+l1_sections: ["WiFi", "Wired/Ethernet", "IP & Interface Info", "DNS", "Firewall", "Network Hardening", "VPN", "Diagnostics", "Hostname", "SSH"]
 tags: [wifi, ethernet, vpn, wireguard, dns, ssh, firewall, nmcli, ip-address, speed-test, hostname]
 ---
 
@@ -32,10 +32,22 @@ tags: [wifi, ethernet, vpn, wireguard, dns, ssh, firewall, nmcli, ip-address, sp
 - Set custom DNS: `nmcli connection modify "SSID" ipv4.dns "1.1.1.1 8.8.8.8"`
 - Apply changes: `nmcli connection up "SSID"`
 
-## Firewall (if installed)
-- Status: `sudo ufw status` or `sudo firewall-cmd --state`
+## Firewall
+Costa OS ships with ufw configured (deny incoming, allow outgoing).
+- Status: `sudo ufw status verbose`
 - Allow port: `sudo ufw allow 8080`
+- Allow SSH: `sudo ufw allow ssh`
 - Deny port: `sudo ufw deny 8080`
+- Delete rule: `sudo ufw delete allow 8080`
+- Reset to defaults: `sudo bash /usr/share/costa-os/configs/ufw/costa-defaults.sh`
+- Pre-allowed: mDNS (5353/udp), KDE Connect (1714-1764), Ollama local (11434), Firecrawl local (3002)
+
+## Network Hardening
+Kernel parameters hardened via `/etc/sysctl.d/99-costa-hardening.conf`:
+- IP forwarding disabled, ICMP redirects blocked, SYN cookies enabled
+- Source routing blocked, Martian packets logged
+- Kernel pointer addresses hidden, dmesg restricted to root
+- Verify: `sysctl net.ipv4.tcp_syncookies` (should be 1)
 
 ## VPN
 - WireGuard: `sudo wg-quick up wg0`, `sudo wg-quick down wg0`

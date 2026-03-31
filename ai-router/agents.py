@@ -43,6 +43,8 @@ class AgentDef:
     system_prompt: str = ""
     schedule: dict = field(default_factory=dict)
     min_tier: str = ""  # "cloud", "local-14b", "local-7b", or "" (let router decide)
+    fallback_model: dict = field(default_factory=dict)  # {provider, model} used when budget exceeded
+    max_runtime: int = 300  # seconds — hard kill after this (default 5 min)
 
 
 @dataclass
@@ -186,6 +188,8 @@ class AgentPool:
                         system_prompt=data.get("system_prompt", ""),
                         schedule=data.get("schedule", {}),
                         min_tier=data.get("min_tier", ""),
+                        fallback_model=data.get("fallback_model", {}),
+                        max_runtime=data.get("max_runtime", 300),
                     )
                     self.agents[agent.name] = agent
 
@@ -247,7 +251,7 @@ class AgentPool:
         return task
 
     def _run_task(self, agent: AgentDef, task: Task):
-        """Execute a task within its resource queue."""
+        """Execute a task within its resource queue, with hard timeout."""
         queue = self.queues.get(agent.queue)
 
         # Acquire queue slot (blocks if at capacity)
@@ -267,14 +271,24 @@ class AgentPool:
             task.started_at = time.time()
             self._save_status()
 
-            result = self._execute(agent, task)
-            task.result = result
+            # Hard timeout — run _execute in a thread so we can kill it
+            exec_thread = threading.Thread(
+                target=self._execute_into_task, args=(agent, task), daemon=True
+            )
+            exec_thread.start()
+            exec_thread.join(timeout=agent.max_runtime)
 
-            # Detect failures in the result text
-            if any(marker in result for marker in ["✗", "FAIL", "Error:", "failed"]):
+            if exec_thread.is_alive():
+                # Agent exceeded max_runtime — force stop
+                task.result = (
+                    f"KILLED: agent exceeded max_runtime of {agent.max_runtime}s. "
+                    f"Partial result: {task.result[:500] if task.result else 'none'}"
+                )
                 task.status = "failed"
-            else:
+            elif task.status == "running":
+                # _execute_into_task finished but didn't set status (shouldn't happen)
                 task.status = "done"
+
         except Exception as e:
             task.result = f"Error: {e}"
             task.status = "failed"
@@ -287,6 +301,20 @@ class AgentPool:
             self._write_last_result(task)
             self._notify(agent, task)
 
+    def _execute_into_task(self, agent: AgentDef, task: Task):
+        """Run _execute and write results directly into the task object."""
+        try:
+            result = self._execute(agent, task)
+            task.result = result
+
+            if any(marker in result for marker in ["✗", "FAIL", "Error:", "failed"]):
+                task.status = "failed"
+            else:
+                task.status = "done"
+        except Exception as e:
+            task.result = f"Error: {e}"
+            task.status = "failed"
+
     def _execute(self, agent: AgentDef, task: Task) -> str:
         """Execute the task using the appropriate model for this agent.
 
@@ -295,6 +323,40 @@ class AgentPool:
         2. If agent has min_tier="local-14b", use local but only if 14b+ is loaded
         3. Otherwise, let the router decide based on query content
         """
+        # Budget check — if budget exceeded and agent has a fallback model, use it
+        if agent.fallback_model:
+            try:
+                import sys
+                router_dir = str(Path(__file__).parent)
+                if router_dir not in sys.path:
+                    sys.path.insert(0, router_dir)
+                from db import check_budget
+                budget_info = check_budget()
+                if budget_info.get("exceeded"):
+                    from router import query_openai_compat
+                    fb_provider = agent.fallback_model.get("provider", "")
+                    fb_model = agent.fallback_model.get("model", "")
+                    if fb_provider and fb_model:
+                        # Build the prompt inline (server_context not yet built — use simple prompt)
+                        fb_prompt = f"""You are acting as the "{agent.title}" agent for Costa OS.
+
+{agent.system_prompt}
+
+YOUR TASK:
+{task.instruction}
+
+Execute this task now. Be concise in your response. End with a one-line summary."""
+                        fb_response, fb_meta = query_openai_compat(
+                            fb_prompt,
+                            model=fb_model,
+                            provider=fb_provider,
+                            timeout=60,
+                        )
+                        if fb_response:
+                            return fb_response
+            except Exception:
+                pass  # If budget check or fallback fails, proceed with normal execution
+
         # Include server config if the agent has servers defined
         server_context = ""
         if agent.servers:

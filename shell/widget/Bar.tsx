@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { getBarRevealed, revealBar, hideBar, setBarWindow, lockBar, unlockBar } from "../lib/state"
+import { getBarRevealed, revealBar, hideBar, setBarWindow, setBarRevealer, lockBar, unlockBar } from "../lib/state"
 
 import Workspaces from "./Workspaces"
 import Git from "./Git"
@@ -37,9 +37,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       namespace="costa-bar"
       application={app}
       $={(self: Gtk.Window) => {
-        // Present first so compositor registers the layer surface,
-        // then hide — revealBar() will show it on notch hover
-        self.present()
+        // Start hidden — notch hover triggers revealBar() which calls present()
         self.visible = false
         setBarWindow(self)
         const motion = new Gtk.EventControllerMotion()
@@ -52,6 +50,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         revealChild={getBarRevealed}
         transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
         transitionDuration={300}
+        $={(self: Gtk.Revealer) => setBarRevealer(self)}
       >
         <centerbox class="bar-panel" widthRequest={1100}>
           <box $type="start" class="bar-left" spacing={2}>

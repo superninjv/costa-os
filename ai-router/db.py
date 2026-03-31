@@ -83,6 +83,14 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow ON workflow_runs(workflow);
+
+CREATE TABLE IF NOT EXISTS query_ast_features (
+    query_id INTEGER,
+    file_path TEXT,
+    ast_features TEXT,
+    ts TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_qaf_query_id ON query_ast_features(query_id);
 """
 
 _connection = None
@@ -464,6 +472,50 @@ def find_recent_query(query_text: str, max_age_minutes: int = 30) -> int | None:
         (query_text, since),
     ).fetchone()
     return row["id"] if row else None
+
+
+def log_ast_features(query_id: int, file_path: str, features_array: list) -> None:
+    """Store AST feature vector for a query/file pair.
+
+    Args:
+        query_id: The query row ID from the queries table.
+        file_path: Path to the source file the features were extracted from.
+        features_array: List of floats representing AST features.
+    """
+    db = get_db()
+    db.execute(
+        """INSERT INTO query_ast_features (query_id, file_path, ast_features)
+           VALUES (?, ?, ?)""",
+        (query_id, file_path, json.dumps(features_array)),
+    )
+    db.commit()
+
+
+def get_ast_training_data(limit: int = 5000) -> list[dict]:
+    """Get AST feature data joined with query routing labels for ML training.
+
+    Returns:
+        List of dicts with keys: query, route, file_path, ast_features (parsed list).
+        Only includes rows where route is not NULL.
+    """
+    db = get_db()
+    rows = db.execute(
+        """SELECT q.query, q.route, qaf.file_path, qaf.ast_features
+           FROM query_ast_features qaf
+           JOIN queries q ON q.id = qaf.query_id
+           WHERE q.route IS NOT NULL
+           ORDER BY qaf.query_id DESC LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    result = []
+    for row in rows:
+        result.append({
+            "query": row["query"],
+            "route": row["route"],
+            "file_path": row["file_path"],
+            "ast_features": json.loads(row["ast_features"]) if row["ast_features"] else [],
+        })
+    return result
 
 
 def queries_since_last_train() -> int:

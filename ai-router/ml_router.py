@@ -46,10 +46,16 @@ ROUTE_CLASSES = [
 ]
 
 MODEL_PATH = Path.home() / ".config" / "costa" / "ml_router.pt"
-# Pre-trained model shipped with Costa OS (fallback if user hasn't trained yet)
+AST_MODEL_PATH = Path.home() / ".config" / "costa" / "ml_router_ast.pt"
+# Pre-trained models shipped with Costa OS (fallback if user hasn't trained yet)
 SHIPPED_MODEL_PATH = Path(__file__).parent / "models" / "ml_router.pt"
+AST_SHIPPED_PATH = Path(__file__).parent / "models" / "ml_router_ast.pt"
 LLM_CLASSIFY_THRESHOLD = 0.85  # Below this, ask the local LLM to classify
+STAGE1_EARLY_EXIT = 0.80  # High-confidence non-code routes skip Stage 2
 LLM_CLASSIFY_CACHE: dict[str, tuple[str, float]] = {}  # query → (route, confidence)
+
+# Routes that never need AST enrichment — exit early from Stage 1
+NON_CODE_ROUTES = {"local", "haiku+web", "window_manager", "file_search"}
 
 ACTION_KEYWORDS = re.compile(
     r"\b(turn|set|restart|kill|open|play|close|stop|start|run|launch|switch|move|resize|toggle|enable|disable|mute|unmute)\b",
@@ -366,6 +372,19 @@ N_TOPIC_FEATURES = len(TOPIC_KEYS)  # 21
 N_NGRAM_FEATURES = N_NGRAM_BINS  # 16
 N_FEATURES = N_BASE_FEATURES + N_TOPIC_FEATURES + N_NGRAM_FEATURES  # 55
 
+# Stage 2: AST features appended to text features
+N_AST_FEATURES = 65
+N_COMBINED_FEATURES = N_FEATURES + N_AST_FEATURES  # 120
+
+# Language indices for one-hot encoding in AST features
+AST_LANGUAGES = [
+    "python", "javascript", "typescript", "tsx", "rust", "go",
+    "bash", "c", "cpp", "java", "lua", "other",
+]
+AST_SYMBOL_KINDS = [
+    "function", "class", "struct", "enum", "interface", "type", "module", "variable",
+]
+
 
 # ---------------------------------------------------------------------------
 # Feature extraction
@@ -471,6 +490,95 @@ def extract_features(query: str, context: dict | None = None) -> np.ndarray:
     return np.array(features, dtype=np.float32)
 
 
+def extract_ast_features(query: str, file_path: str | None = None) -> np.ndarray | None:
+    """Extract AST-based features for Stage 2 routing.
+
+    Returns None if file_path is None/unavailable or AST data can't be obtained.
+    Returns ndarray of shape (N_AST_FEATURES,) with float32 values.
+    """
+    if file_path is None:
+        return None
+
+    try:
+        import ast_parser
+        summary = ast_parser.get_file_summary(file_path)
+        complexity_data = ast_parser.get_complexity(file_path)
+    except Exception:
+        return None
+
+    try:
+        feats: list[float] = []
+
+        # complexity_max (normalized /50)
+        complexities: list[float] = []
+        if isinstance(complexity_data, list):
+            complexities = [float(c) for c in complexity_data if isinstance(c, (int, float))]
+        elif isinstance(complexity_data, dict):
+            complexities = [float(v) for v in complexity_data.values() if isinstance(v, (int, float))]
+        complexity_max = max(complexities) if complexities else 0.0
+        complexity_avg = (sum(complexities) / len(complexities)) if complexities else 0.0
+        feats.append(min(complexity_max / 50.0, 1.0))   # [0]
+        feats.append(min(complexity_avg / 20.0, 1.0))   # [1]
+
+        # scope_depth_max — not easily available, use 0
+        feats.append(0.0)                                # [2]
+
+        # file_line_count (normalized /2000)
+        line_count = float(summary.get("line_count", 0) if isinstance(summary, dict) else 0)
+        feats.append(min(line_count / 2000.0, 1.0))     # [3]
+
+        # language_one_hot (12 floats)
+        lang = (summary.get("language", "other") if isinstance(summary, dict) else "other").lower()
+        if lang not in AST_LANGUAGES:
+            lang = "other"
+        lang_vec = [1.0 if AST_LANGUAGES[i] == lang else 0.0 for i in range(len(AST_LANGUAGES))]
+        feats.extend(lang_vec)                           # [4..15]
+
+        # symbol_counts_by_kind (8 floats, each normalized /50)
+        symbols: dict = summary.get("symbols", {}) if isinstance(summary, dict) else {}
+        for kind in AST_SYMBOL_KINDS:
+            count = float(symbols.get(kind, 0))
+            feats.append(min(count / 50.0, 1.0))        # [16..23]
+
+        # total_symbol_count (normalized /100)
+        total_symbols = sum(float(v) for v in symbols.values() if isinstance(v, (int, float)))
+        feats.append(min(total_symbols / 100.0, 1.0))   # [24]
+
+        # query_symbol_match: check if any word in query matches a symbol name in top_level
+        top_level: list[str] = summary.get("top_level", []) if isinstance(summary, dict) else []
+        query_words = set(query.lower().split())
+        symbol_names = {s.lower() if isinstance(s, str) else "" for s in top_level}
+        feats.append(1.0 if query_words & symbol_names else 0.0)  # [25]
+
+        # dependency_count — use 0 for now (expensive to compute)
+        feats.append(0.0)                                # [26]
+
+        # is_api_file: "api" or "route" or "handler" or "endpoint" in file path
+        fp_lower = file_path.lower()
+        is_api = any(kw in fp_lower for kw in ("api", "route", "handler", "endpoint"))
+        feats.append(1.0 if is_api else 0.0)             # [27]
+
+        # import_count (normalized /30)
+        import_count = float(summary.get("import_count", 0) if isinstance(summary, dict) else 0)
+        feats.append(min(import_count / 30.0, 1.0))     # [28]
+
+        # has_high_complexity: any function with complexity > 10
+        feats.append(1.0 if complexity_max > 10.0 else 0.0)  # [29]
+
+        # function_count (normalized /50)
+        function_count = float(symbols.get("function", 0))
+        feats.append(min(function_count / 50.0, 1.0))   # [30]
+
+        # Pad to exactly N_AST_FEATURES=65
+        while len(feats) < N_AST_FEATURES:
+            feats.append(0.0)
+
+        return np.array(feats[:N_AST_FEATURES], dtype=np.float32)
+
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Model architecture
 # ---------------------------------------------------------------------------
@@ -491,6 +599,19 @@ def _build_model(n_features: int, n_classes: int) -> nn.Sequential:
         nn.ReLU(),
         nn.Dropout(0.2),
         nn.Linear(48, n_classes),
+    )
+
+
+def _build_ast_model(n_features: int, n_classes: int) -> nn.Sequential:
+    """Stage 2 MLP: combined text+AST features."""
+    return nn.Sequential(
+        nn.Linear(n_features, 128),
+        nn.ReLU(),
+        nn.Dropout(0.4),
+        nn.Linear(128, 64),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(64, n_classes),
     )
 
 
@@ -647,18 +768,25 @@ class MLRouter:
 
     def __init__(self):
         self.model: nn.Sequential | None = None
+        self.ast_model: nn.Sequential | None = None
         self.n_features = N_FEATURES
+        self.n_combined_features = N_COMBINED_FEATURES
         self.n_classes = len(ROUTE_CLASSES)
         self._load()
+        self._load_ast()
 
     # ----- public API -----
 
-    def predict(self, query: str) -> tuple[str | None, float]:
+    def predict(self, query: str, file_path: str | None = None) -> tuple[str | None, float]:
         """Predict the best route for a query.
 
-        Uses MLP as fast path. If confidence is below LLM_THRESHOLD,
-        escalates to local LLM for classification (~300ms but much
-        more accurate on conversational/ambiguous queries).
+        Two-stage routing:
+          Stage 1: text-only MLP (always runs). Early exit for high-confidence
+                   non-code routes (conf >= STAGE1_EARLY_EXIT).
+          Stage 2: combined text+AST MLP. Runs when a file_path is provided
+                   and the Stage 1 result is a code-related route or low confidence.
+
+        Falls back to local LLM classification when final confidence < LLM_CLASSIFY_THRESHOLD.
 
         Returns:
             (route_name, confidence) or (None, 0.0) if no model loaded.
@@ -666,9 +794,10 @@ class MLRouter:
         if self.model is None:
             return _llm_classify(query)
 
-        self.model.eval()
-        features = extract_features(query)
-        x = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
+        # Stage 1: text-only MLP
+        self.model.train(False)
+        text_features = extract_features(query)
+        x = torch.tensor(text_features, dtype=torch.float32).unsqueeze(0)
 
         with torch.no_grad():
             logits = self.model(x)
@@ -678,11 +807,31 @@ class MLRouter:
         route = ROUTE_CLASSES[idx.item()]
         conf = confidence.item()
 
-        # High confidence → trust the MLP
+        # Early exit: high-confidence non-code routes skip Stage 2
+        if conf >= STAGE1_EARLY_EXIT and route in NON_CODE_ROUTES:
+            return (route, conf)
+
+        # Stage 2: combined text+AST MLP
+        if self.ast_model is not None and file_path is not None:
+            ast_feats = extract_ast_features(query, file_path)
+            if ast_feats is not None:
+                combined = np.concatenate([text_features, ast_feats])
+                self.ast_model.train(False)
+                x2 = torch.tensor(combined, dtype=torch.float32).unsqueeze(0)
+                with torch.no_grad():
+                    logits2 = self.ast_model(x2)
+                    probs2 = torch.softmax(logits2, dim=1)
+                    confidence2, idx2 = torch.max(probs2, dim=1)
+                conf2 = confidence2.item()
+                if conf2 > conf:
+                    route = ROUTE_CLASSES[idx2.item()]
+                    conf = conf2
+
+        # High confidence: trust the model result
         if conf >= LLM_CLASSIFY_THRESHOLD:
             return (route, conf)
 
-        # Low confidence → ask the local LLM to classify
+        # Low confidence: ask the local LLM to classify
         llm_route, llm_conf = _llm_classify(query)
         if llm_route and llm_conf > conf:
             return (llm_route, llm_conf)
@@ -772,6 +921,96 @@ class MLRouter:
             "real_count": real_count,
         }
 
+    def train_ast(self, data: list[tuple[str, str, str | None]],
+                  weights: list[float] | None = None) -> dict:
+        """Train Stage 2 AST model on labeled (query, route_label, file_path) triples.
+
+        Entries where AST features cannot be extracted are silently skipped.
+
+        Args:
+            data: List of (query_text, route_label, file_path) tuples.
+            weights: Optional per-sample weights. Must match len(data) if provided.
+
+        Returns:
+            Dict with training stats (final_loss, epochs, duration_s, samples, skipped).
+        """
+        X_list, y_list, w_list = [], [], []
+        skipped = 0
+        for i, (query, label, file_path) in enumerate(data):
+            if label not in ROUTE_CLASSES:
+                skipped += 1
+                continue
+            text_feats = extract_features(query)
+            ast_feats = extract_ast_features(query, file_path)
+            if ast_feats is None:
+                skipped += 1
+                continue
+            combined = np.concatenate([text_feats, ast_feats])
+            X_list.append(combined)
+            y_list.append(ROUTE_CLASSES.index(label))
+            w_list.append(weights[i] if weights else 1.0)
+
+        if not X_list:
+            return {"error": "no valid samples after AST extraction", "skipped": skipped}
+
+        X = torch.tensor(np.array(X_list), dtype=torch.float32)
+        y = torch.tensor(y_list, dtype=torch.long)
+        sample_weights = torch.tensor(w_list, dtype=torch.float32)
+
+        # Class-balanced loss weights
+        class_counts = torch.zeros(self.n_classes)
+        for yi in y_list:
+            class_counts[yi] += 1
+        class_weights = torch.where(
+            class_counts > 0,
+            class_counts.sum() / (self.n_classes * class_counts),
+            torch.ones(1),
+        )
+
+        self.ast_model = _build_ast_model(self.n_combined_features, self.n_classes)
+        optimizer = torch.optim.Adam(self.ast_model.parameters(), lr=1e-3, weight_decay=1e-4)
+        criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.1)
+
+        dataset = TensorDataset(X, y)
+        if weights:
+            sampler = WeightedRandomSampler(sample_weights, num_samples=len(dataset), replacement=True)
+            loader = DataLoader(dataset, batch_size=32, sampler=sampler)
+        else:
+            loader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+        self.ast_model.train()
+        t0 = time.time()
+        final_loss = 0.0
+
+        for epoch in range(100):
+            epoch_loss = 0.0
+            for xb, yb in loader:
+                optimizer.zero_grad()
+                logits = self.ast_model(xb)
+                loss = criterion(logits, yb)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+            final_loss = epoch_loss / len(loader)
+
+        duration = time.time() - t0
+
+        synthetic_count = sum(1 for w in w_list if w <= 1.0)
+        real_count = len(w_list) - synthetic_count
+
+        self._save_ast(synthetic_count=synthetic_count, real_count=real_count,
+                       final_loss=final_loss)
+
+        return {
+            "final_loss": final_loss,
+            "epochs": 100,
+            "duration_s": round(duration, 2),
+            "samples": len(X_list),
+            "skipped": skipped,
+            "synthetic_count": synthetic_count,
+            "real_count": real_count,
+        }
+
     def evaluate(self, data: list[tuple[str, str]]) -> dict:
         """Train/test split evaluation.
 
@@ -835,11 +1074,25 @@ class MLRouter:
                     checkpoint = torch.load(path, weights_only=True)
                     self.model = _build_model(self.n_features, self.n_classes)
                     self.model.load_state_dict(checkpoint["model_state_dict"])
-                    self.model.eval()
+                    self.model.train(False)
                     return  # loaded successfully
                 except Exception:
                     continue
         self.model = None
+
+    def _load_ast(self):
+        """Load saved AST model from disk. Tries user-trained model first, then shipped model."""
+        for path in [AST_MODEL_PATH, AST_SHIPPED_PATH]:
+            if path.exists():
+                try:
+                    checkpoint = torch.load(path, weights_only=True)
+                    self.ast_model = _build_ast_model(self.n_combined_features, self.n_classes)
+                    self.ast_model.load_state_dict(checkpoint["model_state_dict"])
+                    self.ast_model.train(False)
+                    return  # loaded successfully
+                except Exception:
+                    continue
+        self.ast_model = None
 
     def _save(self, synthetic_count: int = 0, real_count: int = 0,
               final_loss: float = 0.0):
@@ -858,6 +1111,25 @@ class MLRouter:
                 "final_loss": final_loss,
             },
             MODEL_PATH,
+        )
+
+    def _save_ast(self, synthetic_count: int = 0, real_count: int = 0,
+                  final_loss: float = 0.0):
+        """Save AST model to disk with training metadata."""
+        if self.ast_model is None:
+            return
+        AST_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {
+                "model_state_dict": self.ast_model.state_dict(),
+                "route_classes": ROUTE_CLASSES,
+                "n_features": self.n_combined_features,
+                "timestamp": datetime.now().isoformat(),
+                "synthetic_count": synthetic_count,
+                "real_count": real_count,
+                "final_loss": final_loss,
+            },
+            AST_MODEL_PATH,
         )
 
 

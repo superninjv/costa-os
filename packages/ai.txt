@@ -10,7 +10,10 @@ python-numpy
 ollama
 ollama-vulkan  # Vulkan backend — works on all GPUs, avoids ROCm HIP idle bug on RDNA4
 python-pytorch
+tree-sitter  # AST parsing library (C) — shared by costa-ast daemon
+python-dbus  # D-Bus bindings for costa-ast daemon
 # python-torchaudio — not in official repos, install via: pip install torchaudio
+# python-firecrawl — web scraping SDK, install via: pip install firecrawl-py
 
 # Tier 3: Full AI workstation (large models, training)
 # Add ollama-rocm for ROCm support (NVIDIA: ollama-cuda)
