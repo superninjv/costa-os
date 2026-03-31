@@ -352,7 +352,7 @@ deploy_configs() {
 }
 
 if [ "$COSTA_UPDATED" = true ]; then
-    deploy_configs
+    deploy_configs || warn "Config deploy failed — continuing with update"
 fi
 
 # ─── AI review of changes ───────────────────────────────────
