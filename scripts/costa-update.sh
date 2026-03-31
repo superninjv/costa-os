@@ -191,6 +191,170 @@ if [ "$MODE" = "full" ] || [ "$MODE" = "costa" ]; then
     fi
 fi
 
+# ─── Deploy configs ─────────────────────────────────────────
+
+deploy_configs() {
+    local src="$COSTA_DIR"
+    local home_config="$HOME/.config"
+    local costa_config="$home_config/costa"
+
+    # Validate HOME is sane (not empty, owned by us, is a real directory)
+    if [ -z "$HOME" ] || [ ! -d "$HOME" ] || [ -L "$HOME" ]; then
+        err "HOME is unset, missing, or a symlink — skipping config deploy"
+        return 1
+    fi
+    if [ "$(stat -c %u "$HOME")" != "$(id -u)" ]; then
+        err "HOME ($HOME) is not owned by current user — skipping config deploy"
+        return 1
+    fi
+
+    echo ""
+    log "Deploying updated configs..."
+
+    # Safe install: reject symlink destinations, write atomically via install(1)
+    safe_install() {
+        local src_file="$1" dest="$2" mode="${3:-0644}"
+        if [ -L "$dest" ]; then
+            warn "Skipping $dest (is a symlink)"
+            return 1
+        fi
+        mkdir -p "$(dirname "$dest")"
+        install -m "$mode" "$src_file" "$dest"
+    }
+
+    # ── Tier 1: Scripts (always overwrite — these are code, not preferences) ──
+    local scripts_deployed=0
+
+    local tier1_files=(
+        "configs/hypr/wallpaper.sh:$home_config/hypr/wallpaper.sh"
+        "configs/hypr/ollama-manager.sh:$home_config/hypr/ollama-manager.sh"
+        "configs/hypr/session-init.sh:$home_config/hypr/session-init.sh"
+        "configs/hypr/session-cleanup.sh:$home_config/hypr/session-cleanup.sh"
+    )
+
+    for entry in "${tier1_files[@]}"; do
+        local rel="${entry%%:*}"
+        local dest="${entry##*:}"
+        local src_file="$src/$rel"
+
+        [ ! -f "$src_file" ] && continue
+
+        if [ ! -f "$dest" ] || ! diff -q "$src_file" "$dest" &>/dev/null; then
+            if safe_install "$src_file" "$dest" 0755; then
+                scripts_deployed=$((scripts_deployed + 1))
+            fi
+        fi
+    done
+    [ "$scripts_deployed" -gt 0 ] && ok "Deployed $scripts_deployed script(s)"
+
+    # ── Tier 2: Costa internals (always update, except workflows — see below) ──
+    local internals_deployed=0
+
+    # Agents
+    if [ -d "$src/configs/costa/agents" ]; then
+        mkdir -p "$costa_config/agents"
+        for f in "$src"/configs/costa/agents/*.yaml; do
+            [ ! -f "$f" ] && continue
+            local base=$(basename "$f")
+            if [ ! -f "$costa_config/agents/$base" ] || ! diff -q "$f" "$costa_config/agents/$base" &>/dev/null; then
+                if safe_install "$f" "$costa_config/agents/$base"; then
+                    internals_deployed=$((internals_deployed + 1))
+                fi
+            fi
+        done
+    fi
+
+    # Knowledge files
+    if [ -d "$src/knowledge" ]; then
+        mkdir -p "$costa_config/knowledge"
+        for f in "$src"/knowledge/*.md; do
+            [ ! -f "$f" ] && continue
+            local base=$(basename "$f")
+            if [ ! -f "$costa_config/knowledge/$base" ] || ! diff -q "$f" "$costa_config/knowledge/$base" &>/dev/null; then
+                if safe_install "$f" "$costa_config/knowledge/$base"; then
+                    internals_deployed=$((internals_deployed + 1))
+                fi
+            fi
+        done
+    fi
+
+    # System prompts
+    if [ -d "$src/configs/costa/prompts" ]; then
+        mkdir -p "$costa_config/prompts"
+        for f in "$src"/configs/costa/prompts/*; do
+            [ ! -f "$f" ] && continue
+            local base=$(basename "$f")
+            if [ ! -f "$costa_config/prompts/$base" ] || ! diff -q "$f" "$costa_config/prompts/$base" &>/dev/null; then
+                if safe_install "$f" "$costa_config/prompts/$base"; then
+                    internals_deployed=$((internals_deployed + 1))
+                fi
+            fi
+        done
+    fi
+
+    # CLI registry
+    if [ -f "$src/configs/costa/cli-registry.json" ]; then
+        mkdir -p "$costa_config"
+        if [ ! -f "$costa_config/cli-registry.json" ] || ! diff -q "$src/configs/costa/cli-registry.json" "$costa_config/cli-registry.json" &>/dev/null; then
+            if safe_install "$src/configs/costa/cli-registry.json" "$costa_config/cli-registry.json"; then
+                internals_deployed=$((internals_deployed + 1))
+            fi
+        fi
+    fi
+
+    # Workflows (add new only — user may customize existing ones)
+    if [ -d "$src/configs/costa/workflows" ]; then
+        mkdir -p "$costa_config/workflows"
+        for f in "$src"/configs/costa/workflows/*.yaml; do
+            [ ! -f "$f" ] && continue
+            local base=$(basename "$f")
+            if [ ! -f "$costa_config/workflows/$base" ]; then
+                if safe_install "$f" "$costa_config/workflows/$base"; then
+                    internals_deployed=$((internals_deployed + 1))
+                fi
+            fi
+        done
+    fi
+
+    [ "$internals_deployed" -gt 0 ] && ok "Updated $internals_deployed internal config(s)"
+
+    # ── Tier 3: Personal configs (never touch — warn if diverged) ──
+    local diverged=0
+
+    local tier3_files=(
+        "configs/hypr/hyprland.conf:$home_config/hypr/hyprland.conf"
+        "configs/ghostty/config:$home_config/ghostty/config"
+        "configs/dunst/dunstrc:$home_config/dunst/dunstrc"
+        "configs/rofi/config.rasi:$home_config/rofi/config.rasi"
+    )
+
+    for entry in "${tier3_files[@]}"; do
+        local rel="${entry%%:*}"
+        local dest="${entry##*:}"
+        local src_file="$src/$rel"
+
+        [ ! -f "$src_file" ] || [ ! -f "$dest" ] && continue
+
+        if ! diff -q "$src_file" "$dest" &>/dev/null; then
+            diverged=$((diverged + 1))
+        fi
+    done
+
+    if [ "$diverged" -gt 0 ]; then
+        warn "$diverged personal config(s) differ from shipped version"
+        warn "Review with: diff ~/.config/<app>/config $COSTA_DIR/configs/<app>/config"
+    fi
+
+    local total=$((scripts_deployed + internals_deployed))
+    if [ "$total" -eq 0 ]; then
+        ok "All configs already up to date"
+    fi
+}
+
+if [ "$COSTA_UPDATED" = true ]; then
+    deploy_configs
+fi
+
 # ─── AI review of changes ───────────────────────────────────
 
 if [ "$COSTA_UPDATED" = true ]; then
