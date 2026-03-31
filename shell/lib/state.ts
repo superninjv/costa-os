@@ -16,7 +16,10 @@ export function revealBar() {
     hideSource = null
   }
   setBarRevealed(true)
-  if (barWindow) barWindow.visible = true
+  if (barWindow) {
+    barWindow.visible = true
+    barWindow.present()
+  }
 }
 
 export function hideBar(delay = 400) {
@@ -25,24 +28,29 @@ export function hideBar(delay = 400) {
   hideSource = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
     if (barLocked) { hideSource = null; return GLib.SOURCE_REMOVE }
     setBarRevealed(false)
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 350, () => {
-      if (!getBarRevealed() && barWindow) barWindow.visible = false
-      return GLib.SOURCE_REMOVE
-    })
     hideSource = null
     return GLib.SOURCE_REMOVE
   })
 }
 
-// Reference to bar window for show/hide
+// Reference to bar window for cleanup on monitor reconnect
 let barWindow: any = null
+let barRevealer: any = null
+export function setBarRevealer(rev: any) {
+  if (barRevealer) return // already connected
+  barRevealer = rev
+  // Hide window the instant the revealer animation finishes
+  rev.connect("notify::child-revealed", () => {
+    if (!rev.get_child_revealed() && barWindow) {
+      barWindow.visible = false
+    }
+  })
+}
 export function setBarWindow(win: any) {
-  // If replacing an existing bar (monitor reconnect), clean up old state
   if (barWindow && barWindow !== win) {
-    barWindow.visible = false
+    barWindow.close()
   }
   barWindow = win
-  win.visible = false
 }
 export function clearBarWindow() {
   barWindow = null

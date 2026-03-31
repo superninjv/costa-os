@@ -124,7 +124,7 @@ All Costa apps are pinned to the primary monitor and float centered.
 - GPU info: `source ~/.config/costa/gpu.conf && echo $GPU_NAME`
 - Audio issues: `wpctl status` and `wpctl set-default <id>`
 - Ollama not responding: `systemctl restart ollama`
-- Model not loaded: check `/tmp/ollama-smart-model` and `ollama ps`
+- Model not loaded: check `$XDG_RUNTIME_DIR/costa/ollama-smart-model` and `ollama ps`
 - App won't close: `hyprctl dispatch closewindow address:ADDR` or `kill PID`
 - Hide app but keep running: move to special workspace (see Window Management above)
 - Electron apps may need `--ozone-platform=wayland` or `=x11` flags for full functionality

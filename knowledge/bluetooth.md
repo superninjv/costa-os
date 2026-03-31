@@ -49,6 +49,14 @@ For Xbox: hold sync button until logo flashes, then pair.
 - `systemctl start bluetooth`
 - `systemctl enable bluetooth` (auto-start on boot)
 
+## Security
+- Bluetooth hardened via `/etc/bluetooth/main.conf`
+- Device auto-stops being discoverable after 120 seconds
+- Pairing window auto-closes after 120 seconds
+- LE connections require 128-bit encryption keys
+- To check config: `cat /etc/bluetooth/main.conf`
+- If an old device won't pair, try lowering `MinEncKeySize` in the config
+
 ## Troubleshooting
 - Not finding devices: `bluetoothctl power off && bluetoothctl power on && bluetoothctl scan on`
 - Device pairs but no audio: check `pactl list sinks short` and switch default sink

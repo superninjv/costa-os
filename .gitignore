@@ -41,3 +41,13 @@ costa-conversation.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Benchmark aggregator output (generated, not shipped)
+ai-router/benchmarks/consensus.json
+ai-router/benchmarks/web-data.json
+ai-router/benchmarks/raw/
+ai-router/benchmarks/anomaly-report.json
+
+# Personal/local files
+costa-session-summary.txt
+tasks/

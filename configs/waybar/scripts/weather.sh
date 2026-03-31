@@ -38,8 +38,8 @@ if [ -f "$cache" ]; then
   fi
 fi
 
-# URL-encode location for wttr.in
-ENCODED_LOC=$(printf '%s' "$LOCATION" | sed 's/ /+/g')
+# URL-encode location for wttr.in (percent-encode non-alphanumeric chars)
+ENCODED_LOC=$(printf '%s' "$LOCATION" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read().strip()))" 2>/dev/null || printf '%s' "$LOCATION" | sed 's/ /+/g')
 
 # Fetch weather
 data=$(curl -sf "wttr.in/${ENCODED_LOC}?format=j1" 2>/dev/null)
@@ -49,13 +49,14 @@ if [ -z "$data" ]; then
 fi
 
 # Handle both wrapped (.data.) and unwrapped formats from wttr.in
-# Extract all fields in a single jq call
-eval $(echo "$data" | jq -r '
-  (if .data then .data else . end) as $d |
-  $d.current_condition[0] as $cc |
-  ($d.nearest_area[0].areaName[0].value // $d.request[0].query // "Unknown") as $area |
-  @sh "temp=\($cc.temp_F) desc=\($cc.weatherDesc[0].value) feels=\($cc.FeelsLikeF) humidity=\($cc.humidity) area=\($area) code=\($cc.weatherCode)"
-')
+# Extract fields individually (no eval — prevents injection from remote data)
+_jq_base='(if .data then .data else . end).current_condition[0]'
+temp=$(echo "$data" | jq -r "$_jq_base.temp_F // empty")
+desc=$(echo "$data" | jq -r "$_jq_base.weatherDesc[0].value // empty")
+feels=$(echo "$data" | jq -r "$_jq_base.FeelsLikeF // empty")
+humidity=$(echo "$data" | jq -r "$_jq_base.humidity // empty")
+code=$(echo "$data" | jq -r "$_jq_base.weatherCode // empty")
+area=$(echo "$data" | jq -r '(if .data then .data else . end).nearest_area[0].areaName[0].value // (if .data then .data else . end).request[0].query // "Unknown"')
 case "$code" in
   113) icon="" ;;          # Clear
   116) icon="" ;;          # Partly cloudy

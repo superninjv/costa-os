@@ -3,6 +3,8 @@ import { createState } from "gnim"
 import { execAsync } from "ags/process"
 import GLib from "gi://GLib"
 
+function sq(s: string): string { return GLib.shell_quote(s) }
+
 interface WifiNetwork {
   ssid: string
   signal: number
@@ -31,8 +33,6 @@ const [getWifi, setWifi] = createState<WifiState>({
   showPassword: false,
   passwordSsid: "",
 })
-
-let passwordBuffer = ""
 
 function wifiIcon(state: WifiState): string {
   if (!state.connected) return "\uF1EB"
@@ -92,7 +92,7 @@ function scanNetworks() {
 function connectToNetwork(ssid: string) {
   // Try connecting (works for known/saved networks)
   setWifi({ ...getWifi(), connectingSsid: ssid })
-  execAsync(`bash -c "nmcli dev wifi connect '${ssid.replace(/'/g, "'\\''")}' 2>&1"`)
+  execAsync(`nmcli dev wifi connect ${sq(ssid)}`)
     .then(() => {
       setWifi({ ...getWifi(), connectingSsid: "" })
       pollWifi()
@@ -100,10 +100,8 @@ function connectToNetwork(ssid: string) {
     })
     .catch((err) => {
       const errStr = String(err)
-      // If it needs a password, show password entry
       if (errStr.includes("Secrets were required") || errStr.includes("No suitable connection")) {
         setWifi({ ...getWifi(), connectingSsid: "", showPassword: true, passwordSsid: ssid })
-        passwordBuffer = ""
       } else {
         setWifi({ ...getWifi(), connectingSsid: "" })
       }
@@ -112,7 +110,7 @@ function connectToNetwork(ssid: string) {
 
 function connectWithPassword(ssid: string, password: string) {
   setWifi({ ...getWifi(), connectingSsid: ssid, showPassword: false, passwordSsid: "" })
-  execAsync(`bash -c "nmcli dev wifi connect '${ssid.replace(/'/g, "'\\''")}' password '${password.replace(/'/g, "'\\''")}' 2>&1"`)
+  execAsync(`nmcli dev wifi connect ${sq(ssid)} password ${sq(password)}`)
     .then(() => {
       setWifi({ ...getWifi(), connectingSsid: "" })
       pollWifi()
@@ -124,9 +122,15 @@ function connectWithPassword(ssid: string, password: string) {
 }
 
 function disconnectWifi() {
-  execAsync("nmcli dev disconnect wlan0").catch(() =>
-    execAsync("bash -c \"nmcli dev disconnect $(nmcli -t -f DEVICE,TYPE dev | grep wifi | cut -d: -f1 | head -1)\"").catch(() => {})
-  )
+  execAsync("nmcli -t -f DEVICE,TYPE dev")
+    .then((out) => {
+      const wifiLine = out.trim().split("\n").find((l) => l.endsWith(":wifi"))
+      if (wifiLine) {
+        const iface = wifiLine.split(":")[0]
+        if (/^[a-zA-Z0-9_-]+$/.test(iface)) return execAsync(`nmcli dev disconnect ${iface}`)
+      }
+    })
+    .catch(() => {})
   GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
     pollWifi()
     scanNetworks()

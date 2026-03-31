@@ -377,7 +377,8 @@ def main():
 
     # Override local model if requested
     original_model = None
-    model_file = Path("/tmp/ollama-smart-model")
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    model_file = xdg if xdg.exists() else Path("/tmp/ollama-smart-model")
     if args.force_model:
         try:
             original_model = model_file.read_text().strip()
@@ -409,7 +410,7 @@ def main():
 
     # Detect current model
     try:
-        local_model = Path("/tmp/ollama-smart-model").read_text().strip()
+        local_model = model_file.read_text().strip()
     except Exception:
         local_model = "unknown"
 

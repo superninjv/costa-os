@@ -34,7 +34,8 @@ COSTA_CORAL = "#f7768e"
 COSTA_DIM = "#565f89"
 
 CONVERSATION_FILE = "/tmp/costa-conversation.json"
-SMART_MODEL = "/tmp/ollama-smart-model"
+_xdg_model = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+SMART_MODEL = str(_xdg_model) if _xdg_model.exists() else "/tmp/ollama-smart-model"
 PID_FILE = "/tmp/costa-ai.pid"
 STATUS_FILE = "/tmp/ptt-voice-status"
 OUTPUT_FILE = "/tmp/ptt-voice-output"
@@ -142,11 +143,16 @@ def get_model_name() -> str:
         return "No Model"
 
     model_map = {
+        "qwen3.5:27b": "Qwen 3.5 27B",
+        "qwen3.5:9b": "Qwen 3.5 9B",
+        "qwen3.5:4b": "Qwen 3.5 4B",
+        "qwen3.5:2b": "Qwen 3.5 2B",
+        "qwen3.5:0.8b": "Qwen 3.5 0.8B",
+        "qwen3:14b": "Qwen3 14B",
+        "qwen3:4b": "Qwen3 4B",
         "qwen2.5:14b": "Qwen 14B",
         "qwen2.5:7b": "Qwen 7B",
         "qwen2.5:3b": "Qwen 3B",
-        "qwen3:14b": "Qwen3 14B",
-        "qwen3:4b": "Qwen3 4B",
         "gemma3:1b": "Gemma 1B",
     }
     for key, name in model_map.items():

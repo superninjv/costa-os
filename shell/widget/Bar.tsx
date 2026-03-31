@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { getBarRevealed, revealBar, hideBar, setBarWindow, lockBar, unlockBar } from "../lib/state"
+import { getBarRevealed, revealBar, hideBar, setBarWindow, setBarRevealer, lockBar, unlockBar } from "../lib/state"
 
 import Workspaces from "./Workspaces"
 import Git from "./Git"
@@ -8,18 +8,18 @@ import NowPlaying from "./NowPlaying"
 import CostaWave from "./CostaWave"
 import Headless from "./Headless"
 import PTT from "./PTT"
-import Wifi from "./Wifi"
 import Bluetooth from "./Bluetooth"
 import Audio from "./Audio"
-import BatteryWidget from "./BatteryWidget"
 import AirPodsBattery, { setBarLock } from "./airpods/AirPodsBattery"
 import { initPopup } from "./airpods/AirPodsPopup"
-
-setBarLock(lockBar, unlockBar)
+import BatteryWidget from "./BatteryWidget"
 import Troubleshoot from "./Troubleshoot"
 import Clock from "./Clock"
 import Claude from "./Claude"
 import Power from "./Power"
+import CostaBadge from "./CostaBadge"
+
+setBarLock(lockBar, unlockBar)
 
 const { TOP } = Astal.WindowAnchor
 
@@ -27,7 +27,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   try { initPopup(gdkmonitor) } catch (_) {}
   return (
     <window
-      visible={false}
+      visible={true}
       name="costa-bar"
       class="Bar"
       gdkmonitor={gdkmonitor}
@@ -37,6 +37,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       namespace="costa-bar"
       application={app}
       $={(self: Gtk.Window) => {
+        // Start hidden — notch hover triggers revealBar() which calls present()
+        self.visible = false
         setBarWindow(self)
         const motion = new Gtk.EventControllerMotion()
         motion.connect("enter", () => revealBar())
@@ -48,6 +50,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         revealChild={getBarRevealed}
         transitionType={Gtk.RevealerTransitionType.SLIDE_DOWN}
         transitionDuration={300}
+        $={(self: Gtk.Revealer) => setBarRevealer(self)}
       >
         <centerbox class="bar-panel" widthRequest={1100}>
           <box $type="start" class="bar-left" spacing={2}>
@@ -61,7 +64,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           <box $type="end" class="bar-right" spacing={2}>
             <Headless />
             <PTT />
-            <Wifi />
             <Bluetooth />
             <Audio />
             <AirPodsBattery />
@@ -70,6 +72,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             <Clock />
             <Claude />
             <Power />
+            <CostaBadge />
           </box>
         </centerbox>
       </revealer>

@@ -1,0 +1,22 @@
+[Unit]
+Description=Costa OS AST Intelligence Daemon (tree-sitter)
+Documentation=https://github.com/costa-os/costa-os
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/share/costa-os/ai-router/ast_daemon.py
+Restart=on-failure
+RestartSec=5
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/%U/bus
+
+# Resource limits — tree-sitter parsing is CPU-light but caches ASTs in memory
+MemoryMax=256M
+CPUQuota=15%
+
+[Install]
+WantedBy=graphical-session.target

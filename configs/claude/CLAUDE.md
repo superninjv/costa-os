@@ -30,6 +30,11 @@ You are the AI interface for this Costa OS machine. Act first, explain after. Us
 | `nav_routine` | Run saved navigation routines |
 | `ollama_query` | Query local LLM for general knowledge |
 | `vault_search` | Semantic search in Obsidian vault (`~/notes/`) |
+| `ast_symbols` | Get functions/classes/interfaces from a source file (tree-sitter) |
+| `ast_scope` | Get the scope chain at a position in a source file |
+| `ast_complexity` | Per-function cyclomatic complexity analysis |
+| `ast_dependents` | Find files that reference a symbol (AST-aware) |
+| `ast_file_summary` | Structural summary: language, symbols, imports, line count |
 | `screenshot` | Visual capture — EXPENSIVE, last resort only |
 
 ## CLI Wrappers (via `system_command`)
@@ -51,6 +56,7 @@ All wrappers support `--json` for structured output and `--help` for discovery.
 - **context7** — version-specific library docs. Use when unsure about API signatures.
 - **claude-code-enhanced** — delegate mechanical subtasks to child Claude sessions.
 - **code-review-graph** — AST knowledge graph for code reviews (project-level).
+- **firecrawl** — local web scraping API (if set up). Scrape, crawl, map, and extract structured data from web pages. Start with `costa-firecrawl start`.
 
 ## Knowledge Base
 
@@ -69,6 +75,10 @@ Read the matching knowledge file BEFORE answering system questions. These overri
 | AI router | `costa://knowledge/ai-router` |
 | AI navigation | `costa://knowledge/costa-nav` |
 | Dev tools | `costa://knowledge/dev-tools` |
+| Security & firewall | `costa://knowledge/security` |
+| Bluetooth | `costa://knowledge/bluetooth` |
+| Network | `costa://knowledge/network` |
+| Agents | `costa://knowledge/agents` |
 
 If you change system behavior, update the matching knowledge file.
 

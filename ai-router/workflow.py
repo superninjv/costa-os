@@ -15,6 +15,7 @@ Step types:
 import subprocess
 import json
 import re
+import shlex
 import time
 import sqlite3
 import sys
@@ -139,6 +140,15 @@ def _interpolate(text: str, outputs: dict[str, str]) -> str:
     return INTERPOLATION_RE.sub(_replace, text)
 
 
+def _interpolate_shell(text: str, outputs: dict[str, str]) -> str:
+    """Like _interpolate but shell-quotes each substituted value to prevent injection."""
+    def _replace(match: re.Match) -> str:
+        step_id = match.group(1)
+        value = outputs.get(step_id, f"[no output from {step_id}]")
+        return shlex.quote(value)
+    return INTERPOLATION_RE.sub(_replace, text)
+
+
 # ---------------------------------------------------------------------------
 # Step executors
 # ---------------------------------------------------------------------------
@@ -179,11 +189,11 @@ def _exec_shell(step: WorkflowStep, outputs: dict[str, str]) -> str:
     """Execute a shell command and return its stdout.
 
     WARNING: Workflow YAML shell steps run with shell=True. The command
-    template comes from a trusted YAML file, but interpolated step outputs
-    (from AI responses) are checked against a dangerous pattern deny list
-    to prevent injection via {{steps.<id>.output}} placeholders.
+    template comes from a trusted YAML file. Interpolated step outputs
+    (from AI responses) are shell-quoted to prevent injection and also
+    checked against a dangerous pattern deny list.
     """
-    command = _interpolate(step.command, outputs)
+    command = _interpolate_shell(step.command, outputs)
 
     # Check the final interpolated command for dangerous patterns
     if _WORKFLOW_DANGEROUS_RE.search(command):
@@ -238,7 +248,7 @@ def _exec_claude_code(step: WorkflowStep, outputs: dict[str, str]) -> str:
     mode = step.permission_mode or "acceptEdits"
     cmd.extend(["--permission-mode", mode])
 
-    cmd.append(query)
+    cmd.extend(["--", query])
 
     # Working directory
     workdir = None

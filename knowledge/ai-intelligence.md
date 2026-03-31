@@ -82,3 +82,23 @@ costa-ai --usage                # check current spend
 ```
 
 When budget is exhausted, all queries fall back to local models only.
+
+## Code Intelligence (costa-ast)
+
+A system-wide tree-sitter AST daemon runs in the background, giving the AI structural understanding of your code:
+
+- **Automatic project watching** — parses all files in `~/projects/` on startup
+- **Incremental parsing** — sub-millisecond updates when files change
+- **30+ languages** — Python, TypeScript, JavaScript, Rust, Go, Bash, C/C++, Java, and more
+
+The AI router uses this to:
+- **Classify code queries better** — a 5-line helper refactor routes to the fast local model, a 200-line class with 40 dependents routes to Claude
+- **Inject structural context** — the local model sees function names, class structure, and complexity scores instead of just raw text
+- **Detect complexity** — cyclomatic complexity analysis identifies functions that need refactoring
+
+```sh
+# D-Bus interface (for scripts/tools)
+busctl --user call org.costa.AST /org/costa/AST org.costa.AST GetSymbols s "/path/to/file.py"
+busctl --user call org.costa.AST /org/costa/AST org.costa.AST GetComplexity s "/path/to/file.py"
+busctl --user call org.costa.AST /org/costa/AST org.costa.AST GetStatus
+```

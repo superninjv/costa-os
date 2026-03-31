@@ -369,7 +369,53 @@ Watches clipboard via `wl-paste` and auto-classifies content:
   - Shell command → "Run in terminal"
   - Code snippet → "Analyze with AI"
 - **Debounced** — No duplicate triggers on rapid clipboard changes
+- **Debounced** — No duplicate triggers on rapid clipboard changes
 - **systemd service** — Runs as `costa-clipboard.service` with resource limits (memory, CPU)
+
+---
+
+## Code Intelligence (costa-ast)
+
+System-wide tree-sitter AST daemon gives the AI structural understanding of your code:
+
+- **Automatic project watching** — parses all files in `~/projects/` at startup via inotify
+- **Incremental parsing** — ~1ms per file, sub-ms for incremental updates on save
+- **30+ languages** — Python, TypeScript, JavaScript, Rust, Go, Bash, C/C++, Java, JSON, YAML, and more
+- **Symbol extraction** — functions, classes, interfaces, structs, enums with line ranges and nesting
+- **Scope resolution** — "what function am I inside?" at any line/column
+- **Cyclomatic complexity** — per-function complexity scoring identifies refactoring targets
+- **Dependency search** — find all files that reference a symbol (AST-aware, not just grep)
+- **Change classification** — diffs analyzed as additive vs. breaking for routing decisions
+- **D-Bus service** — `org.costa.AST` on session bus, available to all Costa OS consumers
+- **MCP tools** — `ast_symbols`, `ast_scope`, `ast_complexity`, `ast_dependents`, `ast_file_summary`
+- **AGS widget client** — reactive TypeScript bindings for shell bar integration
+- **Router integration** — AI router uses structural context to pick the right model tier
+
+---
+
+## Web Scraping (Firecrawl)
+
+Self-hosted web scraping API — no cloud dependency, no API keys, runs entirely local:
+
+- **Self-hosted via Docker** — Firecrawl runs locally at `localhost:3002` with Playwright (headless Chromium) for JS rendering
+- **AI extraction** — structured data extraction powered by local Ollama (no OpenAI key needed)
+- **MCP integration** — Claude Code gets scrape/crawl/map/extract tools automatically when Firecrawl is set up
+- **Python + Node SDKs** — `firecrawl-py` and `@mendable/firecrawl-js` both point to local instance
+- **Management CLI** — `costa-firecrawl setup/start/stop/status/update/scrape` wraps Docker Compose
+- **Security** — port 3002 bound to localhost only, UFW rule restricts to local access
+- **On-demand** — not auto-started (14GB RAM when running), start when needed, stop when done
+
+---
+
+## Security Hardening
+
+Costa OS ships hardened out of the box — no manual configuration required:
+
+- **Firewall (ufw)** — Deny all incoming, allow all outgoing. Pre-allowed: mDNS, KDE Connect, Ollama local. SSH blocked by default (desktop, not server).
+- **Bluetooth Encryption** — 128-bit LE encryption enforced, discoverable/pairable timeouts (120s auto-disable), hardened via `/etc/bluetooth/main.conf`
+- **Network Hardening** — SYN flood protection, ICMP redirect blocking, source routing disabled, Martian packet logging, kernel pointer restriction, dmesg restricted to root
+- **Security Agent** — AI-powered security scanner with two modes: efficient (daily, ~2 min) and full (weekly, ~10 min). Checks failed logins, open ports, setuid binaries, systemd hardening scores, package integrity, firewall status. Read-only — reports issues, never modifies system.
+- **No Telemetry** — Zero tracking, zero analytics, zero crash reports. No Costa OS servers. Everything stays on your machine.
 
 ---
 

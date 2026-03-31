@@ -50,6 +50,17 @@ KEY KEYBINDS:
 - SUPER+]/[ → next/prev track, SUPER+\ → play/pause
 - Print → screenshot region to file, SUPER+Print → to clipboard
 
+COMMON COMMANDS (use these exact syntaxes):
+- Volume: `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5` (range 0.0-1.5)
+- Volume up/down: `wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+` or `5%-`
+- Mute toggle: `wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle`
+- Unmute: `wpctl set-mute @DEFAULT_AUDIO_SINK@ 0`
+- Mute: `wpctl set-mute @DEFAULT_AUDIO_SINK@ 1`
+- NOTE: wpctl set-mute takes ONLY `0`, `1`, or `toggle` — NOT true/false/on/off
+- Mic mute: `wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle`
+- Play/pause: `playerctl play-pause`
+- Next/prev: `playerctl next` / `playerctl previous`
+
 GOTCHAS:
 - Hyprland `exec` doesn't support inline env vars — wrap in `bash -c "VAR=val cmd"`
 - xargs breaks on apostrophes — always use `xargs -0`

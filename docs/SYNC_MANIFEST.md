@@ -22,6 +22,19 @@ This manifest maps every code component to every file that documents or ships kn
 - `knowledge/costa-os.md` — clipboard intelligence mention
 - `docs/advertising.md` — clipboard intelligence section
 
+### AST Daemon (`ai-router/ast_daemon.py`, `ai-router/ast_parser.py`)
+- `knowledge/ai-intelligence.md` — code intelligence section
+- `knowledge/dev-tools.md` — costa-ast overview, D-Bus interface, MCP tools
+- `docs/advertising.md` — code intelligence section
+- `configs/hypr/hyprland.conf` — exec-once startup
+- `configs/systemd/costa-ast.service` — systemd user service
+- `mcp-server/costa_system.py` — ast_* tool definitions and handlers
+- `shell/widget/ast/ASTService.ts` — AGS TypeScript D-Bus client
+- `ai-router/context.py` — code context injection (uses ast_parser)
+- `ai-router/router.py` — AST-enriched category detection for model selection
+- `ai-router/requirements.txt` — tree-sitter, tree-sitter-language-pack
+- `packages/ai.txt` — tree-sitter, python-dbus system packages
+
 ### Project Switching (`ai-router/project_switch.py`)
 - `docs/advertising.md` — project management section
 
@@ -39,6 +52,15 @@ This manifest maps every code component to every file that documents or ships kn
 - `knowledge/costa-nav.md` — CLI fast path section
 - `docs/advertising.md` — costa-nav performance, CLI wrapper support
 - `installer/first-boot.sh` — wrapper installation during setup
+
+### Firecrawl (`configs/costa/firecrawl/`, `scripts/costa-firecrawl.sh`)
+- `knowledge/dev-tools.md` — Web Scraping section (setup, management, SDK usage)
+- `docs/advertising.md` — Web Scraping section
+- `configs/claude/CLAUDE.md` — firecrawl MCP server entry
+- `configs/ufw/costa-defaults.sh` — port 3002 localhost firewall rule
+- `scripts/setup-claude-code.sh` — MCP server registration (step 3b)
+- `packages/ai.txt` — firecrawl-py pip package note
+- `ai-router/knowledge.py` — dev-tools topic pattern (firecrawl, scrape, crawl)
 
 ### Keybinds GUI (`ai-router/keybinds_gui.py`)
 - `knowledge/keybinds.md` — GUI docs, bind types, mouse detection
@@ -234,6 +256,28 @@ This manifest maps every code component to every file that documents or ships kn
 - `docs/advertising.md` — face auth section, touchscreen section, settings hub, first-boot wizard
 - `docs/system-requirements.md` — optional hardware, optional software deps
 - `docs/hardware-compatibility.md` — laptop support (IR camera, touchscreen)
+
+### Bluetooth Hardening (`configs/bluetooth/main.conf`)
+- `knowledge/security.md` — bluetooth security section
+- `knowledge/bluetooth.md` — security section
+- `docs/advertising.md` — security hardening section
+- `installer/first-boot.sh` — deploy to /etc/bluetooth/
+
+### Firewall (`configs/ufw/costa-defaults.sh`)
+- `knowledge/security.md` — firewall section
+- `knowledge/network.md` — firewall section
+- `docs/advertising.md` — security hardening section
+- `installer/first-boot.sh` — run on first boot, enable ufw service
+
+### Network Hardening (`configs/sysctl/99-costa-hardening.conf`)
+- `knowledge/security.md` — network hardening section
+- `knowledge/network.md` — network hardening section
+- `installer/first-boot.sh` — deploy to /etc/sysctl.d/
+
+### Security Agent (`configs/costa/agents/security.yaml`)
+- `knowledge/security.md` — security agent section
+- `knowledge/agents.md` — agent table + detail section
+- `docs/advertising.md` — security hardening section
 
 ### Hyprland Config (`configs/hypr/hyprland.conf`)
 - `knowledge/costa-os.md` — default keybinds, window rules

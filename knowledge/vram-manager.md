@@ -36,7 +36,7 @@ The Vulkan backend is configured via systemd override:
 ## Checking Current State
 
 ```sh
-cat /tmp/ollama-smart-model    # currently loaded model name
+cat ${XDG_RUNTIME_DIR}/costa/ollama-smart-model  # currently loaded model name
 cat /tmp/ollama-tier           # current tier (full/medium/reduced/gaming)
 ollama ps                      # show all loaded models and VRAM usage
 ```
@@ -75,4 +75,4 @@ The manager script:
 ~/.config/hypr/ollama-manager.sh
 ```
 
-PTT reads the current model from `/tmp/ollama-smart-model` on every query, so it always uses whatever the manager selected.
+PTT reads the current model from `$XDG_RUNTIME_DIR/costa/ollama-smart-model` on every query, so it always uses whatever the manager selected.

@@ -7,7 +7,10 @@ tags: [audio, sound, volume, pipewire, wireplumber, wpctl, pactl, speaker, micro
 
 ## Quick Commands
 - Volume: `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5` (0.0-1.0+)
-- Mute: `wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle`
+- Mute toggle: `wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle`
+- Mute on: `wpctl set-mute @DEFAULT_AUDIO_SINK@ 1`
+- Unmute: `wpctl set-mute @DEFAULT_AUDIO_SINK@ 0`
+- NOTE: wpctl set-mute takes `1`, `0`, or `toggle` — NOT `true`/`false`/`on`/`off`
 - Mic volume: `wpctl set-volume @DEFAULT_AUDIO_SOURCE@ 1.0`
 - Current volume: `wpctl get-volume @DEFAULT_AUDIO_SINK@`
 - Default source: `pactl get-default-source`

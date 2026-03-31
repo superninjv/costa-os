@@ -22,6 +22,7 @@ import os
 import signal
 import sys
 import time
+import yaml
 from pathlib import Path
 
 from context import gather_context
@@ -90,7 +91,7 @@ def _handle_meta(query: str) -> dict | None:
 
     if re.search(r"models? (are |)(available|loaded|running)", q):
         try:
-            model = Path("/tmp/ollama-smart-model").read_text().strip()
+            model = _smart_model_file().read_text().strip()
             return {
                 "response": f"Local: {model} (via Ollama). Cloud: Claude Haiku (web), Sonnet (code), Opus (architecture). "
                             f"Routing is automatic — local for fast queries, cloud when needed.",
@@ -172,6 +173,12 @@ from file_search import search_files, format_results as format_file_results, rec
 from keybinds import is_keybind_query, handle_keybind_query
 from knowledge import select_knowledge_tiered, detect_model_tier
 from ml_router import select_local_model, CATEGORY_MODEL_PREFS
+
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else Path("/tmp/ollama-smart-model")
+
 
 
 # System prompt paths — tiered by model size
@@ -282,7 +289,7 @@ def get_ollama_model() -> str | None:
     Returns None if no local model is available (gaming mode / no GPU).
     """
     try:
-        model = Path("/tmp/ollama-smart-model").read_text().strip()
+        model = _smart_model_file().read_text().strip()
         if not model or model == "none":
             return None
         return model
@@ -344,7 +351,7 @@ def format_conversation_context(history: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def select_route(query: str) -> str:
+def select_route(query: str, file_path: str | None = None) -> str:
     """Determine the best model tier for this query.
 
     Tries ML router first (if trained and confident), falls back to regex patterns.
@@ -353,7 +360,7 @@ def select_route(query: str) -> str:
     try:
         from ml_router import get_router
         router = get_router()
-        ml_route, confidence = router.predict(query)
+        ml_route, confidence = router.predict(query, file_path=file_path)
         if ml_route and confidence > 0.65:
             return ml_route
     except Exception:
@@ -553,6 +560,272 @@ def query_claude(query: str, model: str = "haiku", tools: list | None = None,
         return ""
 
 
+# ---------------------------------------------------------------------------
+# Multi-provider support
+# ---------------------------------------------------------------------------
+
+_PROVIDERS_CONFIG: dict | None = None
+_ROUTING_CONFIG: dict | None = None
+
+
+def _load_providers() -> dict:
+    """Load provider configuration from YAML."""
+    global _PROVIDERS_CONFIG
+    if _PROVIDERS_CONFIG is not None:
+        return _PROVIDERS_CONFIG
+
+    config_paths = [
+        Path.home() / ".config" / "costa" / "providers.yaml",
+        Path(__file__).parent.parent / "configs" / "costa" / "providers.yaml",
+    ]
+    for p in config_paths:
+        if p.exists():
+            try:
+                _PROVIDERS_CONFIG = yaml.safe_load(p.read_text()).get("providers", {})
+                return _PROVIDERS_CONFIG
+            except Exception:
+                pass
+    _PROVIDERS_CONFIG = {}
+    return _PROVIDERS_CONFIG
+
+
+def _load_routing() -> dict:
+    """Load routing rules from YAML."""
+    global _ROUTING_CONFIG
+    if _ROUTING_CONFIG is not None:
+        return _ROUTING_CONFIG
+
+    config_paths = [
+        Path.home() / ".config" / "costa" / "routing.yaml",
+        Path(__file__).parent.parent / "configs" / "costa" / "routing.yaml",
+    ]
+    for p in config_paths:
+        if p.exists():
+            try:
+                _ROUTING_CONFIG = yaml.safe_load(p.read_text()).get("routing_rules", {})
+                return _ROUTING_CONFIG
+            except Exception:
+                pass
+    _ROUTING_CONFIG = {}
+    return _ROUTING_CONFIG
+
+
+def _get_provider_key(provider_name: str) -> str | None:
+    """Get API key for a provider from environment or costa config."""
+    providers = _load_providers()
+    config = providers.get(provider_name, {})
+    env_var = config.get("api_key_env", "")
+    if not env_var:
+        return None
+
+    # Check environment
+    key = os.environ.get(env_var)
+    if key:
+        return key
+
+    # Check ~/.config/costa/env
+    env_file = Path.home() / ".config" / "costa" / "env"
+    try:
+        for line in env_file.read_text().splitlines():
+            if line.startswith(f"{env_var}="):
+                return line.split("=", 1)[1].strip()
+    except Exception:
+        pass
+    return None
+
+
+def _is_provider_available(provider_name: str) -> bool:
+    """Check if a provider is enabled and has credentials (or is free tier)."""
+    providers = _load_providers()
+    config = providers.get(provider_name, {})
+    if not config.get("enabled", False):
+        return False
+    if config.get("free_tier", False):
+        return True  # Free tier doesn't need a key
+    return _get_provider_key(provider_name) is not None
+
+
+def _is_reasoning_boost_enabled() -> bool:
+    """Check if reasoning boost is enabled in user config."""
+    config_path = Path.home() / ".config" / "costa" / "config.json"
+    try:
+        config = json.loads(config_path.read_text())
+        return config.get("reasoning_boost", False)
+    except Exception:
+        return False
+
+
+def reasoning_boost(
+    task_description: str,
+    context: str = "",
+    max_tokens: int = 2048,
+    timeout: int = 90,
+) -> str | None:
+    """Delegate a hard reasoning subtask to Gemini's thinking mode.
+
+    Called by the router when:
+    1. reasoning_boost is enabled in config (~/.config/costa/config.json)
+    2. Query category is math/reasoning/science/architecture
+    3. Gemini provider is available
+
+    Returns the Gemini response, or None if unavailable/failed.
+
+    # MCP Integration (future): Expose reasoning_boost as a tool:
+    # costa_reasoning_boost(task: str, context: str) -> str
+    # This lets Claude Code explicitly delegate thinking to Gemini
+    # when it determines a subtask would benefit from Gemini's reasoning.
+    """
+    if not _is_reasoning_boost_enabled():
+        return None
+
+    if not _is_provider_available("gemini"):
+        return None
+
+    system_prompt = (
+        "You are a reasoning specialist. Think step by step. "
+        "Provide a clear, structured answer."
+    )
+
+    if context:
+        prompt = f"Context:\n{context}\n\nTask:\n{task_description}"
+    else:
+        prompt = task_description
+
+    # Use the free flash model; upgrade to flash-thinking if available
+    providers = _load_providers()
+    gemini_config = providers.get("gemini", {})
+    free_models = gemini_config.get("free_models", ["gemini-2.0-flash-lite"])
+    gemini_key = _get_provider_key("gemini")
+    if gemini_key:
+        model = "gemini-2.0-flash"  # better reasoning with key
+    else:
+        model = free_models[0] if free_models else "gemini-2.0-flash-lite"
+
+    response_text, meta = query_openai_compat(
+        prompt=prompt,
+        model=model,
+        provider="gemini",
+        system=system_prompt,
+        temperature=0.2,
+        max_tokens=max_tokens,
+        timeout=timeout,
+    )
+
+    if meta.get("error") or not response_text:
+        return None
+
+    return response_text
+
+
+def query_openai_compat(
+    prompt: str,
+    model: str,
+    provider: str,
+    system: str = "",
+    temperature: float = 0.3,
+    max_tokens: int = 512,
+    timeout: int = 45,
+) -> tuple[str, dict]:
+    """Query any OpenAI-compatible API (Groq, Gemini, OpenAI, Mistral, remote Ollama).
+
+    Returns (response_text, metadata_dict).
+    """
+    import requests as req
+
+    providers = _load_providers()
+    config = providers.get(provider, {})
+    base_url = config.get("base_url", "")
+    api_key = _get_provider_key(provider) or ""
+
+    if not base_url:
+        return "", {"error": f"No base_url for provider '{provider}'"}
+
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+
+    try:
+        resp = req.post(
+            f"{base_url.rstrip('/')}/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        meta = {
+            "input_tokens": data.get("usage", {}).get("prompt_tokens", 0),
+            "output_tokens": data.get("usage", {}).get("completion_tokens", 0),
+            "model": model,
+            "provider": provider,
+        }
+        return text.strip(), meta
+    except Exception as exc:
+        return "", {"error": str(exc), "provider": provider, "model": model}
+
+
+def select_cloud_model(route: str, query_category: str | None = None) -> dict | None:
+    """Pick best available non-Claude model for a task category.
+
+    Returns a dict with {provider, model} if an alternative is better,
+    or None if Claude should handle it.
+
+    Decision logic is based on verified benchmarks, not auto-generated scores.
+    """
+    routing = _load_routing()
+
+    # Map the query category to a routing rule
+    rule_name = None
+    if query_category in ("math", "reasoning", "science", "physics", "chemistry"):
+        rule_name = "math_reasoning"
+    elif query_category in ("devops", "terminal", "cicd", "infrastructure"):
+        rule_name = "devops_terminal"
+    # fast_web_query is detected by the existing haiku+web route, not category
+
+    if not rule_name:
+        return None
+
+    rule = routing.get(rule_name, {})
+    preferred = rule.get("prefer", [])
+
+    for option in preferred:
+        provider = option.get("provider", "")
+        model = option.get("model", "")
+        tier = option.get("tier", "paid")
+
+        if not _is_provider_available(provider):
+            continue
+
+        # If tier is "free", only use if provider has free tier
+        if tier == "free":
+            config = _load_providers().get(provider, {})
+            if not config.get("free_tier", False):
+                continue
+            # Use free model if no API key
+            if not _get_provider_key(provider):
+                free_models = config.get("free_models", [])
+                if free_models:
+                    model = free_models[0]
+
+        return {"provider": provider, "model": model}
+
+    return None  # Stay on Claude
+
+
 # Patterns that indicate the user wants an ACTION performed, not just information
 ACTION_PATTERNS = re.compile(
     r"(^|\b)(turn\b.{0,20}\b(up|down|off|on)|set (the |my )?(volume|brightness|wallpaper)|"
@@ -639,11 +912,17 @@ def extract_command(response: str) -> str | None:
     return None
 
 
+_SHELL_METACHAR_RE = re.compile(r'[;|&$`(){}]')
+
 def classify_command(cmd: str) -> str:
     """Classify a command as 'safe', 'dangerous', or 'ask'."""
     if DANGEROUS_RE.search(cmd):
         return "dangerous"
     if SAFE_RE.search(cmd):
+        # Even safe-prefix commands are dangerous if they contain shell metacharacters
+        # that could chain additional commands (e.g. "git status; rm -rf /")
+        if _SHELL_METACHAR_RE.search(cmd):
+            return "ask"
         return "safe"
     return "ask"
 
@@ -718,12 +997,34 @@ def route_query(query: str, force_model: str | None = None,
     knowledge_ms = None
     model_ms = None
 
-    route = force_model or select_route(query)
+    # Detect active editor file for AST-enriched routing
+    _active_file_path = None
+    try:
+        import json as _json
+        _aw = subprocess.run(
+            ["hyprctl", "activewindow", "-j"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if _aw.returncode == 0:
+            _win = _json.loads(_aw.stdout)
+            _win_class = _win.get("class", "").lower()
+            _title = _win.get("title", "")
+            if any(ed in _win_class for ed in ("code", "codium", "zed")):
+                _parts = _title.split(" — ")
+                if _parts:
+                    _candidate = _parts[0].strip()
+                    if os.path.isfile(_candidate):
+                        _active_file_path = _candidate
+    except Exception:
+        pass
+
+    route = force_model or select_route(query, file_path=_active_file_path)
     system_prompt = get_system_prompt()
     escalated = False
     context_used = False
     model_used = route
     response = ""
+    query_category = None
 
     try:
         # Meta queries — questions about Costa OS itself
@@ -912,16 +1213,52 @@ def route_query(query: str, force_model: str | None = None,
             _log_to_db(result, input_modality)
             return result
 
+        # Budget check before cloud calls
+        if route in ("opus", "sonnet", "haiku+web"):
+            try:
+                from db import check_budget
+                if not check_budget():
+                    if query_category and query_category in ("code_write", "code_debug", "code_test", "code_refactor"):
+                        # Budget exhausted — try free Devstral for code tasks
+                        if _is_provider_available("mistral"):
+                            t0 = time.time()
+                            alt_response, _ = query_openai_compat(
+                                query, model="devstral-small-2505", provider="mistral",
+                                system=system_prompt, max_tokens=1024, timeout=60,
+                            )
+                            model_ms = int((time.time() - t0) * 1000)
+                            if alt_response:
+                                response = alt_response
+                                model_used = "mistral:devstral-small-2505"
+                                route = "budget_fallback"
+                    if not response:
+                        route = "local"  # Fall back to local when budget exhausted
+            except Exception:
+                pass  # If budget check fails, proceed normally
+
         # Cloud routes — pass directly (with tool_use for sonnet/opus)
         if route in ("opus", "sonnet"):
             t0 = time.time()
             response = query_claude(query, model=route, timeout=120, use_tools=True)
             model_ms = int((time.time() - t0) * 1000)
             model_used = route
-            # If API is down, fall back to local
+            # If API is down, try alternative provider for this category
             if _is_api_error(response):
-                response = ""
-                route = "local"
+                alt = select_cloud_model(route, query_category)
+                if alt:
+                    t0 = time.time()
+                    alt_response, alt_meta = query_openai_compat(
+                        query, model=alt["model"], provider=alt["provider"],
+                        system=system_prompt, timeout=60,
+                    )
+                    model_ms = int((time.time() - t0) * 1000)
+                    if alt_response:
+                        response = alt_response
+                        model_used = f"{alt['provider']}:{alt['model']}"
+                        route = f"{route}+fallback"
+                if not response:
+                    response = ""
+                    route = "local"
         elif route == "haiku+web":
             t0 = time.time()
             response = query_claude(
@@ -1006,8 +1343,18 @@ def route_query(query: str, force_model: str | None = None,
                     "ai-router": "architecture",
                     "costa-os": "deep_knowledge",
                     "costa-nav": "architecture",
-                    "pipewire-audio": "system_info",
+                    "pipewire-audio": "simple_action",
+                    "music-control": "simple_action",
                     "process-management": "system_info",
+                    "bluetooth": "system_info",
+                    "display": "system_info",
+                    "network": "system_info",
+                    "hyprland": "system_info",
+                    "keybinds": "system_info",
+                    "customization": "deep_knowledge",
+                    "security": "architecture",
+                    "screenshots": "simple_action",
+                    "notifications": "simple_action",
                 }
                 if best_cat:
                     query_category = _TOPIC_TO_CATEGORY.get(best_cat, best_cat)
@@ -1017,7 +1364,10 @@ def route_query(query: str, force_model: str | None = None,
             # Also detect category from code/refactor/test/debug keywords
             if not query_category:
                 q_lower = query.lower()
-                if re.search(r"\b(refactor|clean up|simplify|rename)\b", q_lower):
+                # Simple actions — fast model handles these instantly
+                if re.search(r"\b(unmute|mute|volume|brightness|play|pause|skip|next|prev|previous|louder|quieter|turn (up|down|on|off))\b", q_lower) and len(query.split()) <= 10:
+                    query_category = "simple_action"
+                elif re.search(r"\b(refactor|clean up|simplify|rename)\b", q_lower):
                     query_category = "code_refactor"
                 elif re.search(r"\b(test|spec|coverage|assert)\b", q_lower):
                     query_category = "code_test"
@@ -1027,6 +1377,62 @@ def route_query(query: str, force_model: str | None = None,
                     query_category = "code_deploy"
                 elif re.search(r"\b(architect|design|structure|pattern|system)\b", q_lower):
                     query_category = "architecture"
+                elif re.search(r"\b(solve|calculate|compute|derive|prove|equation|integral|derivative|math|algebra|calculus|geometry|statistics|probability)\b", q_lower):
+                    query_category = "math"
+                elif re.search(r"\b(physics|chemistry|biology)\s+(problem|question|equation)\b", q_lower):
+                    query_category = "science"
+
+            # AST-enriched category detection: if the query references code and
+            # we have an active editor, use structural analysis to improve routing.
+            # A 5-line helper refactor → fast model; a 200-line class with 40
+            # dependents → route to Claude.
+            if query_category in ("code_refactor", "code_debug", "code_test", None) and _active_file_path:
+                try:
+                    import ast_parser
+                    summary = ast_parser.get_file_summary(_active_file_path)
+                    if summary.get("parseable"):
+                        total_lines = summary.get("total_lines", 0)
+                        sym_count = summary.get("symbol_count", 0)
+
+                        # If the active file is complex, consider
+                        # escalating category to architecture
+                        if total_lines > 500 or sym_count > 30:
+                            if query_category == "code_refactor":
+                                query_category = "architecture"
+                            elif not query_category and re.search(
+                                r"\b(this|here|current|open)\b", q_lower
+                            ):
+                                # Query references current context + large file
+                                query_category = "code_debug"
+                except Exception:
+                    pass
+
+            # Route math/reasoning to Gemini if available (verified GPQA advantage)
+            if query_category in ("math", "reasoning", "science") and not force_model:
+                alt = select_cloud_model(route, query_category)
+                if alt:
+                    t0 = time.time()
+                    alt_response, alt_meta = query_openai_compat(
+                        query, model=alt["model"], provider=alt["provider"],
+                        system=system_prompt, temperature=0.2, max_tokens=1024, timeout=60,
+                    )
+                    model_ms = int((time.time() - t0) * 1000)
+                    if alt_response and not is_idk_response(alt_response):
+                        response = alt_response
+                        model_used = f"{alt['provider']}:{alt['model']}"
+                        route = f"local+{alt['provider']}"
+                        # Skip the normal local model path
+                        elapsed = time.time() - start
+                        result = {
+                            "query": query, "response": response, "model": model_used,
+                            "route": route, "context_gathered": context_used,
+                            "escalated": False, "command_executed": None,
+                            "elapsed_ms": int(elapsed * 1000), "total_ms": int(elapsed * 1000),
+                            "context_ms": context_ms, "knowledge_ms": knowledge_ms,
+                            "model_ms": model_ms,
+                        }
+                        _log_to_db(result, input_modality)
+                        return result
 
             # Pick the best model for this category (if we identified one)
             if query_category and query_category in CATEGORY_MODEL_PREFS:
@@ -1087,13 +1493,46 @@ def route_query(query: str, force_model: str | None = None,
             if _cancelled:
                 return _cancelled_result(query, start, input_modality)
 
+            # Reasoning Boost: for architecture queries (or math/reasoning/science when
+            # reasoning_boost is enabled but Gemini wasn't available earlier), delegate
+            # the thinking step to Gemini before running Ollama.
+            # math/reasoning/science typically return early above via select_cloud_model;
+            # this covers architecture and acts as a fallback for the others.
+            if query_category in ("math", "reasoning", "science", "architecture") and not force_model:
+                t0 = time.time()
+                boost_response = reasoning_boost(
+                    task_description=query,
+                    context=context,
+                    max_tokens=2048,
+                    timeout=90,
+                )
+                if boost_response and not is_idk_response(boost_response):
+                    model_ms = int((time.time() - t0) * 1000)
+                    response = boost_response
+                    model_used = "gemini:reasoning-boost"
+                    route = "local+reasoning-boost"
+                    elapsed = time.time() - start
+                    result = {
+                        "query": query, "response": response, "model": model_used,
+                        "route": route, "context_gathered": context_used,
+                        "escalated": False, "command_executed": None,
+                        "elapsed_ms": int(elapsed * 1000), "total_ms": int(elapsed * 1000),
+                        "context_ms": context_ms, "knowledge_ms": knowledge_ms,
+                        "model_ms": model_ms,
+                    }
+                    _log_to_db(result, input_modality)
+                    return result
+
             t0 = time.time()
             response = query_ollama(prompt, system_prompt, ollama_model,
                                     temperature=temp, num_predict=num_predict)
             model_ms = int((time.time() - t0) * 1000)
 
-            # Check for "I don't know" responses and escalate
-            if allow_escalation and is_idk_response(response) and not _cancelled:
+            # Check for "I don't know" responses and escalate.
+            # But if the response contains a valid command, it's NOT an IDK —
+            # the model gave the answer even if it hedged with "you can run...".
+            has_command = bool(response and extract_command(response))
+            if allow_escalation and not has_command and is_idk_response(response) and not _cancelled:
                 escalated = True
                 haiku_prompt = query
                 if context:
@@ -1179,6 +1618,18 @@ def route_query(query: str, force_model: str | None = None,
         }
 
         _log_to_db(result, input_modality)
+
+        # Log AST features for future training
+        if _active_file_path:
+            try:
+                from ml_router import extract_ast_features
+                _ast_feats = extract_ast_features(query, _active_file_path)
+                if _ast_feats is not None:
+                    from db import log_ast_features
+                    log_ast_features(result.get("query_id"), _active_file_path, _ast_feats.tolist())
+            except Exception:
+                pass
+
         return result
 
     finally:

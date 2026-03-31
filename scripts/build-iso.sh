@@ -66,6 +66,7 @@ mkdir -p "$COSTA_SHARE/scripts"
 cp "$PROJECT_DIR"/scripts/wallpaper.sh "$COSTA_SHARE/scripts/"
 cp "$PROJECT_DIR"/scripts/ollama-manager.sh "$COSTA_SHARE/scripts/"
 
+cp "$PROJECT_DIR"/scripts/supervise-dock.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/headless-preview.py "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/setup-claude-code.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
 cp "$PROJECT_DIR"/scripts/costa-memory-flush.sh "$COSTA_SHARE/scripts/" 2>/dev/null || true
@@ -84,6 +85,14 @@ cat > "$AIROOTFS/usr/local/bin/costa-update" << 'WRAPPER'
 exec /usr/share/costa-os/scripts/costa-update.sh "$@"
 WRAPPER
 chmod +x "$AIROOTFS/usr/local/bin/costa-update"
+
+# costa-widget launcher — resolves widget paths at runtime
+cp "$PROJECT_DIR/scripts/costa-widget.sh" "$AIROOTFS/usr/local/bin/costa-widget"
+chmod +x "$AIROOTFS/usr/local/bin/costa-widget"
+
+# launch-on-primary — opens apps on primary monitor regardless of focus
+cp "$PROJECT_DIR/scripts/launch-on-primary.sh" "$AIROOTFS/usr/local/bin/launch-on-primary"
+chmod +x "$AIROOTFS/usr/local/bin/launch-on-primary"
 
 # Installer
 mkdir -p "$COSTA_SHARE/installer"
@@ -109,11 +118,14 @@ if [ -d "$PROJECT_DIR/voice-assistant/src" ]; then
     cp -r "$PROJECT_DIR"/voice-assistant/src/* "$COSTA_SHARE/voice-assistant/" 2>/dev/null || true
 fi
 
-# Music widget
-if [ -f "$PROJECT_DIR/configs/music-widget/widget.py" ]; then
-    mkdir -p "$COSTA_SHARE/music-widget"
-    cp "$PROJECT_DIR/configs/music-widget/widget.py" "$COSTA_SHARE/music-widget/"
-fi
+# GTK widgets (music, costa-ai, etc.) — ship to /usr/share/costa-os/widgets/
+mkdir -p "$COSTA_SHARE/widgets"
+for widget_dir in music-widget costa-ai-widget; do
+    if [ -f "$PROJECT_DIR/configs/$widget_dir/widget.py" ]; then
+        mkdir -p "$COSTA_SHARE/widgets/$widget_dir"
+        cp "$PROJECT_DIR/configs/$widget_dir/widget.py" "$COSTA_SHARE/widgets/$widget_dir/"
+    fi
+done
 
 # AGS shell (desktop bar)
 if [ -d "$PROJECT_DIR/shell" ]; then

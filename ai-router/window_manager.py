@@ -14,6 +14,12 @@ import re
 import os
 from pathlib import Path
 
+def _smart_model_file():
+    """Smart model path: XDG_RUNTIME_DIR first, /tmp fallback."""
+    xdg = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa/ollama-smart-model"
+    return xdg if xdg.exists() else Path("/tmp/ollama-smart-model")
+
+
 
 def _run(cmd: str | list[str], timeout: int = 5) -> str:
     """Run a command and return stdout.
@@ -1002,7 +1008,7 @@ Request: {query}
 Commands:"""
 
     try:
-        model = Path("/tmp/ollama-smart-model").read_text().strip()
+        model = _smart_model_file().read_text().strip()
     except Exception:
         model = "qwen2.5:14b"
 

@@ -15,7 +15,9 @@ echo ""
 
 # Stop VRAM manager to prevent model interference
 pkill -f ollama-manager.sh 2>/dev/null || true
-echo "none" > /tmp/ollama-smart-model
+mkdir -p "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/costa" 2>/dev/null
+echo "none" > "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/costa/ollama-smart-model"
+echo "none" > /tmp/ollama-smart-model 2>/dev/null || true
 echo "[1/3] VRAM manager stopped"
 
 # Unload all models

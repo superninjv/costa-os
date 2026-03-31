@@ -1,7 +1,7 @@
 ---
-l0: "Development tools: pyenv, nvm, SDKMAN, Rust, Docker, git, zellij, CLI utilities"
-l1_sections: ["Language Managers", "Containers", "Git", "Terminal Multiplexer", "Useful CLI Tools"]
-tags: [python, pyenv, node, nvm, rust, cargo, java, sdk, docker, git, lazygit, zellij, kubectl, k9s]
+l0: "Development tools: pyenv, nvm, SDKMAN, Rust, Docker, git, zellij, Firecrawl, CLI utilities"
+l1_sections: ["Language Managers", "Containers", "Git", "Terminal Multiplexer", "Web Scraping", "Useful CLI Tools"]
+tags: [python, pyenv, node, nvm, rust, cargo, java, sdk, docker, git, lazygit, zellij, kubectl, k9s, firecrawl, scraping]
 ---
 
 # Development Tools Reference
@@ -35,3 +35,53 @@ tags: [python, pyenv, node, nvm, rust, cargo, java, sdk, docker, git, lazygit, z
 - `sd` — find & replace (better sed)
 - `dog` — DNS lookup (better dig)
 - `bandwhich` — network bandwidth monitor
+
+## Web Scraping (Firecrawl)
+Self-hosted web scraping API — converts any web page to clean markdown/structured data.
+
+### Setup & Management
+```bash
+costa-firecrawl setup     # clone repo + build Docker images (first time, ~5 min)
+costa-firecrawl start     # start all services (API + Playwright + Redis + RabbitMQ + Postgres)
+costa-firecrawl stop      # stop all services
+costa-firecrawl status    # container status + API health
+costa-firecrawl update    # pull latest + rebuild
+costa-firecrawl scrape URL  # quick test scrape (returns markdown)
+```
+
+### How It Works
+- Firecrawl runs locally via Docker Compose at `http://localhost:3002`
+- Uses Playwright (headless Chromium) for JavaScript rendering
+- AI extraction features use local Ollama (qwen3.5:4b) — no cloud API needed
+- Port 3002 bound to localhost only (firewall allows local access)
+- Data dir: `~/.local/share/costa/firecrawl/`
+
+### Claude Code Integration
+When Firecrawl is set up, `setup-claude-code.sh` registers the `firecrawl-mcp` MCP server automatically. Claude Code gets scrape/crawl/map/extract tools.
+
+### Python SDK
+```python
+from firecrawl import Firecrawl
+app = Firecrawl(api_url="http://localhost:3002")
+result = app.scrape("https://example.com")
+print(result["markdown"])
+```
+
+### Node.js SDK
+```javascript
+import Firecrawl from '@mendable/firecrawl-js';
+const app = new Firecrawl({ apiUrl: "http://localhost:3002" });
+const result = await app.scrape("https://example.com");
+```
+
+### Resource Usage
+- ~14GB RAM when running (API 8GB + Playwright 4GB + supporting services)
+- Not auto-started — use `costa-firecrawl start` when needed
+- Stop when done to reclaim memory: `costa-firecrawl stop`
+
+## Code Intelligence (costa-ast)
+- System-wide tree-sitter daemon: `org.costa.AST` on D-Bus session bus
+- Auto-watches `~/projects/` — incremental AST parsing on file changes
+- 30+ languages: Python, TypeScript, Rust, Go, C/C++, Java, Bash, JSON, YAML...
+- MCP tools: `ast_symbols`, `ast_scope`, `ast_complexity`, `ast_dependents`, `ast_file_summary`
+- AGS widget client: `shell/widget/ast/ASTService.ts` (reactive state via bus watching)

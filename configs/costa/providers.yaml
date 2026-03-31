@@ -1,0 +1,56 @@
+# Costa OS — LLM Provider Configuration
+# Providers are tried in order: plan auth → API keys → free tier models
+#
+# To enable a provider, set enabled: true and either:
+#   - Set the api_key_env to an env var name containing your key
+#   - Or add the key to ~/.config/costa/env as KEY_NAME=value
+#
+# Free tier providers (groq, gemini, mistral) work with limited quotas
+# even without API keys for select models.
+
+providers:
+  ollama:
+    enabled: true
+    base_url: http://localhost:11434/v1
+    description: "Local models via Ollama (unlimited, GPU-bound)"
+
+  anthropic:
+    enabled: true
+    mode: cli  # "cli" uses Claude Code subscription (free), "api" uses ANTHROPIC_API_KEY
+    api_key_env: ANTHROPIC_API_KEY
+    description: "Claude models — prefers plan auth over API billing"
+
+  groq:
+    enabled: true
+    base_url: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+    free_tier: true
+    free_models: ["llama-3.1-8b-instant"]
+    description: "Ultra-fast inference — free tier: 30 RPM, 500K TPD"
+
+  gemini:
+    enabled: true
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+    api_key_env: GEMINI_API_KEY
+    free_tier: true
+    free_models: ["gemini-2.0-flash-lite"]
+    description: "Google Gemini — free tier: 15 RPM, 1K RPD"
+
+  mistral:
+    enabled: true
+    base_url: https://api.mistral.ai/v1
+    api_key_env: MISTRAL_API_KEY
+    free_tier: true
+    free_models: ["devstral-small-2505"]
+    description: "Mistral — Devstral coding model is free"
+
+  openai:
+    enabled: false
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    description: "OpenAI GPT/Codex — requires API key (no free tier)"
+
+  remote:
+    enabled: false
+    base_url: ""
+    description: "Remote Costa OS compute node (future)"

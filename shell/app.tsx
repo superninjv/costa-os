@@ -35,6 +35,15 @@ function getMonitorType(connector: string): "primary" | "secondary" | "portrait"
   return "primary"
 }
 
+function safeCreate(name: string, factory: () => Gtk.Window): Gtk.Window | null {
+  try {
+    return factory()
+  } catch (e) {
+    print(`[costa-shell] ERROR creating ${name}: ${e}`)
+    return null
+  }
+}
+
 function setupMonitor(gdkMon: Gdk.Monitor) {
   const connector = gdkMon.get_connector() ?? "unknown"
 
@@ -48,19 +57,28 @@ function setupMonitor(gdkMon: Gdk.Monitor) {
   const windows: Gtk.Window[] = []
 
   switch (type) {
-    case "primary":
-      windows.push(Notch(gdkMon))
-      windows.push(Bar(gdkMon))
+    case "primary": {
+      const notch = safeCreate("Notch", () => Notch(gdkMon))
+      const bar = safeCreate("Bar", () => Bar(gdkMon))
+      if (notch) windows.push(notch)
+      if (bar) windows.push(bar)
       break
-    case "secondary":
-      windows.push(MinimalPill(gdkMon))
+    }
+    case "secondary": {
+      const pill = safeCreate("MinimalPill", () => MinimalPill(gdkMon))
+      if (pill) windows.push(pill)
       break
-    case "portrait":
-      windows.push(PortraitBar(gdkMon))
+    }
+    case "portrait": {
+      const portrait = safeCreate("PortraitBar", () => PortraitBar(gdkMon))
+      if (portrait) windows.push(portrait)
       break
-    case "headless":
-      windows.push(ClaudeBar(gdkMon))
+    }
+    case "headless": {
+      const claude = safeCreate("ClaudeBar", () => ClaudeBar(gdkMon))
+      if (claude) windows.push(claude)
       break
+    }
   }
 
   activeMonitors.set(connector, windows)
@@ -78,25 +96,29 @@ function teardownMonitor(connector: string) {
 }
 
 function reconcileMonitors(monitorList: import("gi://Gio").ListModel) {
-  const currentConnectors = new Set<string>()
-  const n = monitorList.get_n_items()
-  for (let i = 0; i < n; i++) {
-    const mon = monitorList.get_item(i) as Gdk.Monitor
-    const c = mon?.get_connector()
-    if (c) currentConnectors.add(c)
-  }
-
-  // Tear down monitors that disappeared
-  for (const connector of activeMonitors.keys()) {
-    if (!currentConnectors.has(connector)) {
-      teardownMonitor(connector)
+  try {
+    const currentConnectors = new Set<string>()
+    const n = monitorList.get_n_items()
+    for (let i = 0; i < n; i++) {
+      const mon = monitorList.get_item(i) as Gdk.Monitor
+      const c = mon?.get_connector()
+      if (c) currentConnectors.add(c)
     }
-  }
 
-  // Set up monitors that are new (setupMonitor deduplicates)
-  for (let i = 0; i < n; i++) {
-    const mon = monitorList.get_item(i) as Gdk.Monitor
-    if (mon) setupMonitor(mon)
+    // Tear down monitors that disappeared
+    for (const connector of activeMonitors.keys()) {
+      if (!currentConnectors.has(connector)) {
+        teardownMonitor(connector)
+      }
+    }
+
+    // Set up monitors that are new (setupMonitor deduplicates)
+    for (let i = 0; i < n; i++) {
+      const mon = monitorList.get_item(i) as Gdk.Monitor
+      if (mon) setupMonitor(mon)
+    }
+  } catch (e) {
+    print(`[costa-shell] ERROR in reconcileMonitors: ${e}`)
   }
 }
 
@@ -108,11 +130,26 @@ app.start({
       setupMonitor(gdkMon)
     }
 
-    // Reconcile on any monitor change (hotplug, EDID, reboot timing)
-    const display = Gdk.Display.get_default()
-    if (display) {
-      const monitorList = display.get_monitors() as import("gi://Gio").ListModel
-      monitorList.connect("items-changed", () => reconcileMonitors(monitorList))
-    }
+    // Only reconcile on real Hyprland monitor add/remove — NOT GDK items-changed
+    // which fires spuriously on window moves, workspace switches, etc.
+    hypr.connect("monitor-added", () => {
+      // Delay to let GDK catch up with the new monitor
+      GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+        const display = Gdk.Display.get_default()
+        if (display) {
+          const monitorList = display.get_monitors() as import("gi://Gio").ListModel
+          reconcileMonitors(monitorList)
+        }
+        return GLib.SOURCE_REMOVE
+      })
+    })
+    hypr.connect("monitor-removed", (_: any, id: number) => {
+      // Find which connector was removed by checking what we track vs what's still there
+      const display = Gdk.Display.get_default()
+      if (display) {
+        const monitorList = display.get_monitors() as import("gi://Gio").ListModel
+        reconcileMonitors(monitorList)
+      }
+    })
   },
 })

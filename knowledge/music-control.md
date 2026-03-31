@@ -153,8 +153,10 @@ wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
 # Decrease by 5%
 wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
 
-# Mute/unmute
+# Mute/unmute (wpctl takes 1, 0, or toggle — NOT true/false)
 wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+wpctl set-mute @DEFAULT_AUDIO_SINK@ 0   # unmute
+wpctl set-mute @DEFAULT_AUDIO_SINK@ 1   # mute
 ```
 
 ### How do I mute the microphone?
