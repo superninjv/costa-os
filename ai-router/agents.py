@@ -428,7 +428,10 @@ Execute this task now. Be concise in your response. End with a one-line summary.
         instruction = task.instruction.lower()
         # Deployer with known server can run the deploy checklist directly
         if agent.name == "deployer" and any(
-            kw in instruction for kw in ["deploy", "push", "ship", "release"]
+            kw in instruction for kw in [
+                "deploy", "push", "ship", "release", "pull", "build",
+                "rebuild", "restart", "update", "latest", "main",
+            ]
         ):
             return True
         # Monitor healthchecks can run directly
@@ -468,8 +471,10 @@ Execute this task now. Be concise in your response. End with a one-line summary.
                     continue
                 steps.append(f"pulled: {r.stdout.strip().split(chr(10))[-1]}")
 
-                # 2. Build
-                full_build = f"cd {deploy_dir} && rm -rf .next && {build_cmd}"
+                # 2. Clean stale build cache + build
+                clean_cmd = server.get("clean_cmd", "")
+                clean_prefix = f"{clean_cmd} && " if clean_cmd else ""
+                full_build = f"cd {deploy_dir} && {clean_prefix}{build_cmd}"
                 r = subprocess.run(
                     ["ssh", host, full_build],
                     capture_output=True, text=True, timeout=300

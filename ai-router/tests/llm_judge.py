@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""LLM-as-Judge scoring — replaces keyword matching with Claude-graded quality.
+"""LLM-as-Judge scoring — replaces keyword matching with LLM-graded quality.
 
-Uses Claude Haiku (via claude CLI) to evaluate model responses on a 5-point
-rubric. Much more discriminating than keyword matching: catches factual errors,
-reasoning depth, instruction following, and code correctness.
+Uses free cloud models (Gemini Flash Lite, Mistral Devstral) to evaluate model
+responses on a 5-point rubric. Much more discriminating than keyword matching:
+catches factual errors, reasoning depth, instruction following, and code correctness.
 
 Usage:
     # Score a single response
@@ -45,21 +45,63 @@ Category-specific criteria:
 Respond with ONLY a JSON object: {"score": N, "reason": "brief explanation"}"""
 
 
-def judge_response(prompt: str, response: str, category: str = "",
-                   timeout: int = 30) -> tuple[float, str]:
-    """Use Claude Haiku to score a response. Returns (score_0_to_1, reason)."""
-    if not response or not response.strip():
-        return 0.0, "Empty response"
-
-    judge_prompt = f"""Category: {category}
-User question: {prompt}
-Assistant response: {response[:1500]}
-
-Score this response (1-5):"""
-
-    # Use claude CLI (subscription-based, no API key needed)
+def _parse_judge_output(output: str) -> tuple[float, str] | None:
+    """Extract score and reason from judge response. Returns None if unparseable."""
     import re
+    if not output:
+        return None
 
+    # Try: bare JSON first
+    try:
+        parsed = json.loads(output)
+        score_raw = parsed.get("score", 3)
+        reason = parsed.get("reason", "")
+        score = max(0.0, min(1.0, (score_raw - 1) / 4))
+        return round(score, 3), reason
+    except json.JSONDecodeError:
+        pass
+
+    # Try: extract from markdown code block
+    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", output, re.DOTALL)
+    if m:
+        try:
+            parsed = json.loads(m.group(1))
+            score_raw = parsed.get("score", 3)
+            reason = parsed.get("reason", "")
+            score = max(0.0, min(1.0, (score_raw - 1) / 4))
+            return round(score, 3), reason
+        except json.JSONDecodeError:
+            pass
+
+    # Try: find any {"score": N, ...} pattern
+    m = re.search(r'\{\s*"score"\s*:\s*(\d)', output)
+    if m:
+        score_raw = int(m.group(1))
+        rm = re.search(r'"reason"\s*:\s*"([^"]*)"', output)
+        reason = rm.group(1) if rm else ""
+        score = max(0.0, min(1.0, (score_raw - 1) / 4))
+        return round(score, 3), reason
+
+    # Last resort: look for just a number 1-5
+    m = re.search(r'\b([1-5])\b', output[:20])
+    if m:
+        score_raw = int(m.group(1))
+        score = max(0.0, min(1.0, (score_raw - 1) / 4))
+        return round(score, 3), output[:80]
+
+    return None
+
+
+# Judge provider: Claude Haiku via CLI (subscription, not API-billed).
+# Free models (Gemini Lite, Devstral) tested and found too weak to discriminate.
+FALLBACK_PROVIDERS = [
+    {"provider": "mistral", "model": "devstral-small-2505"},
+    {"provider": "gemini", "model": "gemini-2.0-flash-lite"},
+]
+
+
+def _judge_via_claude(judge_prompt: str, timeout: int = 30) -> tuple[float, str] | None:
+    """Score via Claude Haiku CLI (subscription-based, no API key billing)."""
     claude_bin = None
     for path in ["/usr/local/bin/claude", "/usr/bin/claude"]:
         if os.path.exists(path):
@@ -77,67 +119,71 @@ Score this response (1-5):"""
             pass
 
     if not claude_bin:
-        return _fallback_score(response, category), "claude CLI not found"
+        return None
 
     try:
         result = subprocess.run(
             [claude_bin, "-p",
              "--model", "haiku",
              "--output-format", "text",
+             "--max-turns", "1",
              "--system-prompt", JUDGE_SYSTEM_PROMPT],
             input=judge_prompt,
             capture_output=True, text=True,
             timeout=timeout,
             cwd="/tmp",
         )
-        output = result.stdout.strip()
+        return _parse_judge_output(result.stdout.strip())
+    except (subprocess.TimeoutExpired, Exception):
+        return None
 
-        if not output:
-            return _fallback_score(response, category), "claude returned empty"
 
-        # Extract JSON from response — Claude may wrap in markdown or add prose
-        # Try: bare JSON first
+def judge_response(prompt: str, response: str, category: str = "",
+                   timeout: int = 30) -> tuple[float, str]:
+    """Score a response using Claude Haiku (subscription), falling back to free models."""
+    if not response or not response.strip():
+        return 0.0, "Empty response"
+
+    judge_prompt = f"""Category: {category}
+User question: {prompt}
+Assistant response: {response[:1500]}
+
+Score this response (1-5). Respond with ONLY a JSON object: {{"score": N, "reason": "brief explanation"}}"""
+
+    # Primary: Claude Haiku via CLI (subscription, ~200 tokens per call)
+    result = _judge_via_claude(judge_prompt, timeout=timeout)
+    if result is not None:
+        return result
+
+    # Fallback: free cloud models
+    try:
+        router_dir = str(Path(__file__).resolve().parent.parent)
+        if router_dir not in sys.path:
+            sys.path.insert(0, router_dir)
+        from router import query_openai_compat
+    except ImportError:
+        return _fallback_score(response, category), "router import failed"
+
+    for provider_cfg in FALLBACK_PROVIDERS:
         try:
-            parsed = json.loads(output)
-            score_raw = parsed.get("score", 3)
-            reason = parsed.get("reason", "")
-            score = max(0.0, min(1.0, (score_raw - 1) / 4))
-            return round(score, 3), reason
-        except json.JSONDecodeError:
-            pass
+            output, meta = query_openai_compat(
+                prompt=judge_prompt,
+                model=provider_cfg["model"],
+                provider=provider_cfg["provider"],
+                system=JUDGE_SYSTEM_PROMPT,
+                temperature=0.1,
+                max_tokens=128,
+                timeout=timeout,
+            )
+            if meta.get("error"):
+                continue
+            result = _parse_judge_output(output)
+            if result is not None:
+                return result
+        except Exception:
+            continue
 
-        # Try: extract from markdown code block
-        m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", output, re.DOTALL)
-        if m:
-            parsed = json.loads(m.group(1))
-            score_raw = parsed.get("score", 3)
-            reason = parsed.get("reason", "")
-            score = max(0.0, min(1.0, (score_raw - 1) / 4))
-            return round(score, 3), reason
-
-        # Try: find any {"score": N, ...} pattern
-        m = re.search(r'\{\s*"score"\s*:\s*(\d)', output)
-        if m:
-            score_raw = int(m.group(1))
-            # Try to get reason too
-            rm = re.search(r'"reason"\s*:\s*"([^"]*)"', output)
-            reason = rm.group(1) if rm else ""
-            score = max(0.0, min(1.0, (score_raw - 1) / 4))
-            return round(score, 3), reason
-
-        # Last resort: look for just a number 1-5
-        m = re.search(r'\b([1-5])\b', output[:20])
-        if m:
-            score_raw = int(m.group(1))
-            score = max(0.0, min(1.0, (score_raw - 1) / 4))
-            return round(score, 3), output[:80]
-
-        return _fallback_score(response, category), f"unparseable: {output[:60]}"
-
-    except subprocess.TimeoutExpired:
-        return _fallback_score(response, category), "claude timeout"
-    except Exception as e:
-        return _fallback_score(response, category), f"judge error: {e}"
+    return _fallback_score(response, category), "all judge providers failed"
 
 
 def _fallback_score(response: str, category: str) -> float:
@@ -238,7 +284,7 @@ def _generate_judge_summary(reports: list[dict]):
         "\n## Qwen 3.5 Model Benchmark Results (LLM-Judge Scored)",
         "",
         f"*Re-scored {__import__('datetime').datetime.now().strftime('%Y-%m-%d')} "
-        f"using Claude Haiku as quality judge*",
+        f"using Claude Haiku as quality judge (num_predict=2048, num_ctx=8192)*",
         "",
         "### Overall Comparison",
         "",

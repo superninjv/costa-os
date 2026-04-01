@@ -6,7 +6,7 @@ set -euo pipefail
 cd ~/projects/costa-os
 
 MODELS=("qwen3.5:0.8b" "qwen3.5:2b" "qwen3.5:4b" "qwen3.5:9b" "qwen3:14b")
-BENCH="python3 ai-router/tests/benchmark_qwen35.py"
+BENCH="python3 ai-router/tests/benchmark_qwen35.py --num-predict 2048 --num-ctx 8192"
 
 echo "=== Costa OS Full Re-Benchmark Pipeline ==="
 echo "Models: ${MODELS[*]}"

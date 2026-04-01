@@ -389,11 +389,12 @@ def _select_temperature(query: str) -> float:
 
 def _select_num_predict(is_voice: bool = False) -> int:
     """Max tokens for the response. Voice needs to be short."""
-    return 256 if is_voice else 512
+    return 256 if is_voice else 2048
 
 
 def query_ollama(prompt: str, system: str, model: str, timeout: int = 30,
-                 temperature: float | None = None, num_predict: int | None = None) -> str:
+                 temperature: float | None = None, num_predict: int | None = None,
+                 num_ctx: int = 8192) -> str:
     """Send a query to Ollama and return the response text."""
     global _ollama_process, _cancelled
     if _cancelled:
@@ -423,10 +424,7 @@ def query_ollama(prompt: str, system: str, model: str, timeout: int = 30,
         payload_dict["options"]["temperature"] = temperature
     if num_predict is not None:
         payload_dict["options"]["num_predict"] = num_predict
-
-    # Remove empty options
-    if not payload_dict["options"]:
-        del payload_dict["options"]
+    payload_dict["options"]["num_ctx"] = num_ctx
 
     payload = json.dumps(payload_dict)
     try:

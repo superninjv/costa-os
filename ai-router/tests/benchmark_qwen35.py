@@ -114,8 +114,8 @@ def classify_failure(response: str, quality: float, keywords: list[str]) -> str:
 # ─── Ollama query ─────────────────────────────────────────────
 
 def query_ollama(model: str, prompt: str, system: str = SYSTEM_PROMPT,
-                 think: bool = False, num_predict: int = 512,
-                 timeout: int = 180) -> dict:
+                 think: bool = False, num_predict: int = 2048,
+                 num_ctx: int = 8192, timeout: int = 180) -> dict:
     """Query Ollama directly and return the full response dict."""
     payload = {
         "model": model,
@@ -123,7 +123,7 @@ def query_ollama(model: str, prompt: str, system: str = SYSTEM_PROMPT,
         "system": system,
         "stream": False,
         "think": think,
-        "options": {"num_predict": num_predict},
+        "options": {"num_predict": num_predict, "num_ctx": num_ctx},
     }
     data = json.dumps(payload).encode()
     req = urllib.request.Request(OLLAMA_URL, data=data,
@@ -196,7 +196,9 @@ def load_prompts(path: str | None = None) -> list[dict]:
 
 def benchmark_model(model: str, prompts: list[dict],
                     test_thinking: bool = False,
-                    verbose: bool = False) -> ModelReport:
+                    verbose: bool = False,
+                    num_predict: int = 2048,
+                    num_ctx: int = 8192) -> ModelReport:
     """Run full benchmark on a single model."""
     report = ModelReport(model=model, timestamp=datetime.now().isoformat())
 
@@ -209,6 +211,7 @@ def benchmark_model(model: str, prompts: list[dict],
     print(f"\n{'='*60}")
     print(f"  Benchmarking: {model}")
     print(f"  Prompts: {len(test_prompts)} (skipping meta/window_manager)")
+    print(f"  Token budget: num_predict={num_predict}, num_ctx={num_ctx}")
     print(f"{'='*60}")
 
     # ── Step 1: Load model ────────────────────────────────────
@@ -237,7 +240,7 @@ def benchmark_model(model: str, prompts: list[dict],
         anti_kw = p.get("anti_keywords", [])
         category = p.get("category", "unknown")
 
-        resp = query_ollama(model, prompt_text)
+        resp = query_ollama(model, prompt_text, num_predict=num_predict, num_ctx=num_ctx)
         response_text = resp.get("response", "")
 
         # Parse metrics
@@ -290,7 +293,7 @@ def benchmark_model(model: str, prompts: list[dict],
             thinking_results = []
 
             for i, p in enumerate(thinking_prompts, 1):
-                resp = query_ollama(model, p["prompt"], think=True, num_predict=1024)
+                resp = query_ollama(model, p["prompt"], think=True, num_predict=num_predict, num_ctx=num_ctx)
                 response_text = resp.get("response", "")
                 quality = round(score_quality(response_text,
                                              p.get("quality_keywords", []),
@@ -508,6 +511,10 @@ def main():
                         help="Run thinking mode comparison (20 extra prompts per model)")
     parser.add_argument("--prompts", help="Path to prompts JSON")
     parser.add_argument("--output-dir", default=str(OUTPUT_DIR), help="Output directory")
+    parser.add_argument("--num-predict", type=int, default=2048,
+                        help="Max output tokens per response (default: 2048)")
+    parser.add_argument("--num-ctx", type=int, default=8192,
+                        help="Context window size (default: 8192)")
     parser.add_argument("--summarize", action="store_true",
                         help="Generate markdown summary from existing results")
     parser.add_argument("--verbose", "-v", action="store_true")
@@ -553,7 +560,9 @@ def main():
 
         report = benchmark_model(model, prompts,
                                  test_thinking=args.test_thinking,
-                                 verbose=args.verbose)
+                                 verbose=args.verbose,
+                                 num_predict=args.num_predict,
+                                 num_ctx=args.num_ctx)
         print_summary(report)
 
         # Save report
