@@ -36,7 +36,7 @@ if [ -z "$WALLPAPER" ] || [ ! -f "$WALLPAPER" ]; then
 fi
 
 # Kill existing wallpaper processes
-killall mpvpaper swww-daemon 2>/dev/null
+killall mpvpaper swww-daemon awww-daemon swaybg 2>/dev/null
 sleep 0.5
 
 # Detect file type and launch appropriate backend
@@ -54,8 +54,12 @@ case "$EXT" in
         fi
         ;;
     jpg|jpeg|png|webp|bmp)
-        # Static wallpaper via swww
-        if command -v swww &>/dev/null; then
+        # Static wallpaper via awww (formerly swww)
+        if command -v awww &>/dev/null; then
+            awww-daemon &disown 2>/dev/null
+            sleep 0.3
+            awww img "$WALLPAPER" --transition-type grow --transition-duration 1
+        elif command -v swww &>/dev/null; then
             swww-daemon &disown 2>/dev/null
             sleep 0.3
             swww img "$WALLPAPER" --transition-type grow --transition-duration 1
