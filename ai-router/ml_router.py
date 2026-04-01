@@ -104,14 +104,14 @@ HYPRLAND_CONFIG_KEYWORDS = re.compile(
 )
 
 VRAM_MODEL_MAP = {
-    # LLM-judge quality scores (2026-03-23, Claude Haiku judge, 80 prompts, Vulkan/RADV)
-    "qwen3.5:9b": 0.61,    # Best quality (0.606), 23 t/s, ~8GB VRAM
-    "qwen3.5:4b": 0.58,    # Best value (0.581), 28 t/s, ~5GB VRAM
-    "qwen3:14b": 0.58,     # Similar to 4b (0.578), 24 t/s, ~11GB VRAM
-    "qwen3.5:2b": 0.38,    # Speed-only (0.375), 53 t/s, ~3GB VRAM — unreliable for general use
-    "qwen3.5:0.8b": 0.23,  # Not viable (0.231), hallucinates frequently
-    "qwen2.5:14b": 0.60,   # Legacy, estimated
-    "qwen2.5:7b": 0.45,    # Legacy, estimated
+    # LLM-judge quality scores (2026-03-31, Gemini Flash Lite judge, 80 prompts, num_predict=2048, num_ctx=8192)
+    "qwen3:14b": 0.59,     # Best overall (0.594), 24 t/s, ~11GB VRAM
+    "qwen3.5:9b": 0.57,    # Close second (0.571), 22 t/s, ~8GB VRAM
+    "qwen3.5:4b": 0.53,    # Good value (0.525), 18 t/s, ~5GB VRAM
+    "qwen3.5:2b": 0.37,    # Speed-only (0.372), 33 t/s, ~3GB VRAM — unreliable for general use
+    "qwen3.5:0.8b": 0.24,  # Not viable (0.236), hallucinates frequently
+    "qwen2.5:14b": 0.55,   # Legacy, estimated
+    "qwen2.5:7b": 0.40,    # Legacy, estimated
     "qwen2.5:3b": 0.25,    # Legacy, estimated
 }
 
@@ -123,24 +123,33 @@ VRAM_MODEL_MAP = {
 # Format: category → [(model, quality, vram_gb), ...] sorted best-first
 # The router picks the first model that fits in current VRAM budget.
 CATEGORY_MODEL_PREFS = {
-    # LLM-judge scored category preferences (2026-03-23, updated 2026-03-26)
+    # LLM-judge scored category preferences (2026-03-31, Gemini Flash Lite judge, num_predict=2048, num_ctx=8192)
+    # Sample sizes: system_info=14, code_write=11, deep_knowledge=10, general_knowledge=8,
+    # architecture=5, package_query=3. Code_debug/deploy/refactor/test have n=1 each —
+    # those use overall model ranking (14b > 9b > 4b) rather than per-category noise.
+    #
     # Simple actions (mute, volume, brightness, media) — 4b is fast and reliable
     "simple_action":   [("qwen3.5:4b", 0.95, 5), ("qwen3.5:9b", 0.95, 8), ("qwen3.5:2b", 0.70, 3)],
-    # qwen3.5:9b dominates architecture and code tasks
-    "architecture":    [("qwen3.5:9b", 0.80, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
-    "code_debug":      [("qwen3.5:9b", 1.00, 8), ("qwen2.5-coder:14b", 0.90, 9), ("qwen3.5:4b", 1.00, 5), ("qwen3:14b", 0.75, 11)],
-    "code_test":       [("qwen3.5:9b", 0.75, 8), ("qwen2.5-coder:14b", 0.80, 9), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
-    "code_refactor":   [("qwen3.5:9b", 0.75, 8), ("qwen2.5-coder:14b", 0.80, 9), ("qwen3.5:4b", 0.50, 5), ("qwen3.5:2b", 0.50, 3)],
-    # qwen3:14b leads on code_write and general_knowledge; coder:14b strong here too
-    "code_write":      [("qwen2.5-coder:14b", 0.85, 9), ("qwen3:14b", 0.70, 11), ("qwen3.5:4b", 0.64, 5), ("qwen3.5:9b", 0.61, 8)],
-    "general_knowledge": [("qwen3:14b", 0.75, 11), ("qwen3.5:4b", 0.72, 5), ("qwen3.5:9b", 0.59, 8)],
-    # qwen3.5:4b leads on deep_knowledge
-    "deep_knowledge":  [("qwen3.5:4b", 0.78, 5), ("qwen3.5:9b", 0.75, 8), ("qwen3:14b", 0.62, 11)],
-    # System tasks — 9b and 14b both strong
-    "system_info":     [("qwen3:14b", 0.70, 11), ("qwen3.5:9b", 0.68, 8), ("qwen3.5:4b", 0.54, 5)],
-    "package_query":   [("qwen3.5:9b", 0.58, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.42, 5)],
-    # code_deploy — 14b leads
-    "code_deploy":     [("qwen3:14b", 0.75, 11), ("qwen3.5:9b", 0.50, 8), ("qwen3.5:4b", 0.50, 5)],
+    # architecture (n=5): 9b leads, 14b and 4b tied
+    "architecture":    [("qwen3.5:9b", 0.55, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.50, 5)],
+    # code_debug (n=1): unreliable — use overall ranking: 14b > 9b > 4b
+    "code_debug":      [("qwen3:14b", 0.59, 11), ("qwen3.5:9b", 0.57, 8), ("qwen3.5:4b", 0.53, 5)],
+    # code_test (n=1): unreliable — use overall ranking
+    "code_test":       [("qwen3:14b", 0.59, 11), ("qwen3.5:9b", 0.57, 8), ("qwen3.5:4b", 0.53, 5)],
+    # code_refactor (n=1): unreliable — use overall ranking
+    "code_refactor":   [("qwen3:14b", 0.59, 11), ("qwen3.5:9b", 0.57, 8), ("qwen3.5:4b", 0.53, 5)],
+    # code_write (n=11): 14b leads, 4b second, 9b close
+    "code_write":      [("qwen3:14b", 0.75, 11), ("qwen3.5:4b", 0.64, 5), ("qwen3.5:9b", 0.59, 8)],
+    # general_knowledge (n=8): 14b leads, 9b close
+    "general_knowledge": [("qwen3:14b", 0.78, 11), ("qwen3.5:9b", 0.75, 8), ("qwen3.5:4b", 0.69, 5)],
+    # deep_knowledge (n=10): 9b leads, 4b and 14b tied
+    "deep_knowledge":  [("qwen3.5:9b", 0.75, 8), ("qwen3.5:4b", 0.70, 5), ("qwen3:14b", 0.70, 11)],
+    # system_info (n=14): 14b and 9b tied
+    "system_info":     [("qwen3:14b", 0.64, 11), ("qwen3.5:9b", 0.64, 8), ("qwen3.5:4b", 0.55, 5)],
+    # package_query (n=3): 9b leads
+    "package_query":   [("qwen3.5:9b", 0.75, 8), ("qwen3:14b", 0.50, 11), ("qwen3.5:4b", 0.42, 5)],
+    # code_deploy (n=1): unreliable — use overall ranking
+    "code_deploy":     [("qwen3:14b", 0.59, 11), ("qwen3.5:9b", 0.57, 8), ("qwen3.5:4b", 0.53, 5)],
 }
 
 # VRAM size (GB) for each model — used to check if a preferred model fits
@@ -1687,16 +1696,48 @@ if __name__ == "__main__":
     cmd = sys.argv[1]
 
     if cmd == "train":
+        import json as _json
+
+        # Stage 1: Synthetic + real labeled data
         print("Generating synthetic training data...")
-        data = generate_synthetic_data()
-        print(f"Generated {len(data)} labeled samples")
-        print("Training ML router...")
+        synthetic = generate_synthetic_data()
+        print(f"Generated {len(synthetic)} synthetic samples")
+
+        real_data_path = Path(__file__).parent / "training_data" / "stage2_labeled.json"
+        real_pairs: list[tuple[str, str]] = []
+        real_weights: list[float] = []
+        ast_triples: list[tuple[str, str, str | None]] = []
+        ast_weights: list[float] = []
+
+        if real_data_path.exists():
+            raw = _json.loads(real_data_path.read_text())
+            for item in raw:
+                real_pairs.append((item["query"], item["route"]))
+                real_weights.append(item.get("weight", 2.0))
+                ast_triples.append((item["query"], item["route"], item.get("file_path")))
+                ast_weights.append(item.get("weight", 2.0))
+            print(f"Loaded {len(real_pairs)} real labeled samples")
+
+        # Combine: synthetic (weight=1.0) + real (weighted by source)
+        combined = synthetic + real_pairs
+        weights = [1.0] * len(synthetic) + real_weights
+
+        print(f"Training Stage 1 on {len(combined)} total samples...")
         router = MLRouter()
-        stats = router.train(data)
-        print(f"Training complete in {stats['duration_s']}s")
+        stats = router.train(combined, weights=weights)
+        print(f"Stage 1 complete in {stats['duration_s']}s")
         print(f"  Final loss: {stats['final_loss']:.4f}")
         print(f"  Samples:    {stats['samples']}")
         print(f"  Model saved to {MODEL_PATH}")
+
+        # Stage 2: AST model (real data only — needs file_path)
+        if ast_triples:
+            print(f"\nTraining Stage 2 AST on {len(ast_triples)} samples...")
+            ast_stats = router.train_ast(ast_triples, weights=ast_weights)
+            print(f"Stage 2 complete in {ast_stats['duration_s']}s")
+            print(f"  Final loss: {ast_stats['final_loss']:.4f}")
+            print(f"  Samples:    {ast_stats['samples']}")
+            print(f"  Model saved to {AST_MODEL_PATH}")
 
     elif cmd == "eval":
         print("Generating synthetic training data...")
