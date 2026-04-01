@@ -9,15 +9,16 @@ WORKSPACE="${1:-5}"
 
 # Non-sensitive prompts — these produce visually interesting output (tool calls, code, file reads)
 # without touching config files, API keys, or personal data
+# Add your project directories here (need at least 8 for a full grid)
 declare -a PROJECTS=(
     "$HOME/projects/costa-os"
-    "$HOME/projects/synoros-platform"
-    "$HOME/projects/synoros-scanner"
-    "$HOME/projects/synoros-desktop-app"
-    "$HOME/projects/sonical"
-    "$HOME/projects/better-nautilus"
-    "$HOME/projects/paragon"
-    "$HOME/projects/conduit-software"
+    "$HOME/projects/project-2"
+    "$HOME/projects/project-3"
+    "$HOME/projects/project-4"
+    "$HOME/projects/project-5"
+    "$HOME/projects/project-6"
+    "$HOME/projects/project-7"
+    "$HOME/projects/project-8"
 )
 
 declare -a PROMPTS=(
@@ -59,7 +60,7 @@ for i in "${!PROJECTS[@]}"; do
     # Using --print mode so it runs the task and streams output visually
     # --no-session-persistence to avoid cluttering session history
     hyprctl dispatch exec "[workspace $WORKSPACE silent]" \
-        "ghostty -e zsh -lc 'cd \"$PROJECT\" && claude --dangerously-skip-permissions --no-session-persistence -p \"$PROMPT\"'"
+        "ghostty -e zsh -lc 'cd \"$PROJECT\" && claude --no-session-persistence -p \"$PROMPT\"'"
 
     # Small delay so Hyprland can tile properly
     sleep 0.3

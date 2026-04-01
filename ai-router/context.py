@@ -32,6 +32,32 @@ def run(cmd: str | list[str], timeout: int = 5) -> str:
         return ""
 
 
+# Paths that should never be read and sent to cloud models
+_SENSITIVE_PATHS = {
+    "env", "secret", "token", "credentials", "key", "password",
+    ".ssh", ".gnupg", ".aws", ".config/costa/env",
+}
+
+_SECRET_PATTERNS = re.compile(
+    r'((?:api[_-]?key|secret|token|password|authorization)\s*[:=]\s*)'
+    r'["\']?([^\s"\']{8,})["\']?',
+    re.IGNORECASE,
+)
+
+
+def _is_sensitive_path(path: str) -> bool:
+    """Check if a file path likely contains secrets."""
+    p = path.lower()
+    return any(s in p for s in _SENSITIVE_PATHS)
+
+
+def _redact_secrets(text: str) -> str:
+    """Redact likely secret values from config file content."""
+    if not text:
+        return text
+    return _SECRET_PATTERNS.sub(r'\1[REDACTED]', text)
+
+
 def gather_context(query: str) -> str:
     """Analyze query and gather relevant system context.
 
@@ -183,15 +209,19 @@ def gather_context(query: str) -> str:
                              "-name", f"*{config_name}*", "-type", "f"])
                 if found:
                     first_file = found.split("\n")[0]
-                    content = run(["head", "-50", first_file])
-                    context_parts.append(f"[Config file: {first_file}]\n{content}")
+                    if not _is_sensitive_path(first_file):
+                        content = run(["head", "-50", first_file])
+                        content = _redact_secrets(content)
+                        context_parts.append(f"[Config file: {first_file}]\n{content}")
                 else:
                     found = run(["find", "/etc", "-maxdepth", "2",
                                  "-name", f"*{config_name}*", "-type", "f"])
                     if found:
                         first_file = found.split("\n")[0]
-                        content = run(["head", "-50", first_file])
-                        context_parts.append(f"[Config file: {first_file}]\n{content}")
+                        if not _is_sensitive_path(first_file):
+                            content = run(["head", "-50", first_file])
+                            content = _redact_secrets(content)
+                            context_parts.append(f"[Config file: {first_file}]\n{content}")
 
     # Ollama / local AI queries
     if _matches(q, r"(ollama|model|llm|local.*(ai|model)|what model)"):

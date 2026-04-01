@@ -91,10 +91,11 @@ fi
 echo ""
 echo "--- Monitor check ---"
 MONITOR_COUNT=$(hyprctl monitors -j 2>/dev/null | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
-if [ "$MONITOR_COUNT" -ge 3 ]; then
-    info "All 3 monitors detected"
+EXPECTED_MONITORS="${COSTA_DEMO_MONITORS:-1}"
+if [ "$MONITOR_COUNT" -ge "$EXPECTED_MONITORS" ]; then
+    info "$MONITOR_COUNT monitor(s) detected"
 elif [ "$MONITOR_COUNT" -ge 1 ]; then
-    warn "$MONITOR_COUNT monitor(s) detected (expected 3)"
+    warn "$MONITOR_COUNT monitor(s) detected (expected $EXPECTED_MONITORS, set COSTA_DEMO_MONITORS to adjust)"
 else
     fail "Could not detect monitors"
 fi

@@ -4,10 +4,10 @@
 Keeps Silero VAD model loaded in memory. Records audio and uses VAD
 to detect when speech ends, then stops automatically.
 
-Communication:
-  /tmp/vad-cmd    — write "record /path/to/output.wav" to start
-  /tmp/vad-status — daemon writes: ready, listening, speech, done, error
-  /tmp/ptt.lock   — remove to force-stop (keybind toggle)
+Communication (files in $XDG_RUNTIME_DIR):
+  vad-cmd    — write "record /path/to/output.wav" to start
+  vad-status — daemon writes: ready, listening, speech, done, error
+  ptt.lock   — remove to force-stop (keybind toggle)
 """
 
 import os
@@ -30,11 +30,12 @@ VAD_THRESHOLD = float(os.environ.get("COSTA_VAD_THRESHOLD", "0.25"))
 SILENCE_AFTER = float(os.environ.get("COSTA_VAD_SILENCE_AFTER", "1.5"))
 MAX_DURATION = float(os.environ.get("COSTA_VAD_MAX_DURATION", "15.0"))
 
-LOCKFILE = "/tmp/ptt.lock"
-CMD_FILE = "/tmp/vad-cmd"
-STATUS_FILE = "/tmp/vad-status"
-PID_FILE = "/tmp/vad-daemon.pid"
-LOG_FILE = "/tmp/vad-debug.log"
+_RUNTIME = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+LOCKFILE = f"{_RUNTIME}/ptt.lock"
+CMD_FILE = f"{_RUNTIME}/vad-cmd"
+STATUS_FILE = f"{_RUNTIME}/vad-status"
+PID_FILE = f"{_RUNTIME}/vad-daemon.pid"
+LOG_FILE = f"{_RUNTIME}/vad-debug.log"
 
 
 def write_status(status):
@@ -105,7 +106,7 @@ def do_recording(model, output_path, max_duration=None, threshold=None,
                     continue
 
                 # Write chunk to temp wav for DeepFilterNet
-                chunk_wav = "/tmp/vad-chunk.wav"
+                chunk_wav = f"{_RUNTIME}/vad-chunk.wav"
                 with wave.open(chunk_wav, "wb") as wf:
                     wf.setnchannels(1)
                     wf.setsampwidth(2)
@@ -113,16 +114,18 @@ def do_recording(model, output_path, max_duration=None, threshold=None,
                     wf.writeframes(raw_data)
 
                 # DeepFilterNet: upsample -> filter -> downsample
-                clean_wav = "/tmp/vad-chunk-clean.wav"
+                clean_wav = f"{_RUNTIME}/vad-chunk-clean.wav"
+                c48_wav = f"{_RUNTIME}/vad-c48.wav"
+                cc_wav = f"{_RUNTIME}/vad-cc.wav"
                 subprocess.run(
-                    ["sox", chunk_wav, "-r", "48000", "/tmp/vad-c48.wav"],
+                    ["sox", chunk_wav, "-r", "48000", c48_wav],
                     check=True, capture_output=True, timeout=3)
                 subprocess.run(
-                    ["sox", "/tmp/vad-c48.wav", "/tmp/vad-cc.wav", "ladspa",
+                    ["sox", c48_wav, cc_wav, "ladspa",
                      DEEPFILTER_LADSPA, "deep_filter_mono"],
                     check=True, capture_output=True, timeout=5)
                 subprocess.run(
-                    ["sox", "/tmp/vad-cc.wav", "-r", str(SAMPLE_RATE), clean_wav],
+                    ["sox", cc_wav, "-r", str(SAMPLE_RATE), clean_wav],
                     check=True, capture_output=True, timeout=3)
 
                 # Read cleaned audio
@@ -130,7 +133,7 @@ def do_recording(model, output_path, max_duration=None, threshold=None,
                     data = wf.readframes(wf.getnframes())
 
                 # Cleanup temp files
-                for f in [chunk_wav, "/tmp/vad-c48.wav", "/tmp/vad-cc.wav", clean_wav]:
+                for f in [chunk_wav, c48_wav, cc_wav, clean_wav]:
                     try:
                         os.unlink(f)
                     except OSError:

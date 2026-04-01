@@ -66,9 +66,9 @@ class ResourceQueue:
     Uses fcntl.flock on a shared lock file so that multiple costa-agents
     processes (from different Claude Code sessions) never exceed the
     concurrency limit simultaneously. Critical for SSH — two concurrent
-    SSH sessions to the same droplet will crash.
+    SSH sessions to the same server will crash.
     """
-    LOCK_DIR = Path("/tmp/costa-agent-locks")
+    LOCK_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "costa-agent-locks"
 
     def __init__(self, name: str, max_concurrent: int = 1):
         self.name = name
@@ -460,11 +460,11 @@ Execute this task now. Be concise in your response. End with a one-line summary.
                 name = server.get("name", host)
                 steps = []
 
-                # 1. Pull latest code
-                pull_cmd = f"cd {deploy_dir} && git pull origin main"
+                # 1. Pull latest code (detect default branch)
+                pull_cmd = f"cd {deploy_dir} && git pull origin $(git rev-parse --abbrev-ref HEAD)"
                 r = subprocess.run(
                     ["ssh", host, pull_cmd],
-                    capture_output=True, text=True, timeout=30
+                    capture_output=True, text=True, timeout=60
                 )
                 if r.returncode != 0:
                     results.append(f"✗ {name}: git pull failed — {r.stderr.strip()[:200]}")

@@ -91,8 +91,8 @@ Easiest way: `costa-settings` → AI Assistant → API Keys
 
 Or edit ~/.config/costa/env manually:
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=your-anthropic-key-here
+OPENAI_API_KEY=your-openai-key-here
 ```
 Then reload: `source ~/.config/costa/env`
 

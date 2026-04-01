@@ -23,10 +23,11 @@ from dataclasses import asdict, dataclass, field
 from enum import IntEnum
 from pathlib import Path
 
-SOCKET_PATH = "/tmp/costa-ai.sock"
-RESULT_DIR = "/tmp"
-CURRENT_FILE = "/tmp/costa-ai-current.json"
-STREAM_FILE = "/tmp/costa-ai-stream"
+_RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+SOCKET_PATH = f"{_RUNTIME_DIR}/costa-ai.sock"
+RESULT_DIR = _RUNTIME_DIR
+CURRENT_FILE = f"{_RUNTIME_DIR}/costa-ai-current.json"
+STREAM_FILE = f"{_RUNTIME_DIR}/costa-ai-stream"
 
 
 class Priority(IntEnum):
@@ -164,6 +165,7 @@ class QueueDaemon:
 
         self._server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._server_socket.bind(SOCKET_PATH)
+        os.chmod(SOCKET_PATH, 0o600)
         self._server_socket.listen(8)
         self._server_socket.settimeout(1.0)
 

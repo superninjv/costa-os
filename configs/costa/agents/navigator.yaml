@@ -30,7 +30,7 @@ system_prompt: |
      Run `cli_registry` with `{"action": "check", "app": "<app>"}` first.
      If a wrapper exists, use `system_command` to call it directly:
        cli-anything-firefox tabs list --json
-       cli-anything-thunar files list --json --path /home/user/Documents
+       cli-anything-thunar files list --json --path $HOME/Documents
        cli-anything-code workspace current --json
      Or use `cli_query` step type in nav_plan.
 

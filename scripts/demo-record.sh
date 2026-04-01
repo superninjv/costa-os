@@ -12,7 +12,7 @@ set -e
 OUT_DIR="$HOME/Videos/costa-demo"
 mkdir -p "$OUT_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-MONITOR="HDMI-A-2"
+MONITOR="${COSTA_DEMO_MONITOR:-$(hyprctl monitors -j | python3 -c 'import json,sys; ms=json.load(sys.stdin); print(ms[0]["name"])' 2>/dev/null || echo "DP-1")}"
 
 # Colors
 GREEN='\033[0;32m'

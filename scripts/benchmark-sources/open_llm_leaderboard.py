@@ -26,7 +26,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-CACHE_DIR = Path("/home/jack/projects/costa-os/ai-router/benchmarks/raw/open_llm_leaderboard")
+CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "ai-router" / "benchmarks" / "raw" / "open_llm_leaderboard"
 SOURCE = "open_llm_leaderboard"
 
 # The Open LLM Leaderboard v2 is a Docker Space with a live backend API.

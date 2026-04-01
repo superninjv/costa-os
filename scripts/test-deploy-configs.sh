@@ -83,11 +83,12 @@ echo "rofi config v1"    > "$FAKE_COSTA/configs/rofi/config.rasi"
 EXTRACTED="$TMPDIR_ROOT/deploy_configs.sh"
 
 # Pull out safe_install + deploy_configs from the source file
-python3 - <<'PYEOF' "$EXTRACTED"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+python3 - <<'PYEOF' "$EXTRACTED" "$SCRIPT_DIR/costa-update.sh"
 import sys, re
 
 out_path = sys.argv[1]
-with open('/home/jack/projects/costa-os/scripts/costa-update.sh') as fh:
+with open(sys.argv[2]) as fh:
     src = fh.read()
 
 # Grab the color vars and helper fns (log/ok/warn/err) so output works

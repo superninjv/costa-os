@@ -25,12 +25,13 @@ x-common-env: &common-env
   REDIS_URL: redis://redis:6379
   REDIS_RATE_LIMIT_URL: redis://redis:6379
   PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000/scrape
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
-  POSTGRES_DB: postgres
+  # IMPORTANT: Set these in .env before first run
+  POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+  POSTGRES_DB: ${POSTGRES_DB:-firecrawl}
   POSTGRES_HOST: nuq-postgres
   POSTGRES_PORT: "5432"
-  USE_DB_AUTHENTICATION: "false"
+  USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-true}
   NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-4}
   CRAWL_CONCURRENT_REQUESTS: ${CRAWL_CONCURRENT_REQUESTS:-5}
   MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-3}
@@ -38,7 +39,7 @@ x-common-env: &common-env
   # Local Ollama for AI extraction (uses host network via extra_hosts)
   OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434/api}
   MODEL_NAME: ${MODEL_NAME:-qwen3.5:4b}
-  BULL_AUTH_KEY: ${BULL_AUTH_KEY:-costa-local}
+  BULL_AUTH_KEY: ${BULL_AUTH_KEY:?Set BULL_AUTH_KEY in .env}
   LOGGING_LEVEL: ${LOGGING_LEVEL:-warn}
   BLOCK_MEDIA: ${BLOCK_MEDIA:-true}
 

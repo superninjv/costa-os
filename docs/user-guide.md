@@ -2095,8 +2095,8 @@ If you choose to use cloud AI (Claude by Anthropic or OpenAI), your API keys are
 1. Settings Hub > AI Assistant > API Keys
 2. Or edit `~/.config/costa/env` manually:
    ```
-   ANTHROPIC_API_KEY=sk-ant-...
-   OPENAI_API_KEY=sk-...
+   ANTHROPIC_API_KEY=your-anthropic-key-here
+   OPENAI_API_KEY=your-openai-key-here
    ```
 3. Reload: `source ~/.config/costa/env`
 

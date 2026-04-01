@@ -926,10 +926,10 @@ def classify_command(cmd: str) -> str:
 
 
 def execute_command(cmd: str, timeout: int = 10) -> str:
-    """Execute a shell command and return output."""
+    """Execute a command and return output. Uses argv list (no shell)."""
     try:
         result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
+            shlex.split(cmd), capture_output=True, text=True, timeout=timeout
         )
         output = result.stdout.strip()
         if result.returncode != 0 and result.stderr.strip():

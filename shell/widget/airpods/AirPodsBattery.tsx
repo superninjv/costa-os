@@ -242,7 +242,7 @@ export default function AirPodsBattery() {
   const openAppBtn = new Gtk.Button({ cssClasses: ["ap-open-app"], label: "Open AirPods Helper" })
   openAppBtn.connect("clicked", () => {
     execAsync("airpods-app").catch(() => {
-      execAsync("bash -c '/home/jack/.local/bin/airpods-app &disown'").catch(() => {})
+      execAsync(`bash -c '${GLib.get_home_dir()}/.local/bin/airpods-app &disown'`).catch(() => {})
     })
   })
   popupBox.append(openAppBtn)

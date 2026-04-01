@@ -23,7 +23,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-CACHE_DIR = Path("/home/jack/projects/costa-os/ai-router/benchmarks/raw/llm2014")
+CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "ai-router" / "benchmarks" / "raw" / "llm2014"
 SOURCE = "llm2014"
 
 BASE_RAW = "https://raw.githubusercontent.com/llm2014/llm_benchmark/main/docs/data"

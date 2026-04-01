@@ -51,3 +51,9 @@ ai-router/benchmarks/anomaly-report.json
 # Personal/local files
 costa-session-summary.txt
 tasks/
+
+# Runtime state files
+configs/music-widget/position.json
+
+# Review artifacts
+ADVERSARIAL-REVIEW.md
